@@ -1,4 +1,4 @@
-import { buildDerivedStats } from "./rules.js?v=0.2.2-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.3.0-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const DEFAULT_STARTER_LOADOUT_BY_CLASS = {

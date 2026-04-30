@@ -72,8 +72,9 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
       if (!run.discovered?.[object.y]?.[object.x]) {
         continue;
       }
-      const cx = cameraOffsetX + object.x * tile + tile / 2;
-      const cy = cameraOffsetY + object.y * tile + tile / 2;
+      const objectVisual = getObjectVisualPosition(run, object, nowMs);
+      const cx = cameraOffsetX + objectVisual.x * tile + tile / 2;
+      const cy = cameraOffsetY + objectVisual.y * tile + tile / 2;
 
       const enemyDamage = object?.data?.damage ?? 0;
       const enemyHp = object?.data?.hp ?? 0;
@@ -95,17 +96,18 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
       ctx.fillText(object.icon || "?", cx, cy);
 
       if (object.type === "enemy") {
-        // HP справа сверху
-        ctx.textAlign = "right";
-        ctx.textBaseline = "top";
-        ctx.fillStyle = "#ef4444";
-        ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
-        ctx.fillText(`${object.data.hp}`, cameraOffsetX + (object.x + 1) * tile - 3, cameraOffsetY + object.y * tile + 2);
-        // Урон слева снизу
+        // HP и урон привязаны к иконке врага, чтобы не "прыгали" при анимации.
+        // HP справа сверху от иконки
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
+        ctx.fillStyle = "#ef4444";
+        ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
+        ctx.fillText(`${object.data.hp}`, cx + tile * 0.2, cy - tile * 0.12);
+        // Урон слева снизу от иконки
+        ctx.textAlign = "right";
+        ctx.textBaseline = "top";
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(`${object.data.damage}`, cameraOffsetX + object.x * tile + 3, cameraOffsetY + (object.y + 1) * tile - 2);
+        ctx.fillText(`${object.data.damage}`, cx - tile * 0.2, cy + tile * 0.1);
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
       }
@@ -174,6 +176,20 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
 
   drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs);
   drawLevelTransitionOverlay(ctx, run, width, height, nowMs);
+}
+
+function getObjectVisualPosition(run, object, nowMs) {
+  const motion = run?.environmentMotion;
+  if (!motion || motion.kind !== "object-move" || motion.actorId !== object.id) {
+    return { x: object.x, y: object.y };
+  }
+  if (motion.startMs == null) {
+    motion.startMs = nowMs;
+  }
+  const t = Math.min(1, (nowMs - motion.startMs) / Math.max(1, motion.durationMs || 1));
+  const x = motion.from.x + (motion.to.x - motion.from.x) * t;
+  const y = motion.from.y + (motion.to.y - motion.from.y) * t;
+  return { x, y };
 }
 
 function getPlayerVisual(run, nowMs) {

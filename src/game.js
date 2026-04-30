@@ -1,7 +1,7 @@
-import { generateMazeRun } from "./maze.js?v=0.2.2-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.2.2-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.2.2-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.2.2-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.3.0-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.3.0-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.3.0-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.3.0-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -111,8 +111,9 @@ function weightedEnemyType(level) {
   return "cat_big";
 }
 
-function getEnemyCountsForLevel(level) {
-  const total = randomInt(6, 10);
+function getEnemyCountsForLevel(level, walkableCells = 120) {
+  const mapScaleFactor = Math.max(1, walkableCells / 120);
+  const total = randomInt(6, 10) + Math.floor((mapScaleFactor - 1) * 5);
   const counts = { cat_small: 0, cat_mid: 0, cat_big: 0 };
   for (let i = 0; i < total; i += 1) {
     counts[weightedEnemyType(level)] += 1;
@@ -123,21 +124,12 @@ function getEnemyCountsForLevel(level) {
 function generateObjects(maze, level = 1) {
   const freeCells = [];
   const reserved = new Set();
-  const enemyCounts = getEnemyCountsForLevel(level);
-  const chestCounts = getChestCountsForLevel(level);
-  const byTypeCount = {
-    cat_small: enemyCounts.cat_small,
-    cat_mid: enemyCounts.cat_mid,
-    cat_big: enemyCounts.cat_big,
-    chest_common: chestCounts.chest_common,
-    chest_rare: chestCounts.chest_rare,
-    chest_unique: chestCounts.chest_unique,
-  };
+  const rooms = Array.isArray(maze.rooms) ? maze.rooms : [];
 
   const objectTemplates = {
-    cat_small: { id: "cat_small", name: "Котенок", type: "enemy", icon: "🐱", oneTime: false, data: { hp: 24, damage: 4 } },
-    cat_mid: { id: "cat_mid", name: "Домашний кот", type: "enemy", icon: "🐈", oneTime: false, data: { hp: 34, damage: 7 } },
-    cat_big: { id: "cat_big", name: "Дворовый кот", type: "enemy", icon: "😾", oneTime: false, data: { hp: 48, damage: 10 } },
+    cat_small: { id: "cat_small", name: "Котенок", type: "enemy", icon: "🐱", oneTime: false, data: { hp: 18, damage: 2 } },
+    cat_mid: { id: "cat_mid", name: "Домашний кот", type: "enemy", icon: "🐈", oneTime: false, data: { hp: 27, damage: 5 } },
+    cat_big: { id: "cat_big", name: "Дворовый кот", type: "enemy", icon: "😾", oneTime: false, data: { hp: 38, damage: 7 } },
     chest_common: { id: "chest_common", name: "Обычный сундук", type: "chest", icon: "📦", oneTime: true, data: { chestRarity: "common" } },
     chest_rare: { id: "chest_rare", name: "Редкий сундук", type: "chest", icon: "🎁", oneTime: true, data: { chestRarity: "rare" } },
     chest_unique: { id: "chest_unique", name: "Уникальный сундук", type: "chest", icon: "👑", oneTime: true, data: { chestRarity: "unique" } },
@@ -151,6 +143,33 @@ function generateObjects(maze, level = 1) {
       freeCells.push({ x, y });
     }
   }
+
+  const roomCellKeySet = new Set();
+  for (const room of rooms) {
+    const maxY = Math.min(maze.height - 1, room.y + room.h - 1);
+    const maxX = Math.min(maze.width - 1, room.x + room.w - 1);
+    for (let y = Math.max(0, room.y); y <= maxY; y += 1) {
+      for (let x = Math.max(0, room.x); x <= maxX; x += 1) {
+        if (maze.grid[y][x] === 1) continue;
+        if (x === maze.start.x && y === maze.start.y) continue;
+        if (x === maze.goal.x && y === maze.goal.y) continue;
+        roomCellKeySet.add(`${x}:${y}`);
+      }
+    }
+  }
+
+  const walkableCells = freeCells.length;
+  const enemyCounts = getEnemyCountsForLevel(level, walkableCells);
+  const chestCounts = getChestCountsForLevel(level);
+  const extraChests = Math.max(0, Math.floor((walkableCells - 120) / 45));
+  const byTypeCount = {
+    cat_small: enemyCounts.cat_small,
+    cat_mid: enemyCounts.cat_mid,
+    cat_big: enemyCounts.cat_big,
+    chest_common: chestCounts.chest_common + extraChests,
+    chest_rare: chestCounts.chest_rare + Math.floor(extraChests / 2),
+    chest_unique: chestCounts.chest_unique + (extraChests >= 3 ? 1 : 0),
+  };
 
   for (let i = freeCells.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -184,6 +203,10 @@ function generateObjects(maze, level = 1) {
 
   const deadEnds = freeCells.filter((cell) => neighbors4(cell.x, cell.y).length === 1);
   const nonDeadEnds = freeCells.filter((cell) => neighbors4(cell.x, cell.y).length !== 1);
+  const roomCells = freeCells.filter((cell) => roomCellKeySet.has(keyOf(cell.x, cell.y)));
+  const corridorCells = freeCells.filter((cell) => !roomCellKeySet.has(keyOf(cell.x, cell.y)));
+  const roomDeadEnds = deadEnds.filter((cell) => roomCellKeySet.has(keyOf(cell.x, cell.y)));
+  const corridorDeadEnds = deadEnds.filter((cell) => !roomCellKeySet.has(keyOf(cell.x, cell.y)));
 
   function takeCellFrom(pool) {
     while (pool.length > 0) {
@@ -221,10 +244,10 @@ function generateObjects(maze, level = 1) {
     for (let i = 0; i < count; i += 1) {
       let cell = null;
       if (plan.fromDeadEnd) {
-        cell = takeCellFrom(deadEnds);
+        cell = takeCellFrom(roomDeadEnds) || takeCellFrom(corridorDeadEnds);
       }
       if (!cell) {
-        cell = takeCellFrom(nonDeadEnds) || takeCellFrom(deadEnds);
+        cell = takeCellFrom(roomCells) || takeCellFrom(corridorCells) || takeCellFrom(nonDeadEnds) || takeCellFrom(deadEnds);
       }
       if (!cell) break;
       placeObject(objects, template, cell, i);
@@ -250,7 +273,7 @@ function generateObjects(maze, level = 1) {
 
   // 3) Остальных котов досыпаем случайно.
   while (enemyQueue.length > 0) {
-    const cell = takeCellFrom(nonDeadEnds) || takeCellFrom(deadEnds);
+    const cell = takeCellFrom(roomCells) || takeCellFrom(nonDeadEnds) || takeCellFrom(corridorCells) || takeCellFrom(deadEnds);
     if (!cell) break;
     const enemyKey = enemyQueue.shift();
     const enemyTemplate = objectTemplates[enemyKey];
@@ -267,6 +290,20 @@ function getObjectAt(run, x, y) {
 
 function removeObject(run, objectId) {
   run.objects = run.objects.filter((object) => object.id !== objectId);
+}
+
+function getEnemyById(run, enemyId) {
+  return run.objects.find((object) => object.id === enemyId && object.type === "enemy") || null;
+}
+
+function isCellBlockedForEnemy(run, x, y, selfId) {
+  if (!inBounds(x, y, run) || isWall(x, y, run)) {
+    return true;
+  }
+  if (run.player?.x === x && run.player?.y === y) {
+    return false;
+  }
+  return run.objects.some((object) => object.id !== selfId && object.x === x && object.y === y);
 }
 
 function bresenhamLine(x0, y0, x1, y1) {
@@ -381,12 +418,16 @@ export function createRunState(playerSheet, level = 1) {
     objects: generateObjects(maze, level),
     lastLog: level === 1 ? "Забег начался." : `Уровень ${level} начался.`,
     nextHitMultiplier: 1,
-    visionRange: playerSheet?.stats?.VISION ?? 2,
+    visionRange: playerSheet?.stats?.VISION ?? 6,
     discovered: createMask(maze.width, maze.height, false),
     motion: null,
     floatingTexts: [],
     screenShake: null,
     overTimeEffects: [],
+    turnPhase: "player",
+    environmentActionQueue: [],
+    environmentMotion: null,
+    environmentNextStepAtMs: 0,
   };
   revealAroundPlayer(run, run.visionRange);
   return run;
@@ -580,7 +621,7 @@ export function useConsumable(run, playerSheet, item) {
   }
 
   run.lastLog = log;
-  return { run, playerSheet, log };
+  return { run, playerSheet, log, actionConsumed: true };
 }
 
 export function useSkill(run, playerSheet, skillId) {
@@ -653,24 +694,24 @@ export function getSkillTargetCells(run, playerSheet, skillId) {
 
 export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
   if (!run || !playerSheet || !skillId) {
-    return { run, playerSheet, ok: false, log: "" };
+    return { run, playerSheet, ok: false, log: "", actionConsumed: false };
   }
   const skillDef = getSkillById(skillId);
   const skillState = playerSheet.skills?.[skillId];
   if (!skillDef || !skillState?.learned || skillState.level <= 0) {
-    return { run, playerSheet, ok: false, log: "Скилл не изучен." };
+    return { run, playerSheet, ok: false, log: "Скилл не изучен.", actionConsumed: false };
   }
 
   const skillLevel = skillState.level;
   const manaCost = Math.max(1, skillDef.manaCost - (skillId === "warrior_roll" ? (skillLevel - 1) : 0));
   const mana = playerSheet.mana ?? 0;
   if (mana < manaCost) {
-    return { run, playerSheet, ok: false, log: "Недостаточно маны." };
+    return { run, playerSheet, ok: false, log: "Недостаточно маны.", actionConsumed: false };
   }
   const validTargets = getSkillTargetCells(run, playerSheet, skillId);
   const isValidTarget = validTargets.some((cell) => cell.x === targetX && cell.y === targetY);
   if (!isValidTarget) {
-    return { run, playerSheet, ok: false, log: "Неверная клетка для скилла." };
+    return { run, playerSheet, ok: false, log: "Неверная клетка для скилла.", actionConsumed: false };
   }
 
   let log = "";
@@ -821,8 +862,6 @@ export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
 
   if (ok) {
     playerSheet.mana = Math.max(0, mana - manaCost);
-    run.turns += 1;
-    processTurnEffects(run, playerSheet);
     if (playerSheet.stats.HP <= 0) {
       run.status = "defeat";
     } else if (run.player.x === run.goal.x && run.player.y === run.goal.y) {
@@ -838,15 +877,15 @@ export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
         };
       }
     }
-    revealAroundPlayer(run, run.visionRange || 2);
+    revealAroundPlayer(run, run.visionRange || 6);
   }
   run.lastLog = log;
-  return { run, playerSheet, ok, log };
+  return { run, playerSheet, ok, log, actionConsumed: ok };
 }
 
 export function tryStep(run, playerSheet, direction) {
   if (!run || run.status !== "running") {
-    return { run, playerSheet, log: "", motion: null };
+    return { run, playerSheet, log: "", motion: null, actionConsumed: false };
   }
 
   const delta = {
@@ -857,7 +896,7 @@ export function tryStep(run, playerSheet, direction) {
   }[direction];
 
   if (!delta) {
-    return { run, playerSheet, log: "", motion: null };
+    return { run, playerSheet, log: "", motion: null, actionConsumed: false };
   }
   run.lastDirection = direction;
 
@@ -865,11 +904,11 @@ export function tryStep(run, playerSheet, direction) {
   const ny = run.player.y + delta.y;
 
   if (!inBounds(nx, ny, run)) {
-    return { run, playerSheet, log: "Нельзя выйти за границы квартиры.", motion: null };
+    return { run, playerSheet, log: "Нельзя выйти за границы квартиры.", motion: null, actionConsumed: false };
   }
 
   if (isWall(nx, ny, run)) {
-    return { run, playerSheet, log: "Стена перекрывает путь.", motion: null };
+    return { run, playerSheet, log: "Стена перекрывает путь.", motion: null, actionConsumed: false };
   }
   const object = getObjectAt(run, nx, ny);
   let log = "";
@@ -915,8 +954,6 @@ export function tryStep(run, playerSheet, direction) {
       const gainedXp = getXpForEnemy(object.id);
       const xpResult = applyXpGain(playerSheet, gainedXp);
       removeObject(run, object.id);
-      run.player.x = nx;
-      run.player.y = ny;
       const combatLog = isCrit
         ? `КРИТ! ${object.name} повержен (-${playerDamage} HP).`
         : `${object.name} повержен (-${playerDamage} HP).`;
@@ -924,26 +961,12 @@ export function tryStep(run, playerSheet, direction) {
         ? ` Уровень повышен: ${playerSheet.level}. Очков прокачки: ${playerSheet.unspentPoints}.`
         : "";
       log = `${combatLog} +${gainedXp} XP.${levelUpLog}`;
-      motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 130 };
-    } else {
-      const veilReduction = run.mirrorVeil?.reduction || 0;
-      const damageTaken = Math.max(0, object.data.damage - veilReduction);
-      if (run.mirrorVeil?.charges) {
-        run.mirrorVeil.charges -= 1;
-        if (run.mirrorVeil.charges <= 0) {
-          delete run.mirrorVeil;
-        }
-      }
-      const nextHp = Math.max(0, playerSheet.stats.HP - damageTaken);
-      playerSheet.stats.HP = nextHp;
-      playerSheet.baseStats.HP = nextHp;
-      log = isCrit
-        ? `КРИТ! ${object.name} получает ${playerDamage}, контрудар на ${damageTaken}.`
-        : `${object.name} получает ${playerDamage}, контрудар на ${damageTaken}.`;
       motion = { kind: "bounce", from, target: { x: nx, y: ny }, durationMs: 170 };
-      if (playerSheet.stats.HP <= 0) {
-        run.status = "defeat";
-      }
+    } else {
+      log = isCrit
+        ? `КРИТ! ${object.name} получает ${playerDamage}.`
+        : `${object.name} получает ${playerDamage}.`;
+      motion = { kind: "bounce", from, target: { x: nx, y: ny }, durationMs: 170 };
     }
   } else if (object.type === "chest") {
     run.player.x = nx;
@@ -958,9 +981,6 @@ export function tryStep(run, playerSheet, direction) {
     }
     motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 120 };
   }
-
-  run.turns += 1;
-  processTurnEffects(run, playerSheet);
 
   if (playerSheet.stats.HP <= 0) {
     run.status = "defeat";
@@ -980,6 +1000,104 @@ export function tryStep(run, playerSheet, direction) {
   }
 
   run.lastLog = log;
-  revealAroundPlayer(run, run.visionRange || 2);
-  return { run, playerSheet, log, motion };
+  revealAroundPlayer(run, run.visionRange || 6);
+  return { run, playerSheet, log, motion, actionConsumed: true };
+}
+
+export function beginEnvironmentTurn(run) {
+  if (!run || run.status !== "running") {
+    return run;
+  }
+  const queue = (run.objects || [])
+    .filter((object) => object.type === "enemy")
+    .map((object) => object.id);
+  run.turnPhase = "environment";
+  run.environmentActionQueue = queue;
+  run.environmentNextStepAtMs = 0;
+  return run;
+}
+
+export function stepEnvironmentTurn(run, playerSheet) {
+  if (!run || !playerSheet || run.status !== "running" || run.turnPhase !== "environment") {
+    return { run, playerSheet, finished: true, progressed: false };
+  }
+
+  while ((run.environmentActionQueue || []).length > 0) {
+    const enemyId = run.environmentActionQueue.shift();
+    const enemy = getEnemyById(run, enemyId);
+    if (!enemy) {
+      continue;
+    }
+
+    // Кот действует только если игрок видит его на карте.
+    if (!run.discovered?.[enemy.y]?.[enemy.x]) {
+      continue;
+    }
+
+    const distance = Math.abs(enemy.x - run.player.x) + Math.abs(enemy.y - run.player.y);
+    if (distance === 1) {
+      const veilReduction = run.mirrorVeil?.reduction || 0;
+      const damageTaken = Math.max(0, (enemy.data?.damage || 0) - veilReduction);
+      if (run.mirrorVeil?.charges) {
+        run.mirrorVeil.charges -= 1;
+        if (run.mirrorVeil.charges <= 0) {
+          delete run.mirrorVeil;
+        }
+      }
+      const hpNow = playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0;
+      const nextHp = Math.max(0, hpNow - damageTaken);
+      playerSheet.stats.HP = nextHp;
+      playerSheet.baseStats.HP = nextHp;
+      run.floatingTexts.push({
+        x: run.player.x,
+        y: run.player.y,
+        value: `-${damageTaken}`,
+        color: "#fca5a5",
+        durationMs: 620,
+        scale: 1.05,
+        startMs: null,
+      });
+      run.lastLog = `${enemy.name} атакует мышонка на ${damageTaken}.`;
+      if (nextHp <= 0) {
+        run.status = "defeat";
+      }
+      return { run, playerSheet, finished: false, progressed: true };
+    }
+
+    const candidates = [
+      { x: enemy.x + 1, y: enemy.y },
+      { x: enemy.x - 1, y: enemy.y },
+      { x: enemy.x, y: enemy.y + 1 },
+      { x: enemy.x, y: enemy.y - 1 },
+    ]
+      .filter((cell) => !isCellBlockedForEnemy(run, cell.x, cell.y, enemy.id))
+      .map((cell) => ({
+        ...cell,
+        d: Math.abs(cell.x - run.player.x) + Math.abs(cell.y - run.player.y),
+      }))
+      .sort((a, b) => a.d - b.d);
+
+    if (candidates.length > 0 && candidates[0].d < distance) {
+      const from = { x: enemy.x, y: enemy.y };
+      enemy.x = candidates[0].x;
+      enemy.y = candidates[0].y;
+      run.environmentMotion = {
+        kind: "object-move",
+        actorId: enemy.id,
+        from,
+        to: { x: enemy.x, y: enemy.y },
+        durationMs: 170,
+        startMs: null,
+      };
+      run.lastLog = `${enemy.name} приближается к мышонку.`;
+      return { run, playerSheet, finished: false, progressed: true };
+    }
+  }
+
+  run.turnPhase = "player";
+  run.turns += 1;
+  processTurnEffects(run, playerSheet);
+  revealAroundPlayer(run, run.visionRange || 6);
+  run.lastLog = "Ход окружения завершен. Ваш ход.";
+  return { run, playerSheet, finished: true, progressed: false };
 }

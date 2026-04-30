@@ -1,23 +1,25 @@
-import { createInitialState } from "./state.js?v=0.2.2-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.2.2-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.2.2-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.2.2-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.2-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.2.2-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.2.2-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.2.2-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.2.2-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.2.2-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.2.2-pre-alpha";
-import { createRunState } from "./game.js?v=0.2.2-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.2.2-pre-alpha";
-import { tryStep } from "./game.js?v=0.2.2-pre-alpha";
-import { useConsumable } from "./game.js?v=0.2.2-pre-alpha";
-import { useSkillAtCell } from "./game.js?v=0.2.2-pre-alpha";
-import { getSkillTargetCells } from "./game.js?v=0.2.2-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.2.2-pre-alpha";
-import { renderApp } from "./ui.js?v=0.2.2-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.2.2-pre-alpha";
+import { createInitialState } from "./state.js?v=0.3.0-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.3.0-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.3.0-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.3.0-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.3.0-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.3.0-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.3.0-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.3.0-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.3.0-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.3.0-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.3.0-pre-alpha";
+import { createRunState } from "./game.js?v=0.3.0-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.3.0-pre-alpha";
+import { tryStep } from "./game.js?v=0.3.0-pre-alpha";
+import { useConsumable } from "./game.js?v=0.3.0-pre-alpha";
+import { useSkillAtCell } from "./game.js?v=0.3.0-pre-alpha";
+import { getSkillTargetCells } from "./game.js?v=0.3.0-pre-alpha";
+import { beginEnvironmentTurn } from "./game.js?v=0.3.0-pre-alpha";
+import { stepEnvironmentTurn } from "./game.js?v=0.3.0-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.3.0-pre-alpha";
+import { renderApp } from "./ui.js?v=0.3.0-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.3.0-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
@@ -81,7 +83,7 @@ function onRootClick(event) {
     const consumableItemId = button.dataset.consumableItemId;
     const bagIndexRaw = Number(button.dataset.bagIndex);
     const bagIndex = Number.isInteger(bagIndexRaw) ? bagIndexRaw : -1;
-    if (!itemId || !state.playerSheet || !state.run) {
+    if (!itemId || !state.playerSheet || !state.run || state.run.turnPhase !== "player") {
       return;
     }
     const bagActionKey = bagInstanceId || (consumableItemId ? `consumable:${consumableItemId}` : `item:${itemId}`);
@@ -106,6 +108,7 @@ function onRootClick(event) {
       useConsumableByItemId(targetConsumableId, bagInstanceId, bagIndex);
     } else {
       state.playerSheet = swapItemFromBag(state.playerSheet, bagInstanceId, bagIndex);
+      consumePlayerActionAndStartEnvironment();
     }
 
     rerender();
@@ -150,7 +153,7 @@ function onRootClick(event) {
 
   if (action === "left-skill-use") {
     const skillId = button.dataset.skillId;
-    if (!skillId || !state.playerSheet || !state.run) {
+    if (!skillId || !state.playerSheet || !state.run || state.run.turnPhase !== "player") {
       return;
     }
     const skillDef = getSkillById(skillId);
@@ -216,7 +219,7 @@ function onRootClick(event) {
 }
 
 function onKeyDown(event) {
-  if (state.screen !== "game" || !state.run) {
+  if (state.screen !== "game" || !state.run || state.run.turnPhase !== "player") {
     return;
   }
   if (state.uiHud.skillsPanelOpen) {
@@ -225,6 +228,13 @@ function onKeyDown(event) {
   if (state.uiHud.skillTargeting?.skillId && (event.code === "Space" || event.key === " ")) {
     event.preventDefault();
     tryCastPreparedSkillOnSelf();
+    return;
+  }
+  if (!state.uiHud.skillTargeting?.skillId && (event.code === "Space" || event.key === " ")) {
+    event.preventDefault();
+    state.run.lastLog = "Ход пропущен.";
+    consumePlayerActionAndStartEnvironment();
+    rerender();
     return;
   }
 
@@ -296,7 +306,7 @@ function onKeyDown(event) {
 }
 
 function performStep(direction) {
-  if (state.screen !== "game" || !state.run) {
+  if (state.screen !== "game" || !state.run || state.run.turnPhase !== "player") {
     return;
   }
 
@@ -323,6 +333,9 @@ function performStep(direction) {
   if (state.run?.status === "victory" || state.run?.status === "defeat") {
     state.screen = "ending";
   }
+  if (stepResult.actionConsumed) {
+    consumePlayerActionAndStartEnvironment();
+  }
   maybeOpenSkillsOnNewPoint(previousSkillPoints);
 
   rerender();
@@ -337,6 +350,7 @@ function onResize() {
 function animationLoop(nowMs) {
   if (state.screen === "game" && state.run) {
     handleLevelTransition(nowMs);
+    runEnvironmentPhase(nowMs);
     drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, nowMs);
     animateHpHud();
     animateManaHud();
@@ -599,7 +613,7 @@ function onRootDragEnd(event) {
 }
 
 function onCanvasClick(event, canvas) {
-  if (state.screen !== "game" || !state.run || !state.playerSheet) {
+  if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
     return;
   }
   const targeting = state.uiHud.skillTargeting;
@@ -630,11 +644,14 @@ function onCanvasClick(event, canvas) {
     delete state.run.pendingLoot;
   }
   maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  if (result.actionConsumed) {
+    consumePlayerActionAndStartEnvironment();
+  }
   rerender();
 }
 
 function useQuickbarSlot(slotIndex) {
-  if (!state.playerSheet || !state.run) {
+  if (!state.playerSheet || !state.run || state.run.turnPhase !== "player") {
     return;
   }
   const slotValue = state.uiHud.quickbarSlots?.[slotIndex];
@@ -692,7 +709,7 @@ function normalizeQuickbarSlot(value) {
 }
 
 function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
-  if (!itemId || !state.playerSheet || !state.run) {
+  if (!itemId || !state.playerSheet || !state.run || state.run.turnPhase !== "player") {
     return false;
   }
   const item = getItemById(itemId);
@@ -726,6 +743,7 @@ function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
     state.playerSheet.equippedByType,
     nextBag
   );
+  consumePlayerActionAndStartEnvironment();
   maybeOpenSkillsOnNewPoint(0);
   return true;
 }
@@ -819,7 +837,7 @@ function buildPreparedSkillPreview(skillId) {
 
 function tryCastPreparedSkillByDirection(direction) {
   const targeting = state.uiHud.skillTargeting;
-  if (!targeting?.skillId || !state.run || !state.playerSheet) {
+  if (!targeting?.skillId || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
     return;
   }
   const px = state.run.player.x;
@@ -857,12 +875,15 @@ function tryCastPreparedSkillByDirection(direction) {
     delete state.run.pendingLoot;
   }
   maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  if (result.actionConsumed) {
+    consumePlayerActionAndStartEnvironment();
+  }
   rerender();
 }
 
 function tryCastPreparedSkillOnSelf() {
   const targeting = state.uiHud.skillTargeting;
-  if (!targeting?.skillId || !state.run || !state.playerSheet) {
+  if (!targeting?.skillId || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
     return;
   }
   const px = state.run.player.x;
@@ -885,7 +906,62 @@ function tryCastPreparedSkillOnSelf() {
   }
   clearSkillTargeting();
   maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  if (result.actionConsumed) {
+    consumePlayerActionAndStartEnvironment();
+  }
   rerender();
+}
+
+function consumePlayerActionAndStartEnvironment() {
+  if (!state.run || state.run.status !== "running" || state.run.turnPhase !== "player") {
+    return;
+  }
+  beginEnvironmentTurn(state.run);
+  clearSkillTargeting();
+}
+
+function runEnvironmentPhase(nowMs) {
+  if (!state.run || !state.playerSheet || state.run.turnPhase !== "environment" || state.run.status !== "running") {
+    return;
+  }
+  const playerMotion = state.run.motion;
+  if (playerMotion) {
+    if (playerMotion.startMs == null) {
+      playerMotion.startMs = nowMs;
+      return;
+    }
+    if (nowMs - playerMotion.startMs < playerMotion.durationMs) {
+      return;
+    }
+    state.run.motion = null;
+  }
+  const envMotion = state.run.environmentMotion;
+  if (envMotion) {
+    if (envMotion.startMs == null) {
+      envMotion.startMs = nowMs;
+      return;
+    }
+    const elapsed = nowMs - envMotion.startMs;
+    if (elapsed < envMotion.durationMs) {
+      return;
+    }
+    state.run.environmentMotion = null;
+  }
+  if ((state.run.environmentNextStepAtMs || 0) > nowMs) {
+    return;
+  }
+  const result = stepEnvironmentTurn(state.run, state.playerSheet);
+  state.run = result.run;
+  state.playerSheet = result.playerSheet;
+  state.run.environmentNextStepAtMs = nowMs + (result.progressed ? 170 : 80);
+  if (state.run?.status === "defeat") {
+    state.screen = "ending";
+    rerender();
+    return;
+  }
+  if (result.finished) {
+    rerender();
+  }
 }
 
 root.addEventListener("click", onRootClick);

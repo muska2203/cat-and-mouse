@@ -1,15 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.2.2-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.2.2-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.2.2-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.2.2-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.2.2-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.2-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.2.2-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.2.2-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.2.2-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.2.2-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.2.2-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.2.2-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.3.0-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.3.0-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.3.0-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.3.0-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.3.0-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.3.0-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.3.0-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.3.0-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.3.0-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.3.0-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.3.0-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.3.0-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -165,6 +165,7 @@ function renderGameScreen(state) {
       <div class="game-layout">
         ${renderInventoryPanel(state)}
         <div class="play-panel">
+          ${renderTurnPhaseBadge(state.run)}
           <canvas id="gameCanvas" class="game-canvas" width="800" height="500"></canvas>
           ${renderActiveEffects(state)}
           ${renderQuickbar(state)}
@@ -200,6 +201,15 @@ function renderGameScreen(state) {
       ${renderBuildBadge()}
       ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
     </section>
+  `;
+}
+
+function renderTurnPhaseBadge(run) {
+  const isPlayerTurn = run?.turnPhase !== "environment";
+  return `
+    <div class="turn-phase-badge ${isPlayerTurn ? "turn-phase-player" : "turn-phase-environment"}">
+      ${isPlayerTurn ? "Ход игрока" : "Ход окружения"}
+    </div>
   `;
 }
 

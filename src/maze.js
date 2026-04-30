@@ -190,6 +190,111 @@ function canReachGoal(grid, start, goal) {
 
 export function generateMazeRun() {
   for (let attempt = 0; attempt < 120; attempt += 1) {
+    const width = randomInt(24, 32);
+    const height = randomInt(24, 32);
+    const grid = createGrid(width, height, 1);
+    const rooms = carveRoomsAndCorridors(grid, width, height);
+    if (rooms.length < 2) {
+      continue;
+    }
+    const points = pickStartAndGoalLongPath(grid, width, height);
+    if (!points) {
+      continue;
+    }
+    const { start, goal } = points;
+    if (canReachGoal(grid, start, goal)) {
+      return { width, height, grid, start, goal, rooms };
+    }
+  }
+
+  // Fallback: крупная открытая карта.
+  const width = 24;
+  const height = 24;
+  const grid = createGrid(width, height, 0);
+  return {
+    width,
+    height,
+    grid,
+    start: { x: 1, y: 1 },
+    goal: { x: width - 2, y: height - 2 },
+    rooms: [{ x: 1, y: 1, w: width - 2, h: height - 2 }],
+  };
+}
+
+function carveRoomsAndCorridors(grid, width, height) {
+  const rooms = [];
+  const targetRooms = randomInt(7, 10);
+
+  function intersects(a, b) {
+    return !(
+      a.x + a.w + 1 < b.x ||
+      b.x + b.w + 1 < a.x ||
+      a.y + a.h + 1 < b.y ||
+      b.y + b.h + 1 < a.y
+    );
+  }
+
+  // Шаг 1: генерируем случайное количество комнат в случайных местах.
+  for (let i = 0; i < targetRooms * 8 && rooms.length < targetRooms; i += 1) {
+    const w = randomInt(4, 8);
+    const h = randomInt(4, 8);
+    const x = randomInt(1, Math.max(1, width - w - 2));
+    const y = randomInt(1, Math.max(1, height - h - 2));
+    const room = { x, y, w, h };
+    if (rooms.some((placed) => intersects(room, placed))) {
+      continue;
+    }
+    rooms.push(room);
+    for (let ry = y; ry < y + h; ry += 1) {
+      for (let rx = x; rx < x + w; rx += 1) {
+        grid[ry][rx] = 0;
+      }
+    }
+  }
+
+  if (rooms.length === 0) {
+    return rooms;
+  }
+
+  const centers = rooms.map((room) => ({
+    x: Math.floor(room.x + room.w / 2),
+    y: Math.floor(room.y + room.h / 2),
+  }));
+
+  // Шаг 2: соединяем комнаты коридорами между собой.
+  for (let i = 1; i < centers.length; i += 1) {
+    const from = centers[i - 1];
+    const to = centers[i];
+    if (Math.random() < 0.5) {
+      carveHorizontal(grid, from.x, to.x, from.y);
+      carveVertical(grid, from.y, to.y, to.x);
+    } else {
+      carveVertical(grid, from.y, to.y, from.x);
+      carveHorizontal(grid, from.x, to.x, to.y);
+    }
+  }
+
+  return rooms;
+}
+
+function carveHorizontal(grid, x1, x2, y) {
+  const min = Math.min(x1, x2);
+  const max = Math.max(x1, x2);
+  for (let x = min; x <= max; x += 1) {
+    if (grid[y]?.[x] != null) grid[y][x] = 0;
+  }
+}
+
+function carveVertical(grid, y1, y2, x) {
+  const min = Math.min(y1, y2);
+  const max = Math.max(y1, y2);
+  for (let y = min; y <= max; y += 1) {
+    if (grid[y]?.[x] != null) grid[y][x] = 0;
+  }
+}
+
+export function generateMazeRunLegacy() {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
     const width = randomInt(10, 15);
     const height = randomInt(10, 15);
     const grid = createGrid(width, height, 1);

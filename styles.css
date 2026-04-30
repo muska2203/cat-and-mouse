@@ -186,6 +186,29 @@ body {
   position: relative;
 }
 
+.turn-phase-badge {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 5;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #334155;
+  background: rgba(2, 6, 23, 0.85);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.turn-phase-player {
+  color: #86efac;
+  border-color: #2f6f4f;
+}
+
+.turn-phase-environment {
+  color: #93c5fd;
+  border-color: #2f5f9f;
+}
+
 .active-effects-panel {
   position: absolute;
   left: 10px;
