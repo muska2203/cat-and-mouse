@@ -44,6 +44,26 @@ export const SKILL_DEFS = {
     maxLevel: 3,
     property: "Нельзя через стену/на врага. При прыжке враг в промежуточной клетке получает урон: AGI * 0.6 + уровень_скилла.",
   },
+  warrior_bandage: {
+    id: "warrior_bandage",
+    classId: "warrior",
+    name: "Перевязать раны",
+    icon: "🩹",
+    description: "Выбери клетку персонажа. Восстанавливает HP несколько ходов подряд.",
+    manaCost: 10,
+    maxLevel: 3,
+    property: "Лечение за тик = 5 + уровень_скилла. Длительность = 3 хода. Нельзя повторно, пока эффект активен.",
+  },
+  mage_heal: {
+    id: "mage_heal",
+    classId: "mage",
+    name: "Исцеление",
+    icon: "💚",
+    description: "Выбери клетку персонажа. Восстанавливает большое количество HP.",
+    manaCost: 30,
+    maxLevel: 3,
+    property: "Лечение = 40 + 10 * (уровень_скилла - 1). Цель: клетка персонажа.",
+  },
 };
 
 export function getSkillsForClass(classId) {

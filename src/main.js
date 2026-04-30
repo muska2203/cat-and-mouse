@@ -1,23 +1,23 @@
-import { createInitialState } from "./state.js?v=0.2.0-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.2.0-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.2.0-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.2.0-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.0-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.2.0-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.2.0-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.2.0-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.2.0-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.2.0-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.2.0-pre-alpha";
-import { createRunState } from "./game.js?v=0.2.0-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.2.0-pre-alpha";
-import { tryStep } from "./game.js?v=0.2.0-pre-alpha";
-import { useConsumable } from "./game.js?v=0.2.0-pre-alpha";
-import { useSkillAtCell } from "./game.js?v=0.2.0-pre-alpha";
-import { getSkillTargetCells } from "./game.js?v=0.2.0-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.2.0-pre-alpha";
-import { renderApp } from "./ui.js?v=0.2.0-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.2.0-pre-alpha";
+import { createInitialState } from "./state.js?v=0.2.1-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.2.1-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.2.1-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.2.1-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.1-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.2.1-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.2.1-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.2.1-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.2.1-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.2.1-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.2.1-pre-alpha";
+import { createRunState } from "./game.js?v=0.2.1-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.2.1-pre-alpha";
+import { tryStep } from "./game.js?v=0.2.1-pre-alpha";
+import { useConsumable } from "./game.js?v=0.2.1-pre-alpha";
+import { useSkillAtCell } from "./game.js?v=0.2.1-pre-alpha";
+import { getSkillTargetCells } from "./game.js?v=0.2.1-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.2.1-pre-alpha";
+import { renderApp } from "./ui.js?v=0.2.1-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.2.1-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
@@ -44,6 +44,9 @@ function onRootClick(event) {
   }
 
   const action = button.dataset.action;
+  if (state.uiHud.skillsPanelOpen && action !== "learn-skill" && action !== "upgrade-skill") {
+    return;
+  }
   if (action === "start-game") {
     if (!state.selectedClassId) {
       return;
@@ -168,11 +171,6 @@ function onRootClick(event) {
     rerender();
   }
 
-  if (action === "open-skills") {
-    state.screen = "skills";
-    rerender();
-  }
-
   if (action === "learn-skill" || action === "upgrade-skill") {
     const skillId = button.dataset.skillId;
     if (!skillId || !state.playerSheet) {
@@ -189,7 +187,9 @@ function onRootClick(event) {
     skillState.learned = true;
     skillState.level += 1;
     state.playerSheet.skillPoints -= 1;
-    state.screen = "game";
+    if ((state.playerSheet.skillPoints || 0) <= 0) {
+      state.uiHud.skillsPanelOpen = false;
+    }
     rerender();
   }
 
@@ -209,6 +209,9 @@ function onRootClick(event) {
 
 function onKeyDown(event) {
   if (state.screen !== "game" || !state.run) {
+    return;
+  }
+  if (state.uiHud.skillsPanelOpen) {
     return;
   }
   if (state.uiHud.skillTargeting?.skillId && (event.code === "Space" || event.key === " ")) {
@@ -734,6 +737,7 @@ function clearSkillTargeting() {
   state.uiHud.skillTargeting = null;
   if (state.run) {
     delete state.run.skillTargetCells;
+    delete state.run.skillTargetingPreview;
   }
 }
 
@@ -743,12 +747,14 @@ function syncSkillTargetPreview() {
   }
   const targets = state.uiHud.skillTargeting?.targets || [];
   state.run.skillTargetCells = targets;
+  const skillId = state.uiHud.skillTargeting?.skillId;
+  state.run.skillTargetingPreview = skillId ? buildPreparedSkillPreview(skillId) : null;
 }
 
 function maybeOpenSkillsOnNewPoint(previousPoints = 0) {
   const nowPoints = state.playerSheet?.skillPoints || 0;
   if (state.screen === "game" && nowPoints > previousPoints) {
-    state.screen = "skills";
+    state.uiHud.skillsPanelOpen = true;
     clearSkillTargeting();
   }
 }
@@ -768,6 +774,39 @@ function screenPointToGrid(localX, localY, width, height) {
     return null;
   }
   return { x: gx, y: gy };
+}
+
+function buildPreparedSkillPreview(skillId) {
+  const skillDef = getSkillById(skillId);
+  const skillState = state.playerSheet?.skills?.[skillId];
+  const level = skillState?.level || 0;
+  const atkMagic = state.playerSheet?.derived?.ATK_MAGIC ?? 0;
+  const atkPhys = state.playerSheet?.derived?.ATK_PHYS ?? 0;
+  const agi = state.playerSheet?.stats?.AGI ?? state.playerSheet?.baseStats?.AGI ?? 0;
+  if (!skillDef || level <= 0) {
+    return null;
+  }
+  if (skillId === "mage_arc_shot") {
+    const value = Math.max(1, Math.floor(atkMagic * (1.1 + level * 0.2)));
+    return { kind: "damage", value };
+  }
+  if (skillId === "warrior_power_hit") {
+    const value = Math.max(1, Math.floor(atkPhys * (1.2 + level * 0.25)));
+    return { kind: "damage", value };
+  }
+  if (skillId === "warrior_roll") {
+    const value = Math.max(1, Math.floor(agi * 0.6 + level));
+    return { kind: "damage", value };
+  }
+  if (skillId === "mage_heal") {
+    const value = 40 + Math.max(0, (level - 1) * 10);
+    return { kind: "heal", value };
+  }
+  if (skillId === "warrior_bandage") {
+    const value = 5 + level;
+    return { kind: "heal", value };
+  }
+  return null;
 }
 
 function tryCastPreparedSkillByDirection(direction) {

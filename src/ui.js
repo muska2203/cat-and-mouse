@@ -1,15 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.2.0-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.2.0-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.2.0-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.2.0-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.2.0-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.0-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.2.0-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.2.0-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.2.0-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.2.0-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.2.0-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.2.0-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.2.1-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.2.1-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.2.1-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.2.1-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.2.1-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.1-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.2.1-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.2.1-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.2.1-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.2.1-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.2.1-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.2.1-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -58,11 +58,6 @@ export function renderApp(root, state) {
 
   if (state.screen === "ending") {
     root.innerHTML = renderEndingScreen(state);
-    return;
-  }
-
-  if (state.screen === "skills") {
-    root.innerHTML = renderSkillsScreen(state);
     return;
   }
 
@@ -200,6 +195,7 @@ function renderGameScreen(state) {
           <p class="run-log">${state.run.lastLog || "—"}</p>
         </article>
       </div>
+      ${state.uiHud?.skillsPanelOpen ? renderSkillsModal(state) : ""}
       ${renderBuildBadge()}
     </section>
   `;
@@ -754,6 +750,15 @@ function buildSkillHoverText(skill, skillState, playerSheet) {
     const throughDamage = Math.max(1, Math.floor(agi * 0.6 + level));
     return `${skill.name}\nМана: ${manaCost}\nФормула урона по пути: AGI * 0.6 + уровень_скилла\nЗависит от: AGI=${agi}\nУрон по коту в промежуточной клетке: ${throughDamage}\nЦель: клетка через 1 по прямой, нельзя через стену и на клетку с котом.`;
   }
+  if (skill.id === "warrior_bandage") {
+    const healPerTurn = 5 + level;
+    const totalHeal = healPerTurn * 3;
+    return `${skill.name}\nМана: ${manaCost}\nФормула: 5 + уровень_скилла (за ход)\nТекущее восстановление: ${healPerTurn} HP/ход, всего ${totalHeal} HP за 3 хода\nЦель: клетка персонажа. Повторно нельзя, пока эффект активен.`;
+  }
+  if (skill.id === "mage_heal") {
+    const heal = 40 + Math.max(0, (level - 1) * 10);
+    return `${skill.name}\nМана: ${manaCost}\nФормула: 40 + 10 * (уровень_скилла - 1)\nТекущее восстановление: ${heal} HP\nЦель: клетка персонажа.`;
+  }
   return `${skill.name}\nМана: ${manaCost}\n${skill.description}`;
 }
 
@@ -817,7 +822,7 @@ function renderBuildBadge() {
   return `<p class="build-badge">${APP_TITLE} · v${APP_VERSION}</p>`;
 }
 
-function renderSkillsScreen(state) {
+function renderSkillsModal(state) {
   const classSkills = getSkillsForClass(state.playerSheet?.classId || "");
   const cards = classSkills.map((skill) => {
     const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false, level: 0 };
@@ -841,12 +846,13 @@ function renderSkillsScreen(state) {
   }).join("");
 
   return `
-    <section class="screen">
-      <h1 class="screen-title">Скиллы</h1>
-      <p class="screen-subtitle">Каждые 2 уровня дается 1 очко скилла. Доступно: ${state.playerSheet?.skillPoints || 0}</p>
-      <div class="sheet-grid">${cards}</div>
-      ${renderBuildBadge()}
-    </section>
+    <div class="skills-modal-backdrop">
+      <section class="screen skills-screen-enter skills-modal-panel">
+        <h1 class="screen-title">Скиллы</h1>
+        <p class="screen-subtitle">Каждые 2 уровня дается 1 очко скилла. Доступно: ${state.playerSheet?.skillPoints || 0}</p>
+        <div class="sheet-grid">${cards}</div>
+      </section>
+    </div>
   `;
 }
 
@@ -965,6 +971,17 @@ function collectActiveEffects(state) {
       badge: String(run.mirrorVeil.charges),
       remainingText: `${run.mirrorVeil.charges} применений`,
       description: `Снижает входящий урон на ${run.mirrorVeil.reduction}.`,
+      stacksText: "1",
+    });
+  }
+  const bandage = (run.overTimeEffects || []).find((effect) => effect.type === "bandage_regen");
+  if (bandage?.turnsLeft > 0) {
+    effects.push({
+      name: "Перевязать раны",
+      icon: "🩹",
+      badge: `${bandage.turnsLeft}t`,
+      remainingText: `${bandage.turnsLeft} ходов`,
+      description: `Восстанавливает ${bandage.healPerTurn} HP каждый ход.`,
       stacksText: "1",
     });
   }

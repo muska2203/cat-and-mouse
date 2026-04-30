@@ -1,7 +1,7 @@
-import { generateMazeRun } from "./maze.js?v=0.2.0-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.2.0-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.2.0-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.2.0-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.2.1-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.2.1-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.2.1-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.2.1-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -304,9 +304,45 @@ export function createRunState(playerSheet, level = 1) {
     motion: null,
     floatingTexts: [],
     screenShake: null,
+    overTimeEffects: [],
   };
   revealAroundPlayer(run, run.visionRange);
   return run;
+}
+
+function processTurnEffects(run, playerSheet) {
+  if (!run || !playerSheet) {
+    return;
+  }
+  const effects = Array.isArray(run.overTimeEffects) ? run.overTimeEffects : [];
+  if (effects.length === 0) {
+    return;
+  }
+  const alive = [];
+  for (const effect of effects) {
+    if (effect.type === "bandage_regen") {
+      const healPerTurn = Math.max(1, effect.healPerTurn || 0);
+      const hpMax = Math.max(1, playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1);
+      const hpNow = Math.max(0, playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+      const nextHp = Math.min(hpMax, hpNow + healPerTurn);
+      playerSheet.stats.HP = nextHp;
+      playerSheet.baseStats.HP = nextHp;
+      run.floatingTexts.push({
+        x: run.player.x,
+        y: run.player.y,
+        value: `+${Math.max(0, nextHp - hpNow)}`,
+        color: "#86efac",
+        durationMs: 620,
+        scale: 1.05,
+        startMs: null,
+      });
+    }
+    effect.turnsLeft = Math.max(0, (effect.turnsLeft || 0) - 1);
+    if (effect.turnsLeft > 0) {
+      alive.push(effect);
+    }
+  }
+  run.overTimeEffects = alive;
 }
 
 export function createNextLevelRun(previousRun, playerSheet) {
@@ -318,6 +354,9 @@ export function createNextLevelRun(previousRun, playerSheet) {
       charges: previousRun.mirrorVeil.charges,
       reduction: previousRun.mirrorVeil.reduction,
     };
+  }
+  if (Array.isArray(previousRun?.overTimeEffects) && previousRun.overTimeEffects.length > 0) {
+    nextRun.overTimeEffects = previousRun.overTimeEffects.map((effect) => ({ ...effect }));
   }
   return nextRun;
 }
@@ -459,6 +498,13 @@ export function getSkillTargetCells(run, playerSheet, skillId) {
       if (targetObject?.type === "enemy") continue;
       result.push({ x: targetX, y: targetY });
     }
+  } else if (skillId === "warrior_bandage") {
+    const hasBandageActive = (run.overTimeEffects || []).some((effect) => effect.type === "bandage_regen");
+    if (!hasBandageActive) {
+      result.push({ x: px, y: py });
+    }
+  } else if (skillId === "mage_heal") {
+    result.push({ x: px, y: py });
   }
   return result;
 }
@@ -596,11 +642,46 @@ export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
       log += `${skillDef.name}: рывок выполнен.`;
     }
     ok = true;
+  } else if (skillId === "warrior_bandage") {
+    const hasBandageActive = (run.overTimeEffects || []).some((effect) => effect.type === "bandage_regen");
+    if (hasBandageActive) {
+      log = `${skillDef.name}: эффект уже активен.`;
+    } else {
+      const healPerTurn = 5 + skillLevel;
+      run.overTimeEffects = [...(run.overTimeEffects || []), {
+        type: "bandage_regen",
+        turnsLeft: 3,
+        healPerTurn,
+        sourceSkillId: skillId,
+      }];
+      log = `${skillDef.name}: восстановление ${healPerTurn} HP на 3 хода.`;
+      ok = true;
+    }
+  } else if (skillId === "mage_heal") {
+    const healValue = 40 + Math.max(0, (skillLevel - 1) * 10);
+    const hpMax = Math.max(1, playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1);
+    const hpNow = Math.max(0, playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+    const nextHp = Math.min(hpMax, hpNow + healValue);
+    const healed = Math.max(0, nextHp - hpNow);
+    playerSheet.stats.HP = nextHp;
+    playerSheet.baseStats.HP = nextHp;
+    run.floatingTexts.push({
+      x: run.player.x,
+      y: run.player.y,
+      value: `+${healed}`,
+      color: "#4ade80",
+      durationMs: 680,
+      scale: 1.15,
+      startMs: null,
+    });
+    log = `${skillDef.name}: восстановлено ${healed} HP.`;
+    ok = true;
   }
 
   if (ok) {
     playerSheet.mana = Math.max(0, mana - manaCost);
     run.turns += 1;
+    processTurnEffects(run, playerSheet);
     if (playerSheet.stats.HP <= 0) {
       run.status = "defeat";
     } else if (run.player.x === run.goal.x && run.player.y === run.goal.y) {
@@ -739,6 +820,7 @@ export function tryStep(run, playerSheet, direction) {
   }
 
   run.turns += 1;
+  processTurnEffects(run, playerSheet);
 
   if (playerSheet.stats.HP <= 0) {
     run.status = "defeat";

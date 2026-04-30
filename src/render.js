@@ -157,10 +157,17 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   // Урон мышки — подпись как у котов, рядом с иконкой мышки.
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = mouseDamageMultiplier > 1 ? "#fde047" : "#ffffff";
+  const preview = run?.skillTargetingPreview;
+  const shownValue = preview?.value ?? mouseShownDamage;
+  const shownColor = preview?.kind === "damage"
+    ? "#ef4444"
+    : preview?.kind === "heal"
+      ? "#22c55e"
+      : (mouseDamageMultiplier > 1 ? "#fde047" : "#ffffff");
+  ctx.fillStyle = shownColor;
   ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
   ctx.fillText(
-    `${mouseShownDamage}`,
+    `${shownValue}`,
     mouseScreenX - tile * 0.36,
     mouseScreenY + tile * 0.24
   );
