@@ -340,7 +340,11 @@ export function swapItemFromBag(playerSheet, itemId) {
   const currentEquippedId = equippedByType[item.type] || null;
   equippedByType[item.type] = item.id;
 
-  const nextBag = playerSheet.bag.filter((id) => id !== item.id);
+  const nextBag = [...playerSheet.bag];
+  const removeIndex = nextBag.indexOf(item.id);
+  if (removeIndex !== -1) {
+    nextBag.splice(removeIndex, 1);
+  }
   if (currentEquippedId) {
     nextBag.push(currentEquippedId);
   }
