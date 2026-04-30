@@ -61,12 +61,34 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   }
 
   if (Array.isArray(run.objects)) {
+    const playerHp = Math.max(0, playerSheet?.stats?.HP ?? 0);
+    const playerAttack = Math.max(
+      playerSheet?.derived?.ATK_PHYS || 1,
+      playerSheet?.derived?.ATK_MAGIC || 1
+    );
     for (const object of run.objects) {
       if (!run.discovered?.[object.y]?.[object.x]) {
         continue;
       }
       const cx = cameraOffsetX + object.x * tile + tile / 2;
       const cy = cameraOffsetY + object.y * tile + tile / 2;
+
+      const enemyDamage = object?.data?.damage ?? 0;
+      const enemyHp = object?.data?.hp ?? 0;
+      const isLethalForPlayer = enemyDamage >= playerHp;
+      const playerCanFinishEnemy = playerAttack >= enemyHp;
+      if (object.type === "enemy" && isLethalForPlayer && !playerCanFinishEnemy) {
+        const glowRadius = Math.floor(tile * 0.62);
+        const glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, glowRadius);
+        glow.addColorStop(0, "rgba(248, 113, 113, 0.34)");
+        glow.addColorStop(0.7, "rgba(220, 38, 38, 0.2)");
+        glow.addColorStop(1, "rgba(127, 29, 29, 0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
       ctx.fillText(object.icon || "?", cx, cy);
 
