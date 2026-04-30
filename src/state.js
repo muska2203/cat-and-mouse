@@ -1,4 +1,4 @@
-import { buildDerivedStats } from "./rules.js?v=0.0.7-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.0.8-pre-alpha";
 
 export const CLASS_CONFIG = {
   mage: {

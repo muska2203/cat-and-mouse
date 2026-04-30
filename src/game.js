@@ -1,5 +1,5 @@
-import { generateMazeRun } from "./maze.js?v=0.0.7-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.0.7-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.0.8-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.0.8-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;

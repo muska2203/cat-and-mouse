@@ -62,10 +62,12 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
 
   if (Array.isArray(run.objects)) {
     const playerHp = Math.max(0, playerSheet?.stats?.HP ?? 0);
-    const playerAttack = Math.max(
+    const playerBaseAttack = Math.max(
       playerSheet?.derived?.ATK_PHYS || 1,
       playerSheet?.derived?.ATK_MAGIC || 1
     );
+    const playerAttackMultiplier = Math.max(1, run?.nextHitMultiplier || 1);
+    const playerAttack = Math.max(1, Math.floor(playerBaseAttack * playerAttackMultiplier));
     for (const object of run.objects) {
       if (!run.discovered?.[object.y]?.[object.x]) {
         continue;

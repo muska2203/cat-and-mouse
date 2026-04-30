@@ -1,9 +1,9 @@
-import { buildDerivedStats } from "./rules.js?v=0.0.7-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.0.8-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const DEFAULT_STARTER_LOADOUT_BY_CLASS = {
-  warrior: ["rusty_sword", "leather_vest", "cheese_ration"],
-  mage: ["apprentice_staff", "thread_bracelet", "cloth_robe"],
+  warrior: ["rusty_sword", "leather_vest", "lucky_charm"],
+  mage: ["apprentice_staff", "cloth_robe", "mouse_boots"],
 };
 
 export const STARTER_ITEMS = [
