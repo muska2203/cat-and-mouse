@@ -1,11 +1,11 @@
-import { CLASS_CONFIG } from "./state.js?v=0.0.8-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.0.8-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.0.8-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.0.8-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.0.8-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.0.8-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.0.8-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.0.8-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.0.9-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.0.9-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.0.9-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.0.9-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.0.9-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.0.9-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.0.9-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.0.9-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -138,6 +138,7 @@ function renderGameScreen(state) {
         <canvas id="gameCanvas" class="game-canvas" width="800" height="500"></canvas>
         <article class="class-card game-side">
           <h3>Параметры мышонка</h3>
+          ${renderProgressionPanel(state.playerSheet)}
           ${renderHpBar(state.playerSheet)}
           <section class="stats-group">
             <ul class="stats-list">
@@ -200,6 +201,8 @@ function renderEndingScreen(state) {
     <section class="screen" aria-label="Финальный экран">
       <h1 class="screen-title">${title}</h1>
       <p class="screen-subtitle">${subtitle} Ходы: ${state.run.turns}.</p>
+      <p class="screen-subtitle">Достигнут уровень лабиринта: ${state.run.level}/${state.run.maxLevel}.</p>
+      <p class="screen-subtitle">Уровень персонажа: ${state.playerSheet.level}. XP: ${state.playerSheet.xp}/${state.playerSheet.xpToNext}.</p>
       <div class="sheet-grid">
         <article class="class-card">
           <h3>Характеристики</h3>
@@ -422,4 +425,43 @@ function buildWelcomeStats(playerSheet) {
 
 function renderBuildBadge() {
   return `<p class="build-badge">${APP_TITLE} · v${APP_VERSION}</p>`;
+}
+
+function renderProgressionPanel(playerSheet) {
+  if (!playerSheet) {
+    return "";
+  }
+
+  const points = playerSheet.unspentPoints || 0;
+  const upgrades = [
+    { key: "STR", label: "СИЛ" },
+    { key: "INT", label: "ИНТ" },
+    { key: "AGI", label: "ЛВК" },
+    { key: "LUK", label: "УДЧ" },
+    { key: "HP_MAX", label: "HP МАКС" },
+  ];
+
+  const buttons = upgrades
+    .map((upgrade) => `
+      <button
+        class="btn upgrade-btn"
+        type="button"
+        data-action="upgrade-stat"
+        data-stat="${upgrade.key}"
+        ${points > 0 ? "" : "disabled"}
+      >
+        + ${upgrade.label}
+      </button>
+    `)
+    .join("");
+
+  return `
+    <section class="stats-group progression-panel">
+      <h4>Прогресс</h4>
+      <p class="progression-line">Уровень: ${playerSheet.level}</p>
+      <p class="progression-line">XP: ${playerSheet.xp}/${playerSheet.xpToNext}</p>
+      <p class="progression-line">Очки прокачки: ${points}</p>
+      <div class="upgrade-grid">${buttons}</div>
+    </section>
+  `;
 }

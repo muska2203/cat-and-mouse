@@ -1,5 +1,6 @@
-import { generateMazeRun } from "./maze.js?v=0.0.8-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.0.8-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.0.9-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.0.9-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.0.9-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -258,6 +259,30 @@ function findNearestEnemy(run) {
   return best;
 }
 
+function getXpForEnemy(enemyId) {
+  if (enemyId?.startsWith("cat_big")) return 15;
+  if (enemyId?.startsWith("cat_mid")) return 10;
+  return 6;
+}
+
+function applyXpGain(playerSheet, gainedXp) {
+  if (!playerSheet || gainedXp <= 0) {
+    return { playerSheet, levelUps: 0 };
+  }
+
+  playerSheet.xp = (playerSheet.xp || 0) + gainedXp;
+  let levelUps = 0;
+  while ((playerSheet.xp || 0) >= (playerSheet.xpToNext || 1)) {
+    playerSheet.xp -= playerSheet.xpToNext;
+    playerSheet.level = (playerSheet.level || 1) + 1;
+    playerSheet.unspentPoints = (playerSheet.unspentPoints || 0) + PROGRESSION_CONFIG.pointsPerLevel;
+    playerSheet.xpToNext = Math.max(1, Math.ceil((playerSheet.xpToNext || PROGRESSION_CONFIG.baseXpToNext) * PROGRESSION_CONFIG.xpGrowthFactor));
+    levelUps += 1;
+  }
+
+  return { playerSheet, levelUps };
+}
+
 export function createRunState(playerSheet, level = 1) {
   const maze = generateMazeRun();
   const run = {
@@ -319,8 +344,13 @@ export function useConsumable(run, playerSheet, item) {
       enemy.data.hp = Math.max(0, enemy.data.hp - 8);
       log = `${item.name}: ${enemy.name} получает 8 урона.`;
       if (enemy.data.hp <= 0) {
+        const gainedXp = getXpForEnemy(enemy.id);
+        const xpResult = applyXpGain(playerSheet, gainedXp);
         removeObject(run, enemy.id);
-        log += " Кот повержен.";
+        const levelUpLog = xpResult.levelUps > 0
+          ? ` Уровень повышен: ${playerSheet.level}. Очков прокачки: ${playerSheet.unspentPoints}.`
+          : "";
+        log += ` Кот повержен. +${gainedXp} XP.${levelUpLog}`;
       }
     }
   }
@@ -396,12 +426,18 @@ export function tryStep(run, playerSheet, direction) {
     }
 
     if (object.data.hp <= 0) {
+      const gainedXp = getXpForEnemy(object.id);
+      const xpResult = applyXpGain(playerSheet, gainedXp);
       removeObject(run, object.id);
       run.player.x = nx;
       run.player.y = ny;
-      log = isCrit
+      const combatLog = isCrit
         ? `КРИТ! ${object.name} повержен (-${playerDamage} HP).`
         : `${object.name} повержен (-${playerDamage} HP).`;
+      const levelUpLog = xpResult.levelUps > 0
+        ? ` Уровень повышен: ${playerSheet.level}. Очков прокачки: ${playerSheet.unspentPoints}.`
+        : "";
+      log = `${combatLog} +${gainedXp} XP.${levelUpLog}`;
       motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 130 };
     } else {
       const nextHp = Math.max(0, playerSheet.stats.HP - object.data.damage);

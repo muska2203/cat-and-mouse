@@ -1,9 +1,9 @@
-import { buildDerivedStats } from "./rules.js?v=0.0.8-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.0.9-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const DEFAULT_STARTER_LOADOUT_BY_CLASS = {
-  warrior: ["rusty_sword", "leather_vest", "lucky_charm"],
-  mage: ["apprentice_staff", "cloth_robe", "mouse_boots"],
+  warrior: ["common_pan_lid", "cheese_ration"],
+  mage: ["lucky_charm", "apprentice_staff"],
 };
 
 export const STARTER_ITEMS = [
@@ -405,6 +405,36 @@ export function addLootItemToPlayer(playerSheet, itemId) {
     playerSheet: recalculateSheetFromInventory(playerSheet, equippedByType, bag),
     addedTo: "bag",
   };
+}
+
+export function spendLevelUpPoint(playerSheet, statKey) {
+  if (!playerSheet || (playerSheet.unspentPoints || 0) <= 0) {
+    return playerSheet;
+  }
+
+  const allowedStats = new Set(["STR", "INT", "AGI", "LUK", "HP_MAX"]);
+  if (!allowedStats.has(statKey)) {
+    return playerSheet;
+  }
+
+  const nextSheet = {
+    ...playerSheet,
+    baseStats: { ...playerSheet.baseStats },
+    unspentPoints: Math.max(0, (playerSheet.unspentPoints || 0) - 1),
+  };
+
+  if (statKey === "HP_MAX") {
+    nextSheet.baseStats.HP_MAX = (nextSheet.baseStats.HP_MAX || 0) + 3;
+    nextSheet.baseStats.HP = (nextSheet.baseStats.HP || 0) + 3;
+  } else {
+    nextSheet.baseStats[statKey] = (nextSheet.baseStats[statKey] || 0) + 1;
+  }
+
+  return recalculateSheetFromInventory(
+    nextSheet,
+    nextSheet.equippedByType || {},
+    nextSheet.bag || []
+  );
 }
 
 export function getLootPool(poolName, classId) {

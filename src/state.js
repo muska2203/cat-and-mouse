@@ -1,4 +1,10 @@
-import { buildDerivedStats } from "./rules.js?v=0.0.8-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.0.9-pre-alpha";
+
+export const PROGRESSION_CONFIG = {
+  baseXpToNext: 25,
+  xpGrowthFactor: 1.25,
+  pointsPerLevel: 1,
+};
 
 export const CLASS_CONFIG = {
   mage: {
@@ -64,5 +70,9 @@ export function createPlayerSheet(classId) {
     derived,
     loadout: [],
     inventory: [],
+    level: 1,
+    xp: 0,
+    xpToNext: PROGRESSION_CONFIG.baseXpToNext,
+    unspentPoints: 0,
   };
 }
