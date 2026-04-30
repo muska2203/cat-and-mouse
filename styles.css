@@ -261,6 +261,18 @@ body {
   color: #86efac;
 }
 
+.stat-total-neutral {
+  color: #e2e8f0;
+}
+
+.stat-preview-up {
+  color: #86efac;
+}
+
+.stat-preview-down {
+  color: #fca5a5;
+}
+
 .stat-preview-value {
   color: #fde047;
 }
@@ -294,6 +306,40 @@ body {
 .slot-item strong {
   display: block;
   text-align: right;
+}
+
+.slot-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.equip-slots-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.slot-name {
+  text-transform: capitalize;
+}
+
+.slot-equipped-card {
+  width: 100%;
+  min-height: 54px;
+  height: auto;
+  flex: 0 0 auto;
+  cursor: default;
+  padding: 4px 6px;
+}
+
+.slot-empty-card {
+  opacity: 0.65;
+}
+
+.slot-item-name {
+  text-align: left;
 }
 
 .item-bonus {
@@ -336,6 +382,10 @@ body {
 }
 
 .bag-icon:hover {
+  border-color: #22c55e;
+}
+
+.slot-equipped-card:hover {
   border-color: #22c55e;
 }
 

@@ -1,13 +1,13 @@
-import { CLASS_CONFIG } from "./state.js?v=0.0.10-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.0.10-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.0.10-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.0.10-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.0.10-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.0.10-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.0.10-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.0.10-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.0.10-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.0.10-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.1.0-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.1.0-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.1.0-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.1.0-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.1.0-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.1.0-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.1.0-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.1.0-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.1.0-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.1.0-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -256,13 +256,23 @@ function renderInventoryPanel(state) {
   const slots = EQUIP_TYPES.map((type) => {
     const itemId = equipped[type];
     const item = itemId ? getItemById(itemId) : null;
+    const equippedBonus = item ? formatItemBonuses(item, item) : "—";
     return `
       <li class="slot-item">
-        <div>
-          <span>${toRuType(type)}</span>
-          <strong>${item ? item.name : "пусто"}</strong>
-        </div>
-        <small class="item-bonus">${item ? formatItemBonuses(item) : "—"}</small>
+        <span class="slot-name">${toRuType(type)}</span>
+        ${item
+          ? `
+            <div class="bag-icon slot-equipped-card" title="${item.name}">
+              <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
+              <span class="bag-icon-bonus">${equippedBonus}</span>
+            </div>
+          `
+          : `
+            <div class="bag-icon slot-equipped-card slot-empty-card">
+              <span class="bag-icon-glyph">—</span>
+              <span class="bag-icon-bonus">—</span>
+            </div>
+          `}
       </li>
     `;
   }).join("");
@@ -326,7 +336,7 @@ function renderInventoryPanel(state) {
     <article class="class-card inventory-panel">
       <h3>Инвентарь</h3>
       <p class="inventory-tip">Экипировка: обмен слота. Расходники: применяются и исчезают.</p>
-      <ul class="stats-list">
+      <ul class="stats-list equip-slots-row">
         ${slots}
       </ul>
       <h4 class="bag-title">Сумка</h4>
@@ -370,6 +380,7 @@ function renderStatsListWithUpgrades(statsObject, playerSheet, upgradeByStat) {
 
 function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
   const hasPoints = (playerSheet?.unspentPoints || 0) > 0;
+  const previewMode = getPreviewMode(previewState);
   const previewSheet = buildPreviewSheet(playerSheet, {
     type: "upgrade",
     stat: previewState?.upgradePreviewStat || null,
@@ -393,18 +404,25 @@ function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
       const shownTotal = previewTotal != null ? previewTotal : totalValue;
       const isBasePreviewed = shownBase !== baseValue;
       const isTotalPreviewed = shownTotal !== totalValue;
-      const totalClass = shownTotal !== shownBase ? "stat-total-value" : "";
       const upgradeButton = hasPoints
         ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${key}">+${upgrade}</button>`
         : "";
+      const totalDelta = shownTotal - totalValue;
+      let previewClass = "";
+      if (previewMode === "upgrade" && isTotalPreviewed) {
+        previewClass = "stat-preview-up";
+      } else if (previewMode === "equip" && isTotalPreviewed) {
+        if (totalDelta > 0) previewClass = "stat-preview-up";
+        if (totalDelta < 0) previewClass = "stat-preview-down";
+      }
       const totalMarkup = shownTotal !== shownBase
-        ? `<span class="${totalClass} ${isTotalPreviewed ? "stat-preview-value" : ""}"> (${shownTotal})</span>`
+        ? `<span class="stat-total-neutral ${previewClass}"> (${shownTotal})</span>`
         : "";
       return `
         <li>
           <span>${toRuStatName(key)}</span>
           <div class="stat-value-with-upgrade">
-            <strong class="${isBasePreviewed ? "stat-preview-value" : ""}">${shownBase}${totalMarkup}</strong>
+            <strong>${shownBase}${totalMarkup}</strong>
             ${upgradeButton}
           </div>
         </li>
@@ -414,6 +432,7 @@ function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
 }
 
 function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
+  const previewMode = getPreviewMode(previewStat);
   const previewSheet = buildPreviewSheet(playerSheet, {
     type: "upgrade",
     stat: previewStat?.upgradePreviewStat || null,
@@ -430,7 +449,15 @@ function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
       const previewValue = previewSheet?.derived?.[key];
       const isPreviewed = previewValue != null && previewValue !== value;
       const shown = isPreviewed ? previewValue : value;
-      return `<li><span>${toRuStatName(key)}</span><strong class="${isPreviewed ? "stat-preview-value" : ""}">${shown}</strong></li>`;
+      const delta = shown - value;
+      let previewClass = "";
+      if (previewMode === "upgrade" && isPreviewed) {
+        previewClass = "stat-preview-up";
+      } else if (previewMode === "equip" && isPreviewed) {
+        if (delta > 0) previewClass = "stat-preview-up";
+        if (delta < 0) previewClass = "stat-preview-down";
+      }
+      return `<li><span>${toRuStatName(key)}</span><strong class="${previewClass}">${shown}</strong></li>`;
     })
     .join("");
 }
@@ -459,6 +486,12 @@ function buildPreviewSheet(playerSheet, preview) {
   }
 
   return null;
+}
+
+function getPreviewMode(previewState) {
+  if (previewState?.upgradePreviewStat) return "upgrade";
+  if (previewState?.equipPreviewBagInstanceId) return "equip";
+  return "none";
 }
 
 function toRuType(itemType) {
