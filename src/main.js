@@ -60,20 +60,22 @@ function onRootClick(event) {
   if (action === "bag-item-action") {
     const itemId = button.dataset.itemId;
     const bagInstanceId = button.dataset.bagInstanceId;
+    const consumableItemId = button.dataset.consumableItemId;
     const bagIndexRaw = Number(button.dataset.bagIndex);
     const bagIndex = Number.isInteger(bagIndexRaw) ? bagIndexRaw : -1;
-    if (!itemId || !bagInstanceId || !state.playerSheet || !state.run) {
+    if (!itemId || !state.playerSheet || !state.run) {
       return;
     }
+    const bagActionKey = bagInstanceId || (consumableItemId ? `consumable:${consumableItemId}` : `item:${itemId}`);
     const nowMs = performance.now();
     const duplicateWindowMs = 220;
     if (
-      state.uiHud.lastBagActionInstanceId === bagInstanceId &&
+      state.uiHud.lastBagActionInstanceId === bagActionKey &&
       nowMs - (state.uiHud.lastBagActionAtMs || 0) < duplicateWindowMs
     ) {
       return;
     }
-    state.uiHud.lastBagActionInstanceId = bagInstanceId;
+    state.uiHud.lastBagActionInstanceId = bagActionKey;
     state.uiHud.lastBagActionAtMs = nowMs;
 
     const item = getItemById(itemId);
@@ -82,21 +84,8 @@ function onRootClick(event) {
     }
 
     if (item.isConsumable) {
-      const useResult = useConsumable(state.run, state.playerSheet, item);
-      state.run = useResult.run;
-      state.playerSheet = useResult.playerSheet;
-      const nextBag = [...(state.playerSheet.bag || [])];
-      const removeByInstanceIndex = nextBag.findIndex((entry) => entry.instanceId === bagInstanceId);
-      if (removeByInstanceIndex !== -1) {
-        nextBag.splice(removeByInstanceIndex, 1);
-      } else if (bagIndex >= 0 && bagIndex < nextBag.length) {
-        nextBag.splice(bagIndex, 1);
-      }
-      state.playerSheet = recalculateSheetFromInventory(
-        state.playerSheet,
-        state.playerSheet.equippedByType,
-        nextBag
-      );
+      const targetConsumableId = consumableItemId || item.id;
+      useConsumableByItemId(targetConsumableId, bagInstanceId, bagIndex);
     } else {
       state.playerSheet = swapItemFromBag(state.playerSheet, bagInstanceId, bagIndex);
     }
@@ -129,6 +118,14 @@ function onRootClick(event) {
       return;
     }
     performStep(direction);
+  }
+
+  if (action === "quickbar-use") {
+    const slotIndex = Number(button.dataset.slotIndex);
+    if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 8) {
+      return;
+    }
+    useQuickbarSlot(slotIndex);
   }
 }
 
@@ -164,12 +161,39 @@ function onKeyDown(event) {
     В: "right",
   };
   const direction = map[event.code] || map[event.key];
-  if (!direction) {
+  if (direction) {
+    event.preventDefault();
+    performStep(direction);
+    return;
+  }
+
+  const quickSlotByCode = {
+    Digit1: 0,
+    Digit2: 1,
+    Digit3: 2,
+    Digit4: 3,
+    Digit5: 4,
+    Digit6: 5,
+    Digit7: 6,
+    Digit8: 7,
+    Digit9: 8,
+    Numpad1: 0,
+    Numpad2: 1,
+    Numpad3: 2,
+    Numpad4: 3,
+    Numpad5: 4,
+    Numpad6: 5,
+    Numpad7: 6,
+    Numpad8: 7,
+    Numpad9: 8,
+  };
+  const quickSlot = quickSlotByCode[event.code];
+  if (quickSlot == null) {
     return;
   }
 
   event.preventDefault();
-  performStep(direction);
+  useQuickbarSlot(quickSlot);
 }
 
 function performStep(direction) {
@@ -333,10 +357,166 @@ function onRootMouseOut(event) {
   }
 }
 
+function onRootDragStart(event) {
+  const quickbarSlot = event.target.closest("[data-drag-kind='quick-slot']");
+  if (quickbarSlot) {
+    const slotIndex = Number(quickbarSlot.dataset.dragSlotIndex);
+    const itemId = state.uiHud.quickbarSlots?.[slotIndex] || null;
+    if (!itemId) {
+      event.preventDefault();
+      return;
+    }
+    state.uiHud.dragPayload = { kind: "quick-slot", slotIndex };
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", `quick-slot:${slotIndex}`);
+    return;
+  }
+
+  const consumable = event.target.closest("[data-drag-kind='consumable']");
+  if (!consumable) {
+    return;
+  }
+  const itemId = consumable.dataset.dragItemId;
+  if (!itemId) {
+    event.preventDefault();
+    return;
+  }
+  state.uiHud.dragPayload = { kind: "consumable", itemId };
+  event.dataTransfer.effectAllowed = "copyMove";
+  event.dataTransfer.setData("text/plain", `consumable:${itemId}`);
+}
+
+function onRootDragOver(event) {
+  const quickbarSlot = event.target.closest("[data-slot-index]");
+  if (!quickbarSlot) {
+    return;
+  }
+  if (!state.uiHud.dragPayload) {
+    return;
+  }
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+}
+
+function onRootDrop(event) {
+  const quickbarSlot = event.target.closest("[data-slot-index]");
+  if (!quickbarSlot || !state.uiHud.dragPayload) {
+    return;
+  }
+  const targetSlot = Number(quickbarSlot.dataset.slotIndex);
+  if (!Number.isInteger(targetSlot) || targetSlot < 0 || targetSlot > 8) {
+    state.uiHud.dragPayload = null;
+    return;
+  }
+  event.preventDefault();
+  const slots = [...(state.uiHud.quickbarSlots || [])];
+  const payload = state.uiHud.dragPayload;
+  if (payload.kind === "consumable" && payload.itemId) {
+    slots[targetSlot] = payload.itemId;
+  }
+  if (payload.kind === "quick-slot" && Number.isInteger(payload.slotIndex)) {
+    const sourceSlot = payload.slotIndex;
+    if (sourceSlot !== targetSlot) {
+      const tmp = slots[targetSlot] || null;
+      slots[targetSlot] = slots[sourceSlot] || null;
+      slots[sourceSlot] = tmp;
+    }
+  }
+  state.uiHud.quickbarSlots = slots;
+  state.uiHud.dragPayload = null;
+  rerender();
+}
+
+function onRootDragEnd(event) {
+  const payload = state.uiHud.dragPayload;
+  if (
+    payload?.kind === "quick-slot" &&
+    Number.isInteger(payload.slotIndex) &&
+    event.dataTransfer?.dropEffect === "none"
+  ) {
+    const slots = [...(state.uiHud.quickbarSlots || [])];
+    slots[payload.slotIndex] = null;
+    state.uiHud.quickbarSlots = slots;
+    state.uiHud.dragPayload = null;
+    rerender();
+    return;
+  }
+  state.uiHud.dragPayload = null;
+}
+
+function useQuickbarSlot(slotIndex) {
+  if (!state.playerSheet || !state.run) {
+    return;
+  }
+  const itemId = state.uiHud.quickbarSlots?.[slotIndex];
+  if (!itemId) {
+    return;
+  }
+  const consumed = useConsumableByItemId(itemId, null, -1);
+  if (!consumed) {
+    return;
+  }
+  pulseQuickbarSlot(slotIndex);
+  rerender();
+}
+
+function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
+  if (!itemId || !state.playerSheet || !state.run) {
+    return false;
+  }
+  const item = getItemById(itemId);
+  if (!item || !item.isConsumable) {
+    return false;
+  }
+  const nextBag = [...(state.playerSheet.bag || [])];
+  let removeIndex = -1;
+  if (itemId) {
+    removeIndex = nextBag.findIndex((entry) => {
+      const bagItemId = typeof entry === "string" ? entry : entry?.itemId;
+      return bagItemId === itemId;
+    });
+  }
+  if (removeIndex === -1 && bagInstanceId) {
+    removeIndex = nextBag.findIndex((entry) => entry.instanceId === bagInstanceId);
+  }
+  if (removeIndex === -1 && bagIndex >= 0 && bagIndex < nextBag.length) {
+    removeIndex = bagIndex;
+  }
+  if (removeIndex === -1) {
+    return false;
+  }
+
+  const useResult = useConsumable(state.run, state.playerSheet, item);
+  state.run = useResult.run;
+  state.playerSheet = useResult.playerSheet;
+  nextBag.splice(removeIndex, 1);
+  state.playerSheet = recalculateSheetFromInventory(
+    state.playerSheet,
+    state.playerSheet.equippedByType,
+    nextBag
+  );
+  return true;
+}
+
+function pulseQuickbarSlot(slotIndex) {
+  state.uiHud.quickbarPulseSlot = slotIndex;
+  setTimeout(() => {
+    if (state.uiHud.quickbarPulseSlot !== slotIndex) {
+      return;
+    }
+    state.uiHud.quickbarPulseSlot = null;
+    rerender();
+  }, 220);
+}
+
 root.addEventListener("click", onRootClick);
 root.addEventListener("wheel", onRootWheel, { passive: false });
 root.addEventListener("mouseover", onRootMouseOver);
 root.addEventListener("mouseout", onRootMouseOut);
+root.addEventListener("dragstart", onRootDragStart);
+root.addEventListener("dragover", onRootDragOver);
+root.addEventListener("drop", onRootDrop);
+root.addEventListener("dragend", onRootDragEnd);
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("resize", onResize);
 requestAnimationFrame(animationLoop);

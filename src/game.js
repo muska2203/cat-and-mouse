@@ -318,7 +318,7 @@ export function useConsumable(run, playerSheet, item) {
   let log = `${item.name} применен.`;
   const currentHp = playerSheet.stats?.HP ?? playerSheet.baseStats.HP ?? 0;
   const currentHpMax = playerSheet.stats?.HP_MAX ?? playerSheet.baseStats.HP_MAX ?? 1;
-  if (item.id === "cheese_ration" || item.id === "common_cheese_slice") {
+  if (item.id === "cheese_ration") {
     playerSheet.baseStats.HP = Math.min(currentHpMax, currentHp + 10);
     log = `${item.name}: восстановлено 10 HP.`;
   } else if (item.id === "hard_cheese") {

@@ -159,16 +159,6 @@ export const LOOT_COMMON_ITEMS = [
     statBonuses: { AGI: 2 },
   },
   {
-    id: "common_cheese_slice",
-    name: "Ломтик сыра",
-    type: "consumable",
-    icon: "🧀",
-    effectText: "Лечит 10 HP",
-    classRestriction: ["mage", "warrior"],
-    isConsumable: true,
-    statBonuses: {},
-  },
-  {
     id: "common_cracker",
     name: "Сухарик",
     type: "consumable",

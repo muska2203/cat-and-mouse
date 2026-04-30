@@ -53,6 +53,9 @@ export function createInitialState() {
       equipPreviewBagInstanceId: null,
       lastBagActionInstanceId: null,
       lastBagActionAtMs: 0,
+      quickbarSlots: Array.from({ length: 9 }, () => null),
+      quickbarPulseSlot: null,
+      dragPayload: null,
     },
   };
 }

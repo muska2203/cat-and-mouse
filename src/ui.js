@@ -163,6 +163,7 @@ function renderGameScreen(state) {
         ${renderInventoryPanel(state)}
         <div class="play-panel">
           <canvas id="gameCanvas" class="game-canvas" width="800" height="500"></canvas>
+          ${renderQuickbar(state)}
           <div class="mobile-controls" aria-label="Управление с телефона">
             <button class="btn mobile-move-btn mobile-up" type="button" data-action="mobile-move" data-direction="up">▲</button>
             <button class="btn mobile-move-btn mobile-left" type="button" data-action="mobile-move" data-direction="left">◀</button>
@@ -286,6 +287,52 @@ function renderInventoryPanel(state) {
   }).join("");
 
   const bagSections = ["weapon", "armor", "amulet", "consumable"].map((type) => {
+    if (type === "consumable") {
+      const grouped = new Map();
+      for (const entry of bagEntries) {
+        const bagItemId = typeof entry === "string" ? entry : entry?.itemId;
+        const item = getItemById(bagItemId);
+        if (!item || item.type !== "consumable") continue;
+        const bucket = grouped.get(item.id) || { item, count: 0 };
+        bucket.count += 1;
+        grouped.set(item.id, bucket);
+      }
+
+      const consumableStacks = Array.from(grouped.values())
+        .sort((a, b) => a.item.name.localeCompare(b.item.name));
+
+      const content = consumableStacks.length
+        ? consumableStacks
+            .map(({ item, count }) => `
+              <button
+                class="bag-icon"
+                type="button"
+                data-action="bag-item-action"
+                data-item-id="${item.id}"
+                data-consumable-item-id="${item.id}"
+                data-drag-kind="consumable"
+                data-drag-item-id="${item.id}"
+                draggable="true"
+                title="${item.name} x${count} (${toRuType(item.type)}): ${localizeStatText(item.effectText)}"
+              >
+                <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
+                <span class="bag-icon-bonus">${formatItemBonuses(item)}</span>
+                <span class="bag-stack-count">${count}</span>
+              </button>
+            `)
+            .join("")
+        : `<p class="empty-bag">Пусто</p>`;
+
+      return `
+        <section class="bag-section" data-type="${type}">
+          <h5 class="bag-title">${toRuSectionType(type)}</h5>
+          <div class="bag-grid">
+            ${content}
+          </div>
+        </section>
+      `;
+    }
+
     const itemsForType = [...bagEntries]
       .map((entry) => {
         const item = getItemById(entry.itemId);
@@ -619,4 +666,53 @@ function buildFullStats(playerSheet) {
 
 function renderBuildBadge() {
   return `<p class="build-badge">${APP_TITLE} · v${APP_VERSION}</p>`;
+}
+
+function renderQuickbar(state) {
+  const slots = state.uiHud?.quickbarSlots || [];
+  const pulseSlot = state.uiHud?.quickbarPulseSlot;
+  const bagEntries = state.playerSheet?.bag || [];
+  const counts = new Map();
+  for (const entry of bagEntries) {
+    const itemId = typeof entry === "string" ? entry : entry?.itemId;
+    if (!itemId) continue;
+    counts.set(itemId, (counts.get(itemId) || 0) + 1);
+  }
+
+  const slotButtons = Array.from({ length: 9 }, (_, idx) => {
+    const slotIndex = idx + 1;
+    const itemId = slots[idx] || null;
+    const item = itemId ? getItemById(itemId) : null;
+    const count = itemId ? (counts.get(itemId) || 0) : 0;
+    const isDraggable = Boolean(itemId);
+    const isOutOfStock = Boolean(itemId) && count <= 0;
+    const classes = [
+      "quick-slot-btn",
+      pulseSlot === idx ? "quick-slot-pulse" : "",
+      isOutOfStock ? "quick-slot-out" : "",
+    ].filter(Boolean).join(" ");
+
+    return `
+      <button
+        class="${classes}"
+        type="button"
+        data-action="quickbar-use"
+        data-slot-index="${idx}"
+        data-drag-kind="quick-slot"
+        data-drag-slot-index="${idx}"
+        draggable="${isDraggable ? "true" : "false"}"
+        title="${item ? `${item.name} (${count})` : `Слот ${slotIndex}`}"
+      >
+        <span class="quick-slot-key">${slotIndex}</span>
+        <span class="quick-slot-glyph">${item ? (item.icon || getItemIcon(item.type)) : "·"}</span>
+        ${item ? `<span class="quick-slot-count">${count}</span>` : ""}
+      </button>
+    `;
+  }).join("");
+
+  return `
+    <div class="quickbar" aria-label="Панель быстрого доступа">
+      ${slotButtons}
+    </div>
+  `;
 }
