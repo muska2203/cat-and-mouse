@@ -119,17 +119,19 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     mouseScreenY
   );
 
-  const mouseMaxDamage = Math.max(
+  const mouseBaseDamage = Math.max(
     playerSheet?.derived?.ATK_PHYS || 1,
     playerSheet?.derived?.ATK_MAGIC || 1
   );
+  const mouseDamageMultiplier = Math.max(1, run?.nextHitMultiplier || 1);
+  const mouseShownDamage = Math.max(1, Math.floor(mouseBaseDamage * mouseDamageMultiplier));
   // Урон мышки — подпись как у котов, рядом с иконкой мышки.
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = mouseDamageMultiplier > 1 ? "#fde047" : "#ffffff";
   ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
   ctx.fillText(
-    `${mouseMaxDamage}`,
+    `${mouseShownDamage}`,
     mouseScreenX - tile * 0.36,
     mouseScreenY + tile * 0.24
   );
