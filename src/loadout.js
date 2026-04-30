@@ -244,6 +244,7 @@ export const LOOT_RARE_ITEMS = [
 ];
 
 const ALL_ITEMS = [...STARTER_ITEMS, ...LOOT_COMMON_ITEMS, ...LOOT_RARE_ITEMS];
+let bagInstanceSeq = 0;
 
 export function getStarterItemsForClass(classId) {
   return STARTER_ITEMS.filter((item) => item.classRestriction.includes(classId));
@@ -287,12 +288,16 @@ export function chooseLoadoutItem(currentLoadoutIds, itemToToggleId, classId) {
 export function applyLoadoutToSheet(playerSheet, selectedItemIds) {
   const selectedItems = ALL_ITEMS.filter((item) => selectedItemIds.includes(item.id));
   const equippedByType = buildEquippedMap(selectedItems.filter((item) => !item.isConsumable));
-  const selectedConsumables = selectedItems.filter((item) => item.isConsumable).map((item) => item.id);
+  const selectedConsumables = selectedItems
+    .filter((item) => item.isConsumable)
+    .map((item) => createBagEntry(item.id));
   return recalculateSheetFromInventory(playerSheet, equippedByType, selectedConsumables);
 }
 
 export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) {
   const baseStats = { ...playerSheet.baseStats };
+  const previousHp = playerSheet?.stats?.HP ?? baseStats.HP ?? 0;
+  const previousHpMax = playerSheet?.stats?.HP_MAX ?? baseStats.HP_MAX;
   const equippedIds = Object.values(equippedByType).filter(Boolean);
   const equipped = equippedIds.map((id) => getItemById(id)).filter(Boolean);
 
@@ -307,7 +312,13 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) 
   }
 
   const hpCap = baseStats.HP_MAX;
-  baseStats.HP = Math.min(baseStats.HP, hpCap);
+  const hpDeltaFromMaxChange = hpCap - previousHpMax;
+  const desiredHpFromBase = baseStats.HP ?? previousHp;
+  const hasExplicitHpUpdate = desiredHpFromBase !== previousHp;
+  const nextHp = hasExplicitHpUpdate
+    ? desiredHpFromBase
+    : previousHp + hpDeltaFromMaxChange;
+  baseStats.HP = Math.max(0, Math.min(nextHp, hpCap));
 
   return {
     ...playerSheet,
@@ -316,7 +327,7 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) 
     loadout: equipped,
     equippedByType: buildEquippedMap(equipped),
     inventory: equipped.filter((item) => item.isConsumable),
-    bag,
+    bag: normalizeBagEntries(bag),
   };
 }
 
@@ -325,18 +336,21 @@ export function initializeInventoryForRun(playerSheet) {
 
   return {
     ...playerSheet,
-    bag: [...(playerSheet.bag || [])],
+    bag: normalizeBagEntries(playerSheet.bag || []),
     equippedByType: equippedMap,
   };
 }
 
-export function swapItemFromBag(playerSheet, itemId, bagIndex = null) {
+export function swapItemFromBag(playerSheet, bagInstanceId, bagIndex = null) {
   const bag = playerSheet?.bag || [];
+  const indexFromInstance = bag.findIndex((entry) => entry.instanceId === bagInstanceId);
   const resolvedIndex =
-    Number.isInteger(bagIndex) && bagIndex >= 0 && bagIndex < bag.length
-      ? bagIndex
-      : bag.indexOf(itemId);
-  const resolvedItemId = resolvedIndex !== -1 ? bag[resolvedIndex] : itemId;
+    indexFromInstance !== -1
+      ? indexFromInstance
+      : Number.isInteger(bagIndex) && bagIndex >= 0 && bagIndex < bag.length
+        ? bagIndex
+        : -1;
+  const resolvedItemId = resolvedIndex !== -1 ? bag[resolvedIndex]?.itemId : null;
   const item = getItemById(resolvedItemId);
   if (!item || item.isConsumable || resolvedIndex === -1) {
     return playerSheet;
@@ -349,7 +363,7 @@ export function swapItemFromBag(playerSheet, itemId, bagIndex = null) {
   const nextBag = [...bag];
   nextBag.splice(resolvedIndex, 1);
   if (currentEquippedId) {
-    nextBag.push(currentEquippedId);
+    nextBag.push(createBagEntry(currentEquippedId));
   }
 
   const equippedIds = Object.values(equippedByType).filter(Boolean);
@@ -367,9 +381,9 @@ export function addLootItemToPlayer(playerSheet, itemId) {
   }
 
   const equippedByType = { ...playerSheet.equippedByType };
-  const bag = [...(playerSheet.bag || [])];
+  const bag = normalizeBagEntries(playerSheet.bag || []);
   if (item.isConsumable) {
-    bag.push(item.id);
+    bag.push(createBagEntry(item.id));
     return {
       playerSheet: recalculateSheetFromInventory(playerSheet, equippedByType, bag),
       addedTo: "bag",
@@ -386,7 +400,7 @@ export function addLootItemToPlayer(playerSheet, itemId) {
     };
   }
 
-  bag.push(item.id);
+  bag.push(createBagEntry(item.id));
   return {
     playerSheet: recalculateSheetFromInventory(playerSheet, equippedByType, bag),
     addedTo: "bag",
@@ -412,4 +426,30 @@ function buildEquippedMap(items) {
     }
   }
   return map;
+}
+
+function createBagEntry(itemId) {
+  bagInstanceSeq += 1;
+  return {
+    instanceId: `bag_${bagInstanceSeq}`,
+    itemId,
+  };
+}
+
+function normalizeBagEntries(bag) {
+  return (bag || []).map((entry) => {
+    if (typeof entry === "string") {
+      return createBagEntry(entry);
+    }
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    if (!entry.instanceId) {
+      return createBagEntry(entry.itemId);
+    }
+    return {
+      instanceId: entry.instanceId,
+      itemId: entry.itemId,
+    };
+  }).filter(Boolean);
 }

@@ -30,6 +30,7 @@ body {
   border-radius: 14px;
   padding: 24px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
 }
 
 .screen-game {
@@ -257,8 +258,9 @@ body {
 }
 
 .bag-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(40px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 8px;
 }
 
@@ -268,7 +270,9 @@ body {
   background: #0f172a;
   color: #e2e8f0;
   font-size: 20px;
+  width: 42px;
   height: 42px;
+  flex: 0 0 42px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -294,6 +298,14 @@ body {
 .empty-bag {
   color: #94a3b8;
   font-size: 13px;
+}
+
+.build-badge {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  font-size: 11px;
+  color: #64748b;
 }
 
 @media (max-width: 900px) {

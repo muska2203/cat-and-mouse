@@ -4,6 +4,8 @@ import { EQUIP_TYPES } from "./loadout.js";
 import { getItemById } from "./loadout.js";
 import { applyLoadoutToSheet } from "./loadout.js";
 import { getDefaultStarterLoadout } from "./loadout.js";
+import { APP_TITLE } from "./app-config.js";
+import { APP_VERSION } from "./app-config.js";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -110,6 +112,7 @@ function renderWelcomeScreen(state) {
       >
         Начать игру
       </button>
+      ${renderBuildBadge()}
     </section>
   `;
 }
@@ -160,6 +163,7 @@ function renderGameScreen(state) {
           <p class="run-log">${state.run.lastLog || "—"}</p>
         </article>
       </div>
+      ${renderBuildBadge()}
     </section>
   `;
 }
@@ -187,7 +191,7 @@ function renderEndingScreen(state) {
   }).join("");
 
   const bagItems = (state.playerSheet.bag || [])
-    .map((id) => getItemById(id))
+    .map((entry) => getItemById(entry.itemId))
     .filter(Boolean)
     .map((item) => `<li><span>${item.icon || getItemIcon(item.type)}</span><strong>${item.name}</strong></li>`)
     .join("");
@@ -219,13 +223,14 @@ function renderEndingScreen(state) {
       <div class="controls-row">
         <button class="btn btn-primary" type="button" data-action="end-to-welcome">В главное меню</button>
       </div>
+      ${renderBuildBadge()}
     </section>
   `;
 }
 
 function renderInventoryPanel(state) {
   const equipped = state.playerSheet?.equippedByType || {};
-  const bagIds = state.playerSheet?.bag || [];
+  const bagEntries = state.playerSheet?.bag || [];
 
   const slots = EQUIP_TYPES.map((type) => {
     const itemId = equipped[type];
@@ -241,30 +246,58 @@ function renderInventoryPanel(state) {
     `;
   }).join("");
 
-  const bagIcons = bagIds.length
-    ? bagIds
-        .map((itemId, bagIndex) => {
-          const item = getItemById(itemId);
-          if (!item) {
-            return "";
-          }
+  const bagSections = ["weapon", "armor", "amulet", "consumable"].map((type) => {
+    const itemsForType = [...bagEntries]
+      .map((entry) => {
+        const item = getItemById(entry.itemId);
+        if (!item || item.type !== type) {
+          return null;
+        }
+        return {
+          ...entry,
+          item,
+          statsSum: getItemStatsSum(item),
+          bagIndex: bagEntries.findIndex((bagEntry) => bagEntry.instanceId === entry.instanceId),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        if (b.statsSum !== a.statsSum) {
+          return b.statsSum - a.statsSum;
+        }
+        return String(a.instanceId).localeCompare(String(b.instanceId));
+      });
 
-          return `
-            <button
-              class="bag-icon"
-              type="button"
-              data-action="bag-item-action"
-              data-item-id="${item.id}"
-              data-bag-index="${bagIndex}"
-              title="${item.name} (${toRuType(item.type)}): ${localizeStatText(item.effectText)}"
-            >
-              <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
-              <span class="bag-icon-bonus">${formatItemBonuses(item)}</span>
-            </button>
-          `;
-        })
-        .join("")
-    : `<p class="empty-bag">Сумка пуста</p>`;
+    const content = itemsForType.length
+      ? itemsForType
+          .map((entry) => {
+            return `
+              <button
+                class="bag-icon"
+                type="button"
+                data-action="bag-item-action"
+                data-item-id="${entry.item.id}"
+                data-bag-instance-id="${entry.instanceId}"
+                data-bag-index="${entry.bagIndex}"
+                title="${entry.item.name} (${toRuType(entry.item.type)}): ${localizeStatText(entry.item.effectText)}"
+              >
+                <span class="bag-icon-glyph">${entry.item.icon || getItemIcon(entry.item.type)}</span>
+                <span class="bag-icon-bonus">${formatItemBonuses(entry.item)}</span>
+              </button>
+            `;
+          })
+          .join("")
+      : `<p class="empty-bag">Пусто</p>`;
+
+    return `
+      <section class="bag-section" data-type="${type}">
+        <h5 class="bag-title">${toRuSectionType(type)}</h5>
+        <div class="bag-grid">
+          ${content}
+        </div>
+      </section>
+    `;
+  }).join("");
 
   return `
     <article class="class-card inventory-panel">
@@ -274,9 +307,7 @@ function renderInventoryPanel(state) {
         ${slots}
       </ul>
       <h4 class="bag-title">Сумка</h4>
-      <div class="bag-grid">
-        ${bagIcons}
-      </div>
+      ${bagSections}
     </article>
   `;
 }
@@ -293,6 +324,12 @@ function toRuType(itemType) {
   if (itemType === "amulet") return "амулет";
   if (itemType === "consumable") return "расходник";
   return itemType;
+}
+
+function toRuSectionType(itemType) {
+  if (itemType === "consumable") return "расходники";
+  if (itemType === "amulet") return "амулеты";
+  return toRuType(itemType);
 }
 
 function toRuStatName(statName) {
@@ -325,6 +362,10 @@ function formatItemBonuses(item) {
   return entries
     .map(([statName, value]) => `+${toCompactStatName(statName)}${value}`)
     .join(" ");
+}
+
+function getItemStatsSum(item) {
+  return Object.values(item?.statBonuses || {}).reduce((sum, value) => sum + value, 0);
 }
 
 function toCompactStatName(statName) {
@@ -377,4 +418,8 @@ function buildWelcomeStats(playerSheet) {
     CRIT_CHANCE: playerSheet?.derived?.CRIT_CHANCE ?? 0,
     CRIT_MULT: playerSheet?.derived?.CRIT_MULT ?? 0,
   };
+}
+
+function renderBuildBadge() {
+  return `<p class="build-badge">${APP_TITLE} · v${APP_VERSION}</p>`;
 }

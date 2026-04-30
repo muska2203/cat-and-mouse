@@ -23,8 +23,9 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   const tile = Math.max(24, Math.floor(Math.min(width, height) / 11));
   const cameraX = playerVisual.x + 0.5;
   const cameraY = playerVisual.y + 0.5;
-  const cameraOffsetX = width / 2 - cameraX * tile;
-  const cameraOffsetY = height / 2 - cameraY * tile;
+  const shake = getScreenShakeOffset(run, nowMs);
+  const cameraOffsetX = width / 2 - cameraX * tile + shake.x;
+  const cameraOffsetY = height / 2 - cameraY * tile + shake.y;
 
   const minX = Math.max(0, Math.floor((-cameraOffsetX) / tile) - 2);
   const minY = Math.max(0, Math.floor((-cameraOffsetY) / tile) - 2);
@@ -169,12 +170,36 @@ function drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) 
     const alpha = 1 - t;
 
     ctx.fillStyle = withAlpha(text.color || "#ffffff", alpha);
-    ctx.font = `${Math.max(11, Math.floor(tile * 0.3))}px Arial`;
+    const scale = Math.max(0.8, text.scale || 1);
+    const fontWeight = text.isCrit ? "700 " : "";
+    ctx.font = `${fontWeight}${Math.max(11, Math.floor(tile * 0.3 * scale))}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(text.value, baseX, y);
   }
   run.floatingTexts = alive;
+}
+
+function getScreenShakeOffset(run, nowMs) {
+  const shake = run?.screenShake;
+  if (!shake) {
+    return { x: 0, y: 0 };
+  }
+  if (shake.startMs == null) {
+    shake.startMs = nowMs;
+  }
+  const t = (nowMs - shake.startMs) / Math.max(1, shake.durationMs || 1);
+  if (t >= 1) {
+    run.screenShake = null;
+    return { x: 0, y: 0 };
+  }
+
+  const fade = 1 - t;
+  const amplitude = (shake.amplitudePx || 4) * fade;
+  return {
+    x: (Math.random() * 2 - 1) * amplitude,
+    y: (Math.random() * 2 - 1) * amplitude,
+  };
 }
 
 function withAlpha(hexOrColor, alpha) {

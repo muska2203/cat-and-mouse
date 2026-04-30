@@ -274,6 +274,7 @@ export function createRunState(playerSheet, level = 1) {
     discovered: createMask(maze.width, maze.height, false),
     motion: null,
     floatingTexts: [],
+    screenShake: null,
   };
   revealAroundPlayer(run, run.visionRange);
   return run;
@@ -290,21 +291,22 @@ export function useConsumable(run, playerSheet, item) {
   }
 
   let log = `${item.name} применен.`;
-  const currentHp = Math.min(playerSheet.baseStats.HP, playerSheet.stats?.HP ?? playerSheet.baseStats.HP);
+  const currentHp = playerSheet.stats?.HP ?? playerSheet.baseStats.HP ?? 0;
+  const currentHpMax = playerSheet.stats?.HP_MAX ?? playerSheet.baseStats.HP_MAX ?? 1;
   if (item.id === "cheese_ration" || item.id === "common_cheese_slice") {
-    playerSheet.baseStats.HP = Math.min(playerSheet.baseStats.HP_MAX, currentHp + 10);
+    playerSheet.baseStats.HP = Math.min(currentHpMax, currentHp + 10);
     log = `${item.name}: восстановлено 10 HP.`;
   } else if (item.id === "hard_cheese") {
     playerSheet.baseStats.HP_MAX += 5;
-    playerSheet.baseStats.HP = Math.min(playerSheet.baseStats.HP_MAX, currentHp + 5);
+    playerSheet.baseStats.HP = currentHp;
     log = `${item.name}: HP МАКС +5 до конца забега.`;
   } else if (item.id === "common_cracker") {
     playerSheet.baseStats.HP_MAX += 4;
-    playerSheet.baseStats.HP = Math.min(playerSheet.baseStats.HP_MAX, currentHp + 4);
+    playerSheet.baseStats.HP = currentHp;
     log = `${item.name}: HP МАКС +4 до конца забега.`;
   } else if (item.id === "rare_royal_cheese") {
     playerSheet.baseStats.HP_MAX += 1;
-    playerSheet.baseStats.HP = Math.min(playerSheet.baseStats.HP_MAX, currentHp + 20);
+    playerSheet.baseStats.HP = currentHp + 20;
     log = `${item.name}: +1 HP МАКС и лечение 20 HP.`;
   } else if (item.id === "rare_spice_vial") {
     run.nextHitMultiplier = 2;
@@ -368,29 +370,46 @@ export function tryStep(run, playerSheet, direction) {
       playerSheet?.derived?.ATK_PHYS || 1,
       playerSheet?.derived?.ATK_MAGIC || 1
     );
-    const playerDamage = Math.max(1, Math.floor(baseDamage * (run.nextHitMultiplier || 1)));
+    const critChance = Math.max(0, Math.min(100, playerSheet?.derived?.CRIT_CHANCE ?? 0));
+    const critMult = Math.max(1, playerSheet?.derived?.CRIT_MULT ?? 1);
+    const isCrit = Math.random() * 100 < critChance;
+    const totalMultiplier = (run.nextHitMultiplier || 1) * (isCrit ? critMult : 1);
+    const playerDamage = Math.max(1, Math.floor(baseDamage * totalMultiplier));
     run.nextHitMultiplier = 1;
     object.data.hp = Math.max(0, object.data.hp - playerDamage);
     run.floatingTexts.push({
       x: object.x,
       y: object.y,
       value: `-${playerDamage}`,
-      color: "#fca5a5",
-      durationMs: 650,
+      color: isCrit ? "#fde047" : "#fca5a5",
+      durationMs: isCrit ? 800 : 650,
+      scale: isCrit ? 1.45 : 1,
+      isCrit,
       startMs: null,
     });
+    if (isCrit) {
+      run.screenShake = {
+        durationMs: 220,
+        amplitudePx: 5,
+        startMs: null,
+      };
+    }
 
     if (object.data.hp <= 0) {
       removeObject(run, object.id);
       run.player.x = nx;
       run.player.y = ny;
-      log = `${object.name} повержен (-${playerDamage} HP).`;
+      log = isCrit
+        ? `КРИТ! ${object.name} повержен (-${playerDamage} HP).`
+        : `${object.name} повержен (-${playerDamage} HP).`;
       motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 130 };
     } else {
       const nextHp = Math.max(0, playerSheet.stats.HP - object.data.damage);
       playerSheet.stats.HP = nextHp;
       playerSheet.baseStats.HP = nextHp;
-      log = `${object.name} получает ${playerDamage}, контрудар на ${object.data.damage}.`;
+      log = isCrit
+        ? `КРИТ! ${object.name} получает ${playerDamage}, контрудар на ${object.data.damage}.`
+        : `${object.name} получает ${playerDamage}, контрудар на ${object.data.damage}.`;
       motion = { kind: "bounce", from, target: { x: nx, y: ny }, durationMs: 170 };
       if (playerSheet.stats.HP <= 0) {
         run.status = "defeat";
