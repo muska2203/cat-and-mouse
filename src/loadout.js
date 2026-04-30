@@ -330,9 +330,15 @@ export function initializeInventoryForRun(playerSheet) {
   };
 }
 
-export function swapItemFromBag(playerSheet, itemId) {
-  const item = getItemById(itemId);
-  if (!item || item.isConsumable || !playerSheet?.bag?.includes(item.id)) {
+export function swapItemFromBag(playerSheet, itemId, bagIndex = null) {
+  const bag = playerSheet?.bag || [];
+  const resolvedIndex =
+    Number.isInteger(bagIndex) && bagIndex >= 0 && bagIndex < bag.length
+      ? bagIndex
+      : bag.indexOf(itemId);
+  const resolvedItemId = resolvedIndex !== -1 ? bag[resolvedIndex] : itemId;
+  const item = getItemById(resolvedItemId);
+  if (!item || item.isConsumable || resolvedIndex === -1) {
     return playerSheet;
   }
 
@@ -340,11 +346,8 @@ export function swapItemFromBag(playerSheet, itemId) {
   const currentEquippedId = equippedByType[item.type] || null;
   equippedByType[item.type] = item.id;
 
-  const nextBag = [...playerSheet.bag];
-  const removeIndex = nextBag.indexOf(item.id);
-  if (removeIndex !== -1) {
-    nextBag.splice(removeIndex, 1);
-  }
+  const nextBag = [...bag];
+  nextBag.splice(resolvedIndex, 1);
   if (currentEquippedId) {
     nextBag.push(currentEquippedId);
   }

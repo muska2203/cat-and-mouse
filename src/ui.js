@@ -243,7 +243,7 @@ function renderInventoryPanel(state) {
 
   const bagIcons = bagIds.length
     ? bagIds
-        .map((itemId) => {
+        .map((itemId, bagIndex) => {
           const item = getItemById(itemId);
           if (!item) {
             return "";
@@ -255,6 +255,7 @@ function renderInventoryPanel(state) {
               type="button"
               data-action="bag-item-action"
               data-item-id="${item.id}"
+              data-bag-index="${bagIndex}"
               title="${item.name} (${toRuType(item.type)}): ${localizeStatText(item.effectText)}"
             >
               <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>

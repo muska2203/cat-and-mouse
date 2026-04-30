@@ -58,6 +58,8 @@ function onRootClick(event) {
 
   if (action === "bag-item-action") {
     const itemId = button.dataset.itemId;
+    const bagIndexRaw = Number(button.dataset.bagIndex);
+    const bagIndex = Number.isInteger(bagIndexRaw) ? bagIndexRaw : -1;
     if (!itemId || !state.playerSheet || !state.run) {
       return;
     }
@@ -72,9 +74,13 @@ function onRootClick(event) {
       state.run = useResult.run;
       state.playerSheet = useResult.playerSheet;
       const nextBag = [...(state.playerSheet.bag || [])];
-      const removeIndex = nextBag.indexOf(itemId);
-      if (removeIndex !== -1) {
-        nextBag.splice(removeIndex, 1);
+      if (bagIndex >= 0 && bagIndex < nextBag.length) {
+        nextBag.splice(bagIndex, 1);
+      } else {
+        const removeIndex = nextBag.indexOf(itemId);
+        if (removeIndex !== -1) {
+          nextBag.splice(removeIndex, 1);
+        }
       }
       state.playerSheet = recalculateSheetFromInventory(
         state.playerSheet,
@@ -82,7 +88,7 @@ function onRootClick(event) {
         nextBag
       );
     } else {
-      state.playerSheet = swapItemFromBag(state.playerSheet, itemId);
+      state.playerSheet = swapItemFromBag(state.playerSheet, itemId, bagIndex);
     }
 
     rerender();
