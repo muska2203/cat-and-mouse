@@ -1,13 +1,13 @@
-import { CLASS_CONFIG } from "./state.js?v=0.1.0-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.1.0-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.1.0-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.1.0-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.1.0-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.1.0-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.1.0-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.1.0-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.1.0-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.1.0-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.1.1-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.1.1-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.1.1-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.1.1-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.1.1-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.1.1-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.1.1-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.1.1-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.1.1-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.1.1-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -181,6 +181,12 @@ function renderGameScreen(state) {
           </section>
           <p class="run-log">${state.run.lastLog || "—"}</p>
         </article>
+      </div>
+      <div class="mobile-controls" aria-label="Управление с телефона">
+        <button class="btn mobile-move-btn mobile-up" type="button" data-action="mobile-move" data-direction="up">▲</button>
+        <button class="btn mobile-move-btn mobile-left" type="button" data-action="mobile-move" data-direction="left">◀</button>
+        <button class="btn mobile-move-btn mobile-down" type="button" data-action="mobile-move" data-direction="down">▼</button>
+        <button class="btn mobile-move-btn mobile-right" type="button" data-action="mobile-move" data-direction="right">▶</button>
       </div>
       ${renderBuildBadge()}
     </section>

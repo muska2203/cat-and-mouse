@@ -424,9 +424,14 @@ body {
   color: #64748b;
 }
 
+.mobile-controls {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .screen-game {
     height: auto;
+    padding-bottom: 70px;
   }
 
   .game-layout {
@@ -434,6 +439,49 @@ body {
   }
 
   .game-canvas {
-    height: 60vh;
+    height: 46vh;
+  }
+
+  .inventory-panel {
+    max-height: 35vh;
+  }
+
+  .mobile-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(2, 56px);
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .mobile-move-btn {
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    font-size: 22px;
+    background: #1f2937;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+  }
+
+  .mobile-up {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mobile-left {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .mobile-down {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .mobile-right {
+    grid-column: 3;
+    grid-row: 2;
   }
 }

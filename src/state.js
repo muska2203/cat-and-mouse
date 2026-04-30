@@ -1,4 +1,4 @@
-import { buildDerivedStats } from "./rules.js?v=0.1.0-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.1.1-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,

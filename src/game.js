@@ -1,6 +1,6 @@
-import { generateMazeRun } from "./maze.js?v=0.1.0-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.1.0-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.1.0-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.1.1-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.1.1-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.1.1-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
