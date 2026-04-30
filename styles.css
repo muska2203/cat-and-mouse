@@ -186,6 +186,100 @@ body {
   position: relative;
 }
 
+.active-effects-panel {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 4;
+  min-width: 120px;
+  max-width: min(44vw, 320px);
+  padding: 6px 8px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(2px);
+  color: #e2e8f0;
+  font-size: 12px;
+}
+
+.active-effects-panel h4 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.active-effects-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.active-effect-icon-wrap {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.95);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.active-effect-icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.active-effect-badge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f8fafc;
+  text-shadow: 0 1px 2px rgba(2, 6, 23, 0.9);
+  pointer-events: none;
+}
+
+.active-effect-tooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  min-width: 220px;
+  max-width: min(52vw, 320px);
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: rgba(2, 6, 23, 0.96);
+  color: #e2e8f0;
+  font-size: 12px;
+  line-height: 1.35;
+  display: none;
+  z-index: 20;
+}
+
+.active-effect-tooltip h5 {
+  margin: 0 0 5px;
+  font-size: 12px;
+  color: #f1f5f9;
+}
+
+.active-effect-tooltip p {
+  margin: 3px 0;
+}
+
+.active-effect-icon-wrap:hover .active-effect-tooltip {
+  display: block;
+}
+
+.active-effects-empty {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
 .game-side p {
   color: #94a3b8;
   font-size: 14px;
@@ -213,6 +307,31 @@ body {
 .hp-value {
   margin-top: 6px;
   color: #fecaca;
+  font-size: 13px;
+  text-align: right;
+}
+
+.mana-block {
+  margin-bottom: 12px;
+}
+
+.mana-track {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: #1f2937;
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+
+.mana-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #60a5fa 0%, #2563eb 100%);
+}
+
+.mana-value {
+  margin-top: 6px;
+  color: #bfdbfe;
   font-size: 13px;
   text-align: right;
 }
@@ -575,6 +694,13 @@ body {
     margin-top: 10px;
     width: fit-content;
     align-self: center;
+  }
+
+  .active-effects-panel {
+    position: static;
+    margin-top: 10px;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .mobile-move-btn {

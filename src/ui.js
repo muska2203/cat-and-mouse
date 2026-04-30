@@ -1,13 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.1.2-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.1.2-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.1.2-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.1.2-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.1.2-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.1.2-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.1.2-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.1.2-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.1.2-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.1.2-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.2.0-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.2.0-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.2.0-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.2.0-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.2.0-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.0-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.2.0-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.2.0-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.2.0-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.2.0-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.2.0-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.2.0-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -56,6 +58,11 @@ export function renderApp(root, state) {
 
   if (state.screen === "ending") {
     root.innerHTML = renderEndingScreen(state);
+    return;
+  }
+
+  if (state.screen === "skills") {
+    root.innerHTML = renderSkillsScreen(state);
     return;
   }
 
@@ -119,7 +126,7 @@ function renderWelcomeScreen(state) {
                 ATK_MAGIC: selectedSheet?.derived?.ATK_MAGIC ?? 0,
                 CRIT_CHANCE: selectedSheet?.derived?.CRIT_CHANCE ?? 0,
                 CRIT_MULT: selectedSheet?.derived?.CRIT_MULT ?? 0,
-              })}
+              }, selectedSheet)}
             </ul>
           </section>
         </article>
@@ -163,6 +170,7 @@ function renderGameScreen(state) {
         ${renderInventoryPanel(state)}
         <div class="play-panel">
           <canvas id="gameCanvas" class="game-canvas" width="800" height="500"></canvas>
+          ${renderActiveEffects(state)}
           ${renderQuickbar(state)}
           <div class="mobile-controls" aria-label="Управление с телефона">
             <button class="btn mobile-move-btn mobile-up" type="button" data-action="mobile-move" data-direction="up">▲</button>
@@ -174,8 +182,9 @@ function renderGameScreen(state) {
         <article class="class-card game-side">
           <h3>Параметры мышонка</h3>
           ${renderHpBar(state.playerSheet)}
+          ${renderManaBar(state.playerSheet)}
           ${renderXpBar(state.playerSheet)}
-          <p class="progression-line">Уровень: ${state.playerSheet?.level ?? 1}</p>
+          <p class="progression-line">Уровень: <span data-action="debug-level-up">${state.playerSheet?.level ?? 1}</span></p>
           <p class="progression-line">Очки прокачки: ${state.playerSheet?.unspentPoints ?? 0}</p>
           <section class="stats-group">
             <ul class="stats-list">
@@ -234,7 +243,7 @@ function renderEndingScreen(state) {
         <article class="class-card">
           <h3>Характеристики</h3>
           <ul class="stats-list">
-            ${renderStatsList(buildFullStats(state.playerSheet))}
+            ${renderStatsList(buildFullStats(state.playerSheet), state.playerSheet)}
           </ul>
         </article>
         <article class="class-card">
@@ -313,7 +322,7 @@ function renderInventoryPanel(state) {
                 data-drag-kind="consumable"
                 data-drag-item-id="${item.id}"
                 draggable="true"
-                title="${item.name} x${count} (${toRuType(item.type)}): ${localizeStatText(item.effectText)}"
+                title="${getConsumableHoverText(item, count)}"
               >
                 <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
                 <span class="bag-icon-bonus">${formatItemBonuses(item)}</span>
@@ -367,7 +376,7 @@ function renderInventoryPanel(state) {
                 data-item-id="${entry.item.id}"
                 data-bag-instance-id="${entry.instanceId}"
                 data-bag-index="${entry.bagIndex}"
-                title="${entry.item.name} (${toRuType(entry.item.type)}): ${localizeStatText(entry.item.effectText)}"
+                title="${getItemHoverText(entry.item)}"
               >
                 <span class="bag-icon-glyph">${entry.item.icon || getItemIcon(entry.item.type)}</span>
                 <span class="bag-icon-bonus">${formatItemBonuses(entry.item, equippedItem)}</span>
@@ -396,13 +405,54 @@ function renderInventoryPanel(state) {
       </ul>
       <h4 class="bag-title">Сумка</h4>
       ${bagSections}
+      ${renderSkillsMiniPanel(state)}
     </article>
   `;
 }
 
-function renderStatsList(statsObject) {
+function renderSkillsMiniPanel(state) {
+  const classSkills = getSkillsForClass(state.playerSheet?.classId || "");
+  const mana = state.playerSheet?.mana || 0;
+  const learnedSkills = classSkills.filter((skill) => {
+    const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false };
+    return skillState.learned;
+  });
+  const content = learnedSkills.length
+    ? learnedSkills.map((skill) => {
+      const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false, level: 0 };
+      const manaCost = Math.max(1, skill.manaCost - (skill.id === "warrior_roll" ? (skillState.level - 1) : 0));
+      const notEnoughMana = mana < manaCost;
+      const classes = ["bag-icon", notEnoughMana ? "quick-slot-out" : ""].filter(Boolean).join(" ");
+      return `
+        <button
+          class="${classes}"
+          type="button"
+          data-action="left-skill-use"
+          data-skill-id="${skill.id}"
+          data-drag-kind="skill"
+          data-drag-skill-id="${skill.id}"
+          draggable="true"
+          title="${buildSkillHoverText(skill, skillState, state.playerSheet)}"
+        >
+          <span class="bag-icon-glyph">${skill.icon || "✨"}</span>
+          <span class="bag-icon-bonus">Lv${skillState.level}</span>
+          <span class="quick-slot-count">${manaCost}</span>
+        </button>
+      `;
+    }).join("")
+    : `<p class="empty-bag">Нет скиллов</p>`;
+
+  return `
+    <section class="bag-section">
+      <h5 class="bag-title">Скиллы</h5>
+      <div class="bag-grid">${content}</div>
+    </section>
+  `;
+}
+
+function renderStatsList(statsObject, playerSheet = null) {
   return Object.entries(statsObject)
-    .map(([name, value]) => `<li><span>${toRuStatName(name)}</span><strong>${value}</strong></li>`)
+    .map(([name, value]) => `<li><span title="${getStatDescriptionRu(name, playerSheet)}">${toRuStatName(name)}</span><strong>${value}</strong></li>`)
     .join("");
 }
 
@@ -415,7 +465,7 @@ function renderBaseAndTotalStats(playerSheet) {
       const totalMarkup = totalValue !== baseValue
         ? `<span class="stat-total-value"> (${totalValue})</span>`
         : "";
-      return `<li><span>${toRuStatName(key)}</span><strong>${baseValue}${totalMarkup}</strong></li>`;
+      return `<li><span title="${getStatDescriptionRu(key, playerSheet)}">${toRuStatName(key)}</span><strong>${baseValue}${totalMarkup}</strong></li>`;
     })
     .join("");
 }
@@ -428,7 +478,7 @@ function renderStatsListWithUpgrades(statsObject, playerSheet, upgradeByStat) {
       const upgradeButton = hasPoints && upgradeValue
         ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${name}">+${upgradeValue}</button>`
         : "";
-      return `<li><span>${toRuStatName(name)}</span><div class="stat-value-with-upgrade"><strong>${value}</strong>${upgradeButton}</div></li>`;
+      return `<li><span title="${getStatDescriptionRu(name, playerSheet)}">${toRuStatName(name)}</span><div class="stat-value-with-upgrade"><strong>${value}</strong>${upgradeButton}</div></li>`;
     })
     .join("");
 }
@@ -475,7 +525,7 @@ function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
         : "";
       return `
         <li>
-          <span>${toRuStatName(key)}</span>
+          <span title="${getStatDescriptionRu(key, playerSheet)}">${toRuStatName(key)}</span>
           <div class="stat-value-with-upgrade">
             <strong>${shownBase}${totalMarkup}</strong>
             ${upgradeButton}
@@ -512,7 +562,7 @@ function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
         if (delta > 0) previewClass = "stat-preview-up";
         if (delta < 0) previewClass = "stat-preview-down";
       }
-      return `<li><span>${toRuStatName(key)}</span><strong class="${previewClass}">${shown}</strong></li>`;
+      return `<li><span title="${getStatDescriptionRu(key, playerSheet)}">${toRuStatName(key)}</span><strong class="${previewClass}">${shown}</strong></li>`;
     })
     .join("");
 }
@@ -622,6 +672,91 @@ function toRunStatusRu(status) {
   return "В ПУТИ";
 }
 
+function getStatDescriptionRu(statName, playerSheet) {
+  const stats = playerSheet?.stats || {};
+  const derived = playerSheet?.derived || {};
+  if (statName === "STR") return "СИЛ: влияет на физический урон. Основная часть формулы ATK_PHYS.";
+  if (statName === "INT") return "ИНТ: влияет на магический урон. Основная часть формулы ATK_MAGIC.";
+  if (statName === "AGI") return "ЛВК: влияет на физический урон и ряд эффектов мобильности.";
+  if (statName === "LUK") return "УДЧ: влияет на шанс и силу критов, а также часть магического урона.";
+  if (statName === "HP_MAX") return "HP МАКС: верхний предел здоровья персонажа.";
+  if (statName === "HP") return "HP: текущее здоровье. При 0 персонаж проигрывает забег.";
+  if (statName === "ATK_PHYS") {
+    const str = stats.STR ?? playerSheet?.baseStats?.STR ?? 0;
+    const agi = stats.AGI ?? playerSheet?.baseStats?.AGI ?? 0;
+    return `АТК ФИЗ: STR*1.5 + AGI*0.4. Сейчас: ${derived.ATK_PHYS ?? 0} (STR=${str}, AGI=${agi}).`;
+  }
+  if (statName === "ATK_MAGIC") {
+    const intValue = stats.INT ?? playerSheet?.baseStats?.INT ?? 0;
+    const luk = stats.LUK ?? playerSheet?.baseStats?.LUK ?? 0;
+    return `АТК МАГ: INT*1.5 + LUK*0.4. Сейчас: ${derived.ATK_MAGIC ?? 0} (INT=${intValue}, LUK=${luk}).`;
+  }
+  if (statName === "CRIT_CHANCE") {
+    return `КРИТ %: шанс критического удара. Сейчас: ${derived.CRIT_CHANCE ?? 0}%.`;
+  }
+  if (statName === "CRIT_MULT") {
+    return `КРИТ Х: множитель урона крита. Сейчас: x${derived.CRIT_MULT ?? 1}.`;
+  }
+  return "Характеристика персонажа.";
+}
+
+function getItemHoverText(item) {
+  if (!item) return "";
+  if (item.isConsumable) {
+    return getConsumableHoverText(item, 1);
+  }
+  return `${item.name} (${toRuType(item.type)}): ${localizeStatText(item.effectText)}`;
+}
+
+function getConsumableHoverText(item, count) {
+  const stacksText = count > 1 ? `\nСтак: ${count}` : "";
+  if (item.id === "cheese_ration") {
+    return `${item.name}: лечит 10 HP (не выше HP МАКС), дополнительно +4 маны.${stacksText}`;
+  }
+  if (item.id === "hard_cheese") {
+    return `${item.name}: +5 HP МАКС до конца забега (эффект стакается).${stacksText}`;
+  }
+  if (item.id === "common_cracker") {
+    return `${item.name}: +4 HP МАКС до конца забега (эффект стакается).${stacksText}`;
+  }
+  if (item.id === "rare_royal_cheese") {
+    return `${item.name}: лечит 20 HP, +1 HP МАКС до конца забега и +8 маны.${stacksText}`;
+  }
+  if (item.id === "rare_spice_vial") {
+    return `${item.name}: следующий удар персонажа получает множитель x2.${stacksText}`;
+  }
+  if (item.id === "pepper_bomb") {
+    return `${item.name}: наносит 8 урона ближайшему коту.${stacksText}`;
+  }
+  return `${item.name}: ${localizeStatText(item.effectText)}.${stacksText}`;
+}
+
+function buildSkillHoverText(skill, skillState, playerSheet) {
+  const level = skillState?.level || 0;
+  const manaCost = Math.max(1, skill.manaCost - (skill.id === "warrior_roll" ? (level - 1) : 0));
+  const atkMagic = playerSheet?.derived?.ATK_MAGIC ?? 0;
+  const atkPhys = playerSheet?.derived?.ATK_PHYS ?? 0;
+  const agi = playerSheet?.stats?.AGI ?? playerSheet?.baseStats?.AGI ?? 0;
+  if (skill.id === "mage_arc_shot") {
+    const dmg = Math.max(1, Math.floor(atkMagic * (1.1 + level * 0.2)));
+    return `${skill.name}\nМана: ${manaCost}\nФормула: ATK_MAGIC * (1.1 + 0.2 * уровень_скилла)\nЗависит от: ATK_MAGIC=${atkMagic}\nТекущий урон: ${dmg}\nЦель: видимая открытая клетка с котом, не за стеной.`;
+  }
+  if (skill.id === "mage_mirror_veil") {
+    const charges = 1 + level;
+    const reduction = 1 + level;
+    return `${skill.name}\nМана: ${manaCost}\nТекущее действие: ${charges} срабатываний, -${reduction} входящего урона.\nЦель: клетка персонажа.`;
+  }
+  if (skill.id === "warrior_power_hit") {
+    const dmg = Math.max(1, Math.floor(atkPhys * (1.2 + level * 0.25)));
+    return `${skill.name}\nМана: ${manaCost}\nФормула: ATK_PHYS * (1.2 + 0.25 * уровень_скилла)\nЗависит от: ATK_PHYS=${atkPhys}\nТекущий урон: ${dmg}\nЦель: соседняя клетка с котом (радиус 1).`;
+  }
+  if (skill.id === "warrior_roll") {
+    const throughDamage = Math.max(1, Math.floor(agi * 0.6 + level));
+    return `${skill.name}\nМана: ${manaCost}\nФормула урона по пути: AGI * 0.6 + уровень_скилла\nЗависит от: AGI=${agi}\nУрон по коту в промежуточной клетке: ${throughDamage}\nЦель: клетка через 1 по прямой, нельзя через стену и на клетку с котом.`;
+  }
+  return `${skill.name}\nМана: ${manaCost}\n${skill.description}`;
+}
+
 function renderHpBar(playerSheet) {
   const hp = Math.max(0, playerSheet?.stats?.HP ?? 0);
   const hpMax = Math.max(1, playerSheet?.stats?.HP_MAX ?? 1);
@@ -650,6 +785,20 @@ function renderXpBar(playerSheet) {
   `;
 }
 
+function renderManaBar(playerSheet) {
+  const mana = Math.max(0, playerSheet?.mana ?? 0);
+  const manaMax = Math.max(1, playerSheet?.manaMax ?? 1);
+  const percent = Math.max(0, Math.min(100, Math.round((mana / manaMax) * 100)));
+  return `
+    <div class="mana-block">
+      <div class="mana-track">
+        <div class="mana-fill" style="width:${percent}%"></div>
+      </div>
+      <div class="mana-value">${mana} / ${manaMax}</div>
+    </div>
+  `;
+}
+
 function buildFullStats(playerSheet) {
   return {
     STR: playerSheet?.stats?.STR ?? 0,
@@ -668,10 +817,44 @@ function renderBuildBadge() {
   return `<p class="build-badge">${APP_TITLE} · v${APP_VERSION}</p>`;
 }
 
+function renderSkillsScreen(state) {
+  const classSkills = getSkillsForClass(state.playerSheet?.classId || "");
+  const cards = classSkills.map((skill) => {
+    const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false, level: 0 };
+    const canSpend = (state.playerSheet?.skillPoints || 0) > 0;
+    const maxed = skillState.level >= skill.maxLevel;
+    const action = !skillState.learned ? "learn-skill" : "upgrade-skill";
+    const actionLabel = !skillState.learned ? "Изучить" : "Улучшить";
+    const enabled = canSpend && !maxed;
+    return `
+      <article class="class-card">
+        <h3 title="${buildSkillHoverText(skill, skillState, state.playerSheet)}">${skill.icon || "✨"} ${skill.name}</h3>
+        <p>${skill.description}</p>
+        <p class="progression-line">Мана: ${skill.manaCost}</p>
+        <p class="progression-line">Свойство: ${skill.property}</p>
+        <p class="progression-line">Уровень: ${skillState.level}/${skill.maxLevel}</p>
+        <button class="btn btn-primary" type="button" data-action="${action}" data-skill-id="${skill.id}" ${enabled ? "" : "disabled"}>
+          ${actionLabel}
+        </button>
+      </article>
+    `;
+  }).join("");
+
+  return `
+    <section class="screen">
+      <h1 class="screen-title">Скиллы</h1>
+      <p class="screen-subtitle">Каждые 2 уровня дается 1 очко скилла. Доступно: ${state.playerSheet?.skillPoints || 0}</p>
+      <div class="sheet-grid">${cards}</div>
+      ${renderBuildBadge()}
+    </section>
+  `;
+}
+
 function renderQuickbar(state) {
   const slots = state.uiHud?.quickbarSlots || [];
   const pulseSlot = state.uiHud?.quickbarPulseSlot;
   const bagEntries = state.playerSheet?.bag || [];
+  const mana = state.playerSheet?.mana || 0;
   const counts = new Map();
   for (const entry of bagEntries) {
     const itemId = typeof entry === "string" ? entry : entry?.itemId;
@@ -681,15 +864,28 @@ function renderQuickbar(state) {
 
   const slotButtons = Array.from({ length: 9 }, (_, idx) => {
     const slotIndex = idx + 1;
-    const itemId = slots[idx] || null;
-    const item = itemId ? getItemById(itemId) : null;
-    const count = itemId ? (counts.get(itemId) || 0) : 0;
-    const isDraggable = Boolean(itemId);
-    const isOutOfStock = Boolean(itemId) && count <= 0;
+    const slotValue = slots[idx] || null;
+    const slotPayload = normalizeQuickbarSlot(slotValue);
+    const item = slotPayload?.kind === "consumable" ? getItemById(slotPayload.itemId) : null;
+    const skill = slotPayload?.kind === "skill" ? getSkillById(slotPayload.skillId) : null;
+    const count = item ? (counts.get(item.id) || 0) : 0;
+    const isDraggable = Boolean(slotPayload);
+    const isOutOfStock = Boolean(item) && count <= 0;
+    const isNotEnoughMana = Boolean(skill) && mana < (skill.manaCost || 0);
+    const glyph = item
+      ? (item.icon || getItemIcon(item.type))
+      : skill
+        ? (skill.icon || "✨")
+        : "·";
+    const title = item
+      ? `${item.name} (${count})`
+      : skill
+        ? `${skill.name} (${skill.manaCost} маны)`
+        : `Слот ${slotIndex}`;
     const classes = [
       "quick-slot-btn",
       pulseSlot === idx ? "quick-slot-pulse" : "",
-      isOutOfStock ? "quick-slot-out" : "",
+      (isOutOfStock || isNotEnoughMana) ? "quick-slot-out" : "",
     ].filter(Boolean).join(" ");
 
     return `
@@ -701,11 +897,12 @@ function renderQuickbar(state) {
         data-drag-kind="quick-slot"
         data-drag-slot-index="${idx}"
         draggable="${isDraggable ? "true" : "false"}"
-        title="${item ? `${item.name} (${count})` : `Слот ${slotIndex}`}"
+        title="${title}"
       >
         <span class="quick-slot-key">${slotIndex}</span>
-        <span class="quick-slot-glyph">${item ? (item.icon || getItemIcon(item.type)) : "·"}</span>
+        <span class="quick-slot-glyph">${glyph}</span>
         ${item ? `<span class="quick-slot-count">${count}</span>` : ""}
+        ${skill ? `<span class="quick-slot-count">${skill.manaCost}</span>` : ""}
       </button>
     `;
   }).join("");
@@ -715,4 +912,99 @@ function renderQuickbar(state) {
       ${slotButtons}
     </div>
   `;
+}
+
+function renderActiveEffects(state) {
+  const effects = collectActiveEffects(state);
+  const content = effects.length
+    ? effects.map((effect) => {
+      const centerBadge = effect.badge || "";
+      const detailRows = [
+        effect.remainingText ? `<p><strong>Осталось:</strong> ${effect.remainingText}</p>` : "",
+        effect.description ? `<p><strong>Эффект:</strong> ${effect.description}</p>` : "",
+        effect.stacksText ? `<p><strong>Стаки:</strong> ${effect.stacksText}</p>` : "",
+      ].filter(Boolean).join("");
+      return `
+        <div class="active-effect-icon-wrap" title="${effect.name}">
+          <span class="active-effect-icon">${effect.icon}</span>
+          <span class="active-effect-badge">${centerBadge}</span>
+          <div class="active-effect-tooltip">
+            <h5>${effect.name}</h5>
+            ${detailRows}
+          </div>
+        </div>
+      `;
+    }).join("")
+    : `<span class="active-effects-empty">—</span>`;
+  return `
+    <aside class="active-effects-panel" aria-label="Активные эффекты">
+      <h4>Эффекты</h4>
+      <div class="active-effects-icons">${content}</div>
+    </aside>
+  `;
+}
+
+function collectActiveEffects(state) {
+  const run = state.run || {};
+  const stacks = state.playerSheet?.effectStacks || {};
+  const effects = [];
+  if ((run.nextHitMultiplier || 1) > 1) {
+    effects.push({
+      name: "Колба специй",
+      icon: "🧪",
+      badge: "1",
+      remainingText: "1 применение",
+      description: `Следующий удар x${run.nextHitMultiplier}.`,
+      stacksText: "1",
+    });
+  }
+  if (run.mirrorVeil?.charges > 0) {
+    effects.push({
+      name: "Зеркальная вуаль",
+      icon: "🪞",
+      badge: String(run.mirrorVeil.charges),
+      remainingText: `${run.mirrorVeil.charges} применений`,
+      description: `Снижает входящий урон на ${run.mirrorVeil.reduction}.`,
+      stacksText: "1",
+    });
+  }
+  if ((stacks.hard_cheese || 0) > 0) {
+    effects.push({
+      name: "Твердый сыр",
+      icon: "🧀",
+      badge: "∞",
+      remainingText: "До конца забега",
+      description: "Постоянно увеличивает HP_MAX на 5.",
+      stacksText: `${stacks.hard_cheese} (суммарно +${stacks.hard_cheese * 5} HP_MAX)`,
+    });
+  }
+  if ((stacks.common_cracker || 0) > 0) {
+    effects.push({
+      name: "Сухарик",
+      icon: "🥨",
+      badge: "∞",
+      remainingText: "До конца забега",
+      description: "Постоянно увеличивает HP_MAX на 4.",
+      stacksText: `${stacks.common_cracker} (суммарно +${stacks.common_cracker * 4} HP_MAX)`,
+    });
+  }
+  if ((stacks.rare_royal_cheese || 0) > 0) {
+    effects.push({
+      name: "Королевский сыр",
+      icon: "👑",
+      badge: "∞",
+      remainingText: "До конца забега",
+      description: "Постоянно увеличивает HP_MAX на 1.",
+      stacksText: `${stacks.rare_royal_cheese} (суммарно +${stacks.rare_royal_cheese} HP_MAX)`,
+    });
+  }
+  return effects;
+}
+
+function normalizeQuickbarSlot(value) {
+  if (!value) return null;
+  if (typeof value === "string") return { kind: "consumable", itemId: value };
+  if (value.kind === "consumable" && value.itemId) return value;
+  if (value.kind === "skill" && value.skillId) return value;
+  return null;
 }

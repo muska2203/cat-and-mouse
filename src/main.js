@@ -1,27 +1,33 @@
-import { createInitialState } from "./state.js?v=0.1.2-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.1.2-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.1.2-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.1.2-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.1.2-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.1.2-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.1.2-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.1.2-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.1.2-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.1.2-pre-alpha";
-import { createRunState } from "./game.js?v=0.1.2-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.1.2-pre-alpha";
-import { tryStep } from "./game.js?v=0.1.2-pre-alpha";
-import { useConsumable } from "./game.js?v=0.1.2-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.1.2-pre-alpha";
-import { renderApp } from "./ui.js?v=0.1.2-pre-alpha";
+import { createInitialState } from "./state.js?v=0.2.0-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.2.0-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.2.0-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.2.0-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.0-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.2.0-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.2.0-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.2.0-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.2.0-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.2.0-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.2.0-pre-alpha";
+import { createRunState } from "./game.js?v=0.2.0-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.2.0-pre-alpha";
+import { tryStep } from "./game.js?v=0.2.0-pre-alpha";
+import { useConsumable } from "./game.js?v=0.2.0-pre-alpha";
+import { useSkillAtCell } from "./game.js?v=0.2.0-pre-alpha";
+import { getSkillTargetCells } from "./game.js?v=0.2.0-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.2.0-pre-alpha";
+import { renderApp } from "./ui.js?v=0.2.0-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.2.0-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
 
 function rerender() {
+  syncSkillTargetPreview();
   renderApp(root, state);
   drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, performance.now());
   syncHpHud();
+  syncManaHud();
 }
 
 function onRootClick(event) {
@@ -52,6 +58,7 @@ function onRootClick(event) {
     state.playerSheet.baseStats.HP = state.playerSheet.stats.HP_MAX;
     state.playerSheet.stats.HP = state.playerSheet.stats.HP_MAX;
     state.uiHud.hpVisual = state.playerSheet.stats.HP;
+    state.uiHud.manaVisual = state.playerSheet.mana || 0;
     state.run = createRunState(state.playerSheet, 1);
     state.screen = "game";
     rerender();
@@ -100,6 +107,8 @@ function onRootClick(event) {
     state.playerSheet = reset.playerSheet;
     state.starterLoadout = reset.starterLoadout;
     state.run = reset.run;
+    state.uiHud = reset.uiHud;
+    clearSkillTargeting();
     rerender();
   }
 
@@ -127,10 +136,84 @@ function onRootClick(event) {
     }
     useQuickbarSlot(slotIndex);
   }
+
+  if (action === "left-skill-use") {
+    const skillId = button.dataset.skillId;
+    if (!skillId || !state.playerSheet || !state.run) {
+      return;
+    }
+    const skillDef = getSkillById(skillId);
+    const skillState = state.playerSheet.skills?.[skillId];
+    if (!skillDef || !skillState?.learned || skillState.level <= 0) {
+      return;
+    }
+    const manaCost = Math.max(1, skillDef.manaCost - (skillId === "warrior_roll" ? (skillState.level - 1) : 0));
+    if ((state.playerSheet.mana || 0) < manaCost) {
+      state.run.lastLog = "Недостаточно маны.";
+      rerender();
+      return;
+    }
+    const targets = getSkillTargetCells(state.run, state.playerSheet, skillId);
+    if (targets.length === 0) {
+      state.run.lastLog = "Нет доступных клеток для применения.";
+      rerender();
+      return;
+    }
+    state.uiHud.skillTargeting = {
+      slotIndex: null,
+      skillId,
+      previousSkillPoints: state.playerSheet.skillPoints || 0,
+      targets,
+    };
+    rerender();
+  }
+
+  if (action === "open-skills") {
+    state.screen = "skills";
+    rerender();
+  }
+
+  if (action === "learn-skill" || action === "upgrade-skill") {
+    const skillId = button.dataset.skillId;
+    if (!skillId || !state.playerSheet) {
+      return;
+    }
+    const skillDef = getSkillById(skillId);
+    const skillState = state.playerSheet.skills?.[skillId];
+    if (!skillDef || !skillState || (state.playerSheet.skillPoints || 0) <= 0) {
+      return;
+    }
+    if (skillDef.classId !== state.playerSheet.classId || skillState.level >= skillDef.maxLevel) {
+      return;
+    }
+    skillState.learned = true;
+    skillState.level += 1;
+    state.playerSheet.skillPoints -= 1;
+    state.screen = "game";
+    rerender();
+  }
+
+  if (action === "debug-level-up") {
+    if (!state.playerSheet) {
+      return;
+    }
+    state.playerSheet.level = (state.playerSheet.level || 1) + 1;
+    state.playerSheet.unspentPoints = (state.playerSheet.unspentPoints || 0) + PROGRESSION_CONFIG.pointsPerLevel;
+    if (state.playerSheet.level % 2 === 0) {
+      state.playerSheet.skillPoints = (state.playerSheet.skillPoints || 0) + 1;
+    }
+    maybeOpenSkillsOnNewPoint(0);
+    rerender();
+  }
 }
 
 function onKeyDown(event) {
   if (state.screen !== "game" || !state.run) {
+    return;
+  }
+  if (state.uiHud.skillTargeting?.skillId && (event.code === "Space" || event.key === " ")) {
+    event.preventDefault();
+    tryCastPreparedSkillOnSelf();
     return;
   }
 
@@ -163,6 +246,11 @@ function onKeyDown(event) {
   const direction = map[event.code] || map[event.key];
   if (direction) {
     event.preventDefault();
+    if (state.uiHud.skillTargeting?.skillId) {
+      tryCastPreparedSkillByDirection(direction);
+      return;
+    }
+    clearSkillTargeting();
     performStep(direction);
     return;
   }
@@ -201,6 +289,7 @@ function performStep(direction) {
     return;
   }
 
+  const previousSkillPoints = state.playerSheet?.skillPoints || 0;
   const stepResult = tryStep(state.run, state.playerSheet, direction);
   state.run = stepResult.run;
   state.playerSheet = stepResult.playerSheet;
@@ -223,6 +312,7 @@ function performStep(direction) {
   if (state.run?.status === "victory" || state.run?.status === "defeat") {
     state.screen = "ending";
   }
+  maybeOpenSkillsOnNewPoint(previousSkillPoints);
 
   rerender();
 }
@@ -238,6 +328,7 @@ function animationLoop(nowMs) {
     handleLevelTransition(nowMs);
     drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, nowMs);
     animateHpHud();
+    animateManaHud();
   }
   requestAnimationFrame(animationLoop);
 }
@@ -281,6 +372,25 @@ function syncHpHud() {
   hpValue.textContent = `${Math.round(state.uiHud.hpVisual)} / ${hpMax}`;
 }
 
+function syncManaHud() {
+  if (state.screen !== "game" || !state.playerSheet) {
+    return;
+  }
+  const mana = state.playerSheet.mana || 0;
+  if (state.uiHud.manaVisual == null) {
+    state.uiHud.manaVisual = mana;
+  }
+  const manaFill = root.querySelector(".mana-fill");
+  const manaValue = root.querySelector(".mana-value");
+  if (!manaFill || !manaValue) {
+    return;
+  }
+  const manaMax = Math.max(1, state.playerSheet.manaMax || 1);
+  const percent = Math.max(0, Math.min(100, (state.uiHud.manaVisual / manaMax) * 100));
+  manaFill.style.width = `${percent}%`;
+  manaValue.textContent = `${Math.round(state.uiHud.manaVisual)} / ${manaMax}`;
+}
+
 function animateHpHud() {
   if (state.screen !== "game" || !state.playerSheet) {
     return;
@@ -296,6 +406,23 @@ function animateHpHud() {
     state.uiHud.hpVisual += diff * 0.22;
   }
   syncHpHud();
+}
+
+function animateManaHud() {
+  if (state.screen !== "game" || !state.playerSheet) {
+    return;
+  }
+  const target = state.playerSheet.mana || 0;
+  if (state.uiHud.manaVisual == null) {
+    state.uiHud.manaVisual = target;
+  }
+  const diff = target - state.uiHud.manaVisual;
+  if (Math.abs(diff) < 0.05) {
+    state.uiHud.manaVisual = target;
+  } else {
+    state.uiHud.manaVisual += diff * 0.22;
+  }
+  syncManaHud();
 }
 
 function onRootWheel(event) {
@@ -373,17 +500,30 @@ function onRootDragStart(event) {
   }
 
   const consumable = event.target.closest("[data-drag-kind='consumable']");
-  if (!consumable) {
+  if (consumable) {
+    const itemId = consumable.dataset.dragItemId;
+    if (!itemId) {
+      event.preventDefault();
+      return;
+    }
+    state.uiHud.dragPayload = { kind: "consumable", itemId };
+    event.dataTransfer.effectAllowed = "copyMove";
+    event.dataTransfer.setData("text/plain", `consumable:${itemId}`);
     return;
   }
-  const itemId = consumable.dataset.dragItemId;
-  if (!itemId) {
+
+  const skill = event.target.closest("[data-drag-kind='skill']");
+  if (!skill) {
+    return;
+  }
+  const skillId = skill.dataset.dragSkillId;
+  if (!skillId) {
     event.preventDefault();
     return;
   }
-  state.uiHud.dragPayload = { kind: "consumable", itemId };
+  state.uiHud.dragPayload = { kind: "skill", skillId };
   event.dataTransfer.effectAllowed = "copyMove";
-  event.dataTransfer.setData("text/plain", `consumable:${itemId}`);
+  event.dataTransfer.setData("text/plain", `skill:${skillId}`);
 }
 
 function onRootDragOver(event) {
@@ -412,7 +552,10 @@ function onRootDrop(event) {
   const slots = [...(state.uiHud.quickbarSlots || [])];
   const payload = state.uiHud.dragPayload;
   if (payload.kind === "consumable" && payload.itemId) {
-    slots[targetSlot] = payload.itemId;
+    slots[targetSlot] = { kind: "consumable", itemId: payload.itemId };
+  }
+  if (payload.kind === "skill" && payload.skillId) {
+    slots[targetSlot] = { kind: "skill", skillId: payload.skillId };
   }
   if (payload.kind === "quick-slot" && Number.isInteger(payload.slotIndex)) {
     const sourceSlot = payload.slotIndex;
@@ -444,20 +587,97 @@ function onRootDragEnd(event) {
   state.uiHud.dragPayload = null;
 }
 
+function onCanvasClick(event, canvas) {
+  if (state.screen !== "game" || !state.run || !state.playerSheet) {
+    return;
+  }
+  const targeting = state.uiHud.skillTargeting;
+  if (!targeting?.skillId) {
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const localX = event.clientX - rect.left;
+  const localY = event.clientY - rect.top;
+  const cell = screenPointToGrid(localX, localY, rect.width, rect.height);
+  if (!cell) {
+    return;
+  }
+  const result = useSkillAtCell(state.run, state.playerSheet, targeting.skillId, cell.x, cell.y);
+  state.run = result.run;
+  state.playerSheet = result.playerSheet;
+  if (!result.ok) {
+    rerender();
+    return;
+  }
+  if (Number.isInteger(targeting.slotIndex)) {
+    pulseQuickbarSlot(targeting.slotIndex);
+  }
+  clearSkillTargeting();
+  if (state.run?.pendingLoot && state.playerSheet) {
+    const lootResult = addLootItemToPlayer(state.playerSheet, state.run.pendingLoot.itemId);
+    state.playerSheet = lootResult.playerSheet;
+    delete state.run.pendingLoot;
+  }
+  maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  rerender();
+}
+
 function useQuickbarSlot(slotIndex) {
   if (!state.playerSheet || !state.run) {
     return;
   }
-  const itemId = state.uiHud.quickbarSlots?.[slotIndex];
-  if (!itemId) {
+  const slotValue = state.uiHud.quickbarSlots?.[slotIndex];
+  if (!slotValue) {
     return;
   }
-  const consumed = useConsumableByItemId(itemId, null, -1);
+  const slotPayload = normalizeQuickbarSlot(slotValue);
+  if (!slotPayload) {
+    return;
+  }
+  let consumed = false;
+  if (slotPayload.kind === "consumable") {
+    clearSkillTargeting();
+    consumed = useConsumableByItemId(slotPayload.itemId, null, -1);
+  } else if (slotPayload.kind === "skill") {
+    const skillTargets = getSkillTargetCells(state.run, state.playerSheet, slotPayload.skillId);
+    if (skillTargets.length === 0) {
+      consumed = false;
+    } else {
+      const alreadyActive = state.uiHud.skillTargeting?.slotIndex === slotIndex;
+      if (alreadyActive) {
+        clearSkillTargeting();
+      } else {
+        state.uiHud.skillTargeting = {
+          slotIndex,
+          skillId: slotPayload.skillId,
+          previousSkillPoints: state.playerSheet.skillPoints || 0,
+          targets: skillTargets,
+        };
+      }
+      rerender();
+      return;
+    }
+  }
   if (!consumed) {
+    rerender();
     return;
   }
   pulseQuickbarSlot(slotIndex);
   rerender();
+}
+
+function normalizeQuickbarSlot(value) {
+  if (!value) return null;
+  if (typeof value === "string") {
+    return { kind: "consumable", itemId: value };
+  }
+  if (value.kind === "consumable" && value.itemId) {
+    return value;
+  }
+  if (value.kind === "skill" && value.skillId) {
+    return value;
+  }
+  return null;
 }
 
 function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
@@ -495,6 +715,7 @@ function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
     state.playerSheet.equippedByType,
     nextBag
   );
+  maybeOpenSkillsOnNewPoint(0);
   return true;
 }
 
@@ -509,6 +730,117 @@ function pulseQuickbarSlot(slotIndex) {
   }, 220);
 }
 
+function clearSkillTargeting() {
+  state.uiHud.skillTargeting = null;
+  if (state.run) {
+    delete state.run.skillTargetCells;
+  }
+}
+
+function syncSkillTargetPreview() {
+  if (!state.run) {
+    return;
+  }
+  const targets = state.uiHud.skillTargeting?.targets || [];
+  state.run.skillTargetCells = targets;
+}
+
+function maybeOpenSkillsOnNewPoint(previousPoints = 0) {
+  const nowPoints = state.playerSheet?.skillPoints || 0;
+  if (state.screen === "game" && nowPoints > previousPoints) {
+    state.screen = "skills";
+    clearSkillTargeting();
+  }
+}
+
+function screenPointToGrid(localX, localY, width, height) {
+  if (!state.run) {
+    return null;
+  }
+  const tile = Math.max(24, Math.floor(Math.min(width, height) / 11));
+  const cameraX = state.run.player.x + 0.5;
+  const cameraY = state.run.player.y + 0.5;
+  const offsetX = width / 2 - cameraX * tile;
+  const offsetY = height / 2 - cameraY * tile;
+  const gx = Math.floor((localX - offsetX) / tile);
+  const gy = Math.floor((localY - offsetY) / tile);
+  if (gx < 0 || gy < 0 || gx >= state.run.width || gy >= state.run.height) {
+    return null;
+  }
+  return { x: gx, y: gy };
+}
+
+function tryCastPreparedSkillByDirection(direction) {
+  const targeting = state.uiHud.skillTargeting;
+  if (!targeting?.skillId || !state.run || !state.playerSheet) {
+    return;
+  }
+  const px = state.run.player.x;
+  const py = state.run.player.y;
+  const targets = targeting.targets || [];
+  const directionalTargets = targets.filter((cell) => {
+    if (direction === "up") return cell.x === px && cell.y < py;
+    if (direction === "down") return cell.x === px && cell.y > py;
+    if (direction === "left") return cell.y === py && cell.x < px;
+    if (direction === "right") return cell.y === py && cell.x > px;
+    return false;
+  });
+
+  if (directionalTargets.length !== 1) {
+    state.run.lastLog = "В выбранном направлении должна быть ровно одна доступная клетка для подготовленного скилла.";
+    rerender();
+    return;
+  }
+
+  const cell = directionalTargets[0];
+  const result = useSkillAtCell(state.run, state.playerSheet, targeting.skillId, cell.x, cell.y);
+  state.run = result.run;
+  state.playerSheet = result.playerSheet;
+  if (!result.ok) {
+    rerender();
+    return;
+  }
+  if (Number.isInteger(targeting.slotIndex)) {
+    pulseQuickbarSlot(targeting.slotIndex);
+  }
+  clearSkillTargeting();
+  if (state.run?.pendingLoot && state.playerSheet) {
+    const lootResult = addLootItemToPlayer(state.playerSheet, state.run.pendingLoot.itemId);
+    state.playerSheet = lootResult.playerSheet;
+    delete state.run.pendingLoot;
+  }
+  maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  rerender();
+}
+
+function tryCastPreparedSkillOnSelf() {
+  const targeting = state.uiHud.skillTargeting;
+  if (!targeting?.skillId || !state.run || !state.playerSheet) {
+    return;
+  }
+  const px = state.run.player.x;
+  const py = state.run.player.y;
+  const selfCellAllowed = (targeting.targets || []).some((cell) => cell.x === px && cell.y === py);
+  if (!selfCellAllowed) {
+    state.run.lastLog = "Этот скилл нельзя применить на текущую клетку.";
+    rerender();
+    return;
+  }
+  const result = useSkillAtCell(state.run, state.playerSheet, targeting.skillId, px, py);
+  state.run = result.run;
+  state.playerSheet = result.playerSheet;
+  if (!result.ok) {
+    rerender();
+    return;
+  }
+  if (Number.isInteger(targeting.slotIndex)) {
+    pulseQuickbarSlot(targeting.slotIndex);
+  }
+  clearSkillTargeting();
+  maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  rerender();
+}
+
 root.addEventListener("click", onRootClick);
 root.addEventListener("wheel", onRootWheel, { passive: false });
 root.addEventListener("mouseover", onRootMouseOver);
@@ -517,6 +849,12 @@ root.addEventListener("dragstart", onRootDragStart);
 root.addEventListener("dragover", onRootDragOver);
 root.addEventListener("drop", onRootDrop);
 root.addEventListener("dragend", onRootDragEnd);
+root.addEventListener("click", (event) => {
+  const canvas = event.target.closest("#gameCanvas");
+  if (canvas) {
+    onCanvasClick(event, canvas);
+  }
+});
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("resize", onResize);
 requestAnimationFrame(animationLoop);

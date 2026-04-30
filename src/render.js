@@ -112,9 +112,36 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     }
   }
 
+  if (Array.isArray(run.skillTargetCells) && run.skillTargetCells.length > 0) {
+    for (const cell of run.skillTargetCells) {
+      if (!run.discovered?.[cell.y]?.[cell.x]) continue;
+      const px = Math.floor(cameraOffsetX + cell.x * tile);
+      const py = Math.floor(cameraOffsetY + cell.y * tile);
+      ctx.fillStyle = "rgba(96, 165, 250, 0.25)";
+      ctx.fillRect(px + 2, py + 2, tile - 4, tile - 4);
+      ctx.strokeStyle = "rgba(147, 197, 253, 0.85)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 2, py + 2, tile - 4, tile - 4);
+    }
+  }
+
   ctx.font = `${Math.max(12, Math.floor(tile * 0.62))}px Arial`;
   const mouseScreenX = cameraOffsetX + playerVisual.x * tile + tile / 2;
   const mouseScreenY = cameraOffsetY + playerVisual.y * tile + tile / 2;
+
+  if (run.mirrorVeil?.charges > 0) {
+    const pulse = (Math.sin(nowMs * 0.012) + 1) / 2;
+    const radius = Math.floor(tile * (0.36 + pulse * 0.1));
+    const aura = ctx.createRadialGradient(mouseScreenX, mouseScreenY, 4, mouseScreenX, mouseScreenY, radius);
+    aura.addColorStop(0, "rgba(147, 197, 253, 0.22)");
+    aura.addColorStop(0.75, "rgba(125, 211, 252, 0.14)");
+    aura.addColorStop(1, "rgba(56, 189, 248, 0)");
+    ctx.fillStyle = aura;
+    ctx.beginPath();
+    ctx.arc(mouseScreenX, mouseScreenY, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   ctx.fillText(
     "🐭",
     mouseScreenX,

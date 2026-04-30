@@ -1,6 +1,7 @@
-import { generateMazeRun } from "./maze.js?v=0.1.2-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.1.2-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.1.2-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.2.0-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.2.0-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.2.0-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.2.0-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -276,6 +277,9 @@ function applyXpGain(playerSheet, gainedXp) {
     playerSheet.xp -= playerSheet.xpToNext;
     playerSheet.level = (playerSheet.level || 1) + 1;
     playerSheet.unspentPoints = (playerSheet.unspentPoints || 0) + PROGRESSION_CONFIG.pointsPerLevel;
+    if (playerSheet.level % 2 === 0) {
+      playerSheet.skillPoints = (playerSheet.skillPoints || 0) + 1;
+    }
     playerSheet.xpToNext = Math.max(1, Math.ceil((playerSheet.xpToNext || PROGRESSION_CONFIG.baseXpToNext) * PROGRESSION_CONFIG.xpGrowthFactor));
     levelUps += 1;
   }
@@ -307,7 +311,15 @@ export function createRunState(playerSheet, level = 1) {
 
 export function createNextLevelRun(previousRun, playerSheet) {
   const nextLevel = (previousRun?.level || 1) + 1;
-  return createRunState(playerSheet, nextLevel);
+  const nextRun = createRunState(playerSheet, nextLevel);
+  nextRun.nextHitMultiplier = Math.max(1, previousRun?.nextHitMultiplier || 1);
+  if (previousRun?.mirrorVeil?.charges > 0) {
+    nextRun.mirrorVeil = {
+      charges: previousRun.mirrorVeil.charges,
+      reduction: previousRun.mirrorVeil.reduction,
+    };
+  }
+  return nextRun;
 }
 
 export function useConsumable(run, playerSheet, item) {
@@ -318,20 +330,43 @@ export function useConsumable(run, playerSheet, item) {
   let log = `${item.name} применен.`;
   const currentHp = playerSheet.stats?.HP ?? playerSheet.baseStats.HP ?? 0;
   const currentHpMax = playerSheet.stats?.HP_MAX ?? playerSheet.baseStats.HP_MAX ?? 1;
+  const currentMana = playerSheet.mana ?? 0;
+  const currentManaMax = playerSheet.manaMax ?? 0;
+  const manaByHealingItem = {
+    cheese_ration: 4,
+    rare_royal_cheese: 8,
+  };
+  let restoredMana = 0;
   if (item.id === "cheese_ration") {
-    playerSheet.baseStats.HP = Math.min(currentHpMax, currentHp + 10);
+    const nextHp = Math.min(currentHpMax, currentHp + 10);
+    playerSheet.baseStats.HP = nextHp;
+    restoredMana = manaByHealingItem[item.id] || 0;
     log = `${item.name}: восстановлено 10 HP.`;
   } else if (item.id === "hard_cheese") {
     playerSheet.baseStats.HP_MAX += 5;
     playerSheet.baseStats.HP = currentHp;
+    playerSheet.effectStacks = {
+      ...(playerSheet.effectStacks || {}),
+      hard_cheese: (playerSheet.effectStacks?.hard_cheese || 0) + 1,
+    };
     log = `${item.name}: HP МАКС +5 до конца забега.`;
   } else if (item.id === "common_cracker") {
     playerSheet.baseStats.HP_MAX += 4;
     playerSheet.baseStats.HP = currentHp;
+    playerSheet.effectStacks = {
+      ...(playerSheet.effectStacks || {}),
+      common_cracker: (playerSheet.effectStacks?.common_cracker || 0) + 1,
+    };
     log = `${item.name}: HP МАКС +4 до конца забега.`;
   } else if (item.id === "rare_royal_cheese") {
+    const nextHp = Math.min(currentHpMax + 1, currentHp + 20);
     playerSheet.baseStats.HP_MAX += 1;
-    playerSheet.baseStats.HP = currentHp + 20;
+    playerSheet.baseStats.HP = nextHp;
+    playerSheet.effectStacks = {
+      ...(playerSheet.effectStacks || {}),
+      rare_royal_cheese: (playerSheet.effectStacks?.rare_royal_cheese || 0) + 1,
+    };
+    restoredMana = manaByHealingItem[item.id] || 0;
     log = `${item.name}: +1 HP МАКС и лечение 20 HP.`;
   } else if (item.id === "rare_spice_vial") {
     run.nextHitMultiplier = 2;
@@ -354,9 +389,237 @@ export function useConsumable(run, playerSheet, item) {
       }
     }
   }
+  if (restoredMana > 0) {
+    const nextMana = Math.min(currentManaMax, currentMana + restoredMana);
+    const deltaMana = nextMana - currentMana;
+    playerSheet.mana = nextMana;
+    if (deltaMana > 0) {
+      log = `${log} Маны: +${deltaMana}.`;
+    }
+  }
 
   run.lastLog = log;
   return { run, playerSheet, log };
+}
+
+export function useSkill(run, playerSheet, skillId) {
+  return useSkillAtCell(run, playerSheet, skillId, run?.player?.x, run?.player?.y);
+}
+
+export function getSkillTargetCells(run, playerSheet, skillId) {
+  if (!run || !playerSheet || !skillId) {
+    return [];
+  }
+  const skillState = playerSheet.skills?.[skillId];
+  if (!skillState?.learned || skillState.level <= 0) {
+    return [];
+  }
+  const px = run.player.x;
+  const py = run.player.y;
+  const result = [];
+  if (skillId === "mage_arc_shot") {
+    for (const object of run.objects || []) {
+      if (object.type !== "enemy") continue;
+      if (!run.discovered?.[object.y]?.[object.x]) continue;
+      if (!hasLineOfSight(run, run.player.x, run.player.y, object.x, object.y)) continue;
+      result.push({ x: object.x, y: object.y });
+    }
+  } else if (skillId === "mage_mirror_veil") {
+    result.push({ x: px, y: py });
+  } else if (skillId === "warrior_power_hit") {
+    const neighbors = [
+      { x: px + 1, y: py },
+      { x: px - 1, y: py },
+      { x: px, y: py + 1 },
+      { x: px, y: py - 1 },
+    ];
+    for (const cell of neighbors) {
+      if (!inBounds(cell.x, cell.y, run)) continue;
+      const object = getObjectAt(run, cell.x, cell.y);
+      if (object?.type === "enemy") {
+        result.push(cell);
+      }
+    }
+  } else if (skillId === "warrior_roll") {
+    const deltas = [
+      { x: 1, y: 0 },
+      { x: -1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: -1 },
+    ];
+    for (const delta of deltas) {
+      const midX = px + delta.x;
+      const midY = py + delta.y;
+      const targetX = px + delta.x * 2;
+      const targetY = py + delta.y * 2;
+      if (!inBounds(targetX, targetY, run)) continue;
+      if (!inBounds(midX, midY, run)) continue;
+      if (isWall(midX, midY, run) || isWall(targetX, targetY, run)) continue;
+      const targetObject = getObjectAt(run, targetX, targetY);
+      if (targetObject?.type === "enemy") continue;
+      result.push({ x: targetX, y: targetY });
+    }
+  }
+  return result;
+}
+
+export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
+  if (!run || !playerSheet || !skillId) {
+    return { run, playerSheet, ok: false, log: "" };
+  }
+  const skillDef = getSkillById(skillId);
+  const skillState = playerSheet.skills?.[skillId];
+  if (!skillDef || !skillState?.learned || skillState.level <= 0) {
+    return { run, playerSheet, ok: false, log: "Скилл не изучен." };
+  }
+
+  const skillLevel = skillState.level;
+  const manaCost = Math.max(1, skillDef.manaCost - (skillId === "warrior_roll" ? (skillLevel - 1) : 0));
+  const mana = playerSheet.mana ?? 0;
+  if (mana < manaCost) {
+    return { run, playerSheet, ok: false, log: "Недостаточно маны." };
+  }
+  const validTargets = getSkillTargetCells(run, playerSheet, skillId);
+  const isValidTarget = validTargets.some((cell) => cell.x === targetX && cell.y === targetY);
+  if (!isValidTarget) {
+    return { run, playerSheet, ok: false, log: "Неверная клетка для скилла." };
+  }
+
+  let log = "";
+  let ok = false;
+  if (skillId === "mage_arc_shot") {
+    const enemy = getObjectAt(run, targetX, targetY);
+    if (enemy) {
+      const base = playerSheet.derived?.ATK_MAGIC ?? 1;
+      const damage = Math.max(1, Math.floor(base * (1.1 + skillLevel * 0.2)));
+      enemy.data.hp = Math.max(0, enemy.data.hp - damage);
+      run.floatingTexts.push({
+        x: enemy.x,
+        y: enemy.y,
+        value: `-${damage}`,
+        color: "#93c5fd",
+        durationMs: 700,
+        scale: 1.2,
+        startMs: null,
+      });
+      if (enemy.data.hp <= 0) {
+        const gainedXp = getXpForEnemy(enemy.id);
+        const xpResult = applyXpGain(playerSheet, gainedXp);
+        removeObject(run, enemy.id);
+        const levelUpLog = xpResult.levelUps > 0
+          ? ` Уровень повышен: ${playerSheet.level}.`
+          : "";
+        log = `${skillDef.name}: ${enemy.name} получает ${damage}. Кот повержен. +${gainedXp} XP.${levelUpLog}`;
+      } else {
+        log = `${skillDef.name}: ${enemy.name} получает ${damage} урона.`;
+      }
+      ok = true;
+    } else {
+      log = `${skillDef.name}: рядом нет цели.`;
+    }
+  } else if (skillId === "mage_mirror_veil") {
+    run.mirrorVeil = {
+      charges: 1 + skillLevel,
+      reduction: 1 + skillLevel,
+    };
+    log = `${skillDef.name}: защита активна (${run.mirrorVeil.charges} уд.).`;
+    ok = true;
+  } else if (skillId === "warrior_power_hit") {
+    const enemy = getObjectAt(run, targetX, targetY);
+    if (enemy) {
+      const base = playerSheet.derived?.ATK_PHYS ?? 1;
+      const damage = Math.max(1, Math.floor(base * (1.25 + skillLevel * 0.2)));
+      enemy.data.hp = Math.max(0, enemy.data.hp - damage);
+      run.floatingTexts.push({
+        x: enemy.x,
+        y: enemy.y,
+        value: `-${damage}`,
+        color: "#fca5a5",
+        durationMs: 700,
+        scale: 1.2,
+        startMs: null,
+      });
+      if (enemy.data.hp <= 0) {
+        const gainedXp = getXpForEnemy(enemy.id);
+        const xpResult = applyXpGain(playerSheet, gainedXp);
+        removeObject(run, enemy.id);
+        const levelUpLog = xpResult.levelUps > 0
+          ? ` Уровень повышен: ${playerSheet.level}.`
+          : "";
+        log = `${skillDef.name}: ${enemy.name} повержен. +${gainedXp} XP.${levelUpLog}`;
+      } else {
+        log = `${skillDef.name}: ${enemy.name} получает ${damage} урона.`;
+      }
+      ok = true;
+    } else {
+      log = `${skillDef.name}: рядом нет цели.`;
+    }
+  } else if (skillId === "warrior_roll") {
+    const dx = Math.sign(targetX - run.player.x);
+    const dy = Math.sign(targetY - run.player.y);
+    const midX = run.player.x + dx;
+    const midY = run.player.y + dy;
+    const midObject = getObjectAt(run, midX, midY);
+    if (midObject?.type === "enemy") {
+      const rollDamage = Math.max(1, Math.floor((playerSheet?.stats?.AGI || 0) * 0.6 + skillLevel));
+      midObject.data.hp = Math.max(0, midObject.data.hp - rollDamage);
+      run.floatingTexts.push({
+        x: midObject.x,
+        y: midObject.y,
+        value: `-${rollDamage}`,
+        color: "#f59e0b",
+        durationMs: 650,
+        scale: 1.1,
+        startMs: null,
+      });
+      if (midObject.data.hp <= 0) {
+        const gainedXp = getXpForEnemy(midObject.id);
+        applyXpGain(playerSheet, gainedXp);
+        removeObject(run, midObject.id);
+        log = `${skillDef.name}: урон по пути ${rollDamage}. Кот повержен (+${gainedXp} XP). `;
+      }
+    }
+    run.player.x = targetX;
+    run.player.y = targetY;
+    const landedObject = getObjectAt(run, targetX, targetY);
+    if (landedObject?.type === "chest") {
+      removeObject(run, landedObject.id);
+      const pool = getLootPool(landedObject.data.lootPool, playerSheet.classId);
+      if (pool.length > 0) {
+        const loot = randomPick(pool);
+        run.pendingLoot = { itemId: loot.id, source: landedObject.name };
+        log += `${skillDef.name}: рывок выполнен, найдено: ${loot.name}.`;
+      } else {
+        log += `${skillDef.name}: рывок выполнен, сундук пуст.`;
+      }
+    } else {
+      log += `${skillDef.name}: рывок выполнен.`;
+    }
+    ok = true;
+  }
+
+  if (ok) {
+    playerSheet.mana = Math.max(0, mana - manaCost);
+    run.turns += 1;
+    if (playerSheet.stats.HP <= 0) {
+      run.status = "defeat";
+    } else if (run.player.x === run.goal.x && run.player.y === run.goal.y) {
+      if ((run.level || 1) >= (run.maxLevel || 10)) {
+        run.status = "victory";
+      } else {
+        run.status = "level_complete";
+        run.levelTransition = {
+          phase: "out",
+          startedMs: null,
+          durationMs: 420,
+          nextLevel: (run.level || 1) + 1,
+        };
+      }
+    }
+    revealAroundPlayer(run, run.visionRange || 2);
+  }
+  run.lastLog = log;
+  return { run, playerSheet, ok, log };
 }
 
 export function tryStep(run, playerSheet, direction) {
@@ -374,6 +637,7 @@ export function tryStep(run, playerSheet, direction) {
   if (!delta) {
     return { run, playerSheet, log: "", motion: null };
   }
+  run.lastDirection = direction;
 
   const nx = run.player.x + delta.x;
   const ny = run.player.y + delta.y;
@@ -440,12 +704,20 @@ export function tryStep(run, playerSheet, direction) {
       log = `${combatLog} +${gainedXp} XP.${levelUpLog}`;
       motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 130 };
     } else {
-      const nextHp = Math.max(0, playerSheet.stats.HP - object.data.damage);
+      const veilReduction = run.mirrorVeil?.reduction || 0;
+      const damageTaken = Math.max(0, object.data.damage - veilReduction);
+      if (run.mirrorVeil?.charges) {
+        run.mirrorVeil.charges -= 1;
+        if (run.mirrorVeil.charges <= 0) {
+          delete run.mirrorVeil;
+        }
+      }
+      const nextHp = Math.max(0, playerSheet.stats.HP - damageTaken);
       playerSheet.stats.HP = nextHp;
       playerSheet.baseStats.HP = nextHp;
       log = isCrit
-        ? `КРИТ! ${object.name} получает ${playerDamage}, контрудар на ${object.data.damage}.`
-        : `${object.name} получает ${playerDamage}, контрудар на ${object.data.damage}.`;
+        ? `КРИТ! ${object.name} получает ${playerDamage}, контрудар на ${damageTaken}.`
+        : `${object.name} получает ${playerDamage}, контрудар на ${damageTaken}.`;
       motion = { kind: "bounce", from, target: { x: nx, y: ny }, durationMs: 170 };
       if (playerSheet.stats.HP <= 0) {
         run.status = "defeat";

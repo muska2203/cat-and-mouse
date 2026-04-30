@@ -1,4 +1,4 @@
-import { buildDerivedStats } from "./rules.js?v=0.1.2-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.2.0-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const DEFAULT_STARTER_LOADOUT_BY_CLASS = {
@@ -302,12 +302,11 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) 
   }
 
   const hpCap = baseStats.HP_MAX;
-  const hpDeltaFromMaxChange = hpCap - previousHpMax;
   const desiredHpFromBase = baseStats.HP ?? previousHp;
   const hasExplicitHpUpdate = desiredHpFromBase !== previousHp;
-  const nextHp = hasExplicitHpUpdate
-    ? desiredHpFromBase
-    : previousHp + hpDeltaFromMaxChange;
+  const previousHpRatio = previousHpMax > 0 ? previousHp / previousHpMax : 0;
+  const scaledHp = Math.round(previousHpRatio * hpCap);
+  const nextHp = hasExplicitHpUpdate ? desiredHpFromBase : scaledHp;
   baseStats.HP = Math.max(0, Math.min(nextHp, hpCap));
 
   return {

@@ -1,4 +1,6 @@
-import { buildDerivedStats } from "./rules.js?v=0.1.2-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.2.0-pre-alpha";
+import { CLASS_START_MANA } from "./skills.js?v=0.2.0-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.2.0-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -49,6 +51,7 @@ export function createInitialState() {
     run: null,
     uiHud: {
       hpVisual: null,
+      manaVisual: null,
       upgradePreviewStat: null,
       equipPreviewBagInstanceId: null,
       lastBagActionInstanceId: null,
@@ -56,6 +59,8 @@ export function createInitialState() {
       quickbarSlots: Array.from({ length: 9 }, () => null),
       quickbarPulseSlot: null,
       dragPayload: null,
+      skillTargeting: null,
+      skillsPanelOpen: false,
     },
   };
 }
@@ -68,6 +73,12 @@ export function createPlayerSheet(classId) {
 
   const stats = { ...classData.baseStats };
   const derived = buildDerivedStats(stats);
+  const startMana = CLASS_START_MANA[classData.id] || 0;
+  const classSkills = getSkillsForClass(classData.id);
+  const skills = {};
+  for (const skill of classSkills) {
+    skills[skill.id] = { learned: false, level: 0 };
+  }
 
   return {
     classId: classData.id,
@@ -81,5 +92,14 @@ export function createPlayerSheet(classId) {
     xp: 0,
     xpToNext: PROGRESSION_CONFIG.baseXpToNext,
     unspentPoints: 0,
+    mana: startMana,
+    manaMax: startMana,
+    skillPoints: 0,
+    skills,
+    effectStacks: {
+      hard_cheese: 0,
+      common_cracker: 0,
+      rare_royal_cheese: 0,
+    },
   };
 }
