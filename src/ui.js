@@ -1,11 +1,11 @@
-import { CLASS_CONFIG } from "./state.js";
-import { createPlayerSheet } from "./state.js";
-import { EQUIP_TYPES } from "./loadout.js";
-import { getItemById } from "./loadout.js";
-import { applyLoadoutToSheet } from "./loadout.js";
-import { getDefaultStarterLoadout } from "./loadout.js";
-import { APP_TITLE } from "./app-config.js";
-import { APP_VERSION } from "./app-config.js";
+import { CLASS_CONFIG } from "./state.js?v=0.0.7-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.0.7-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.0.7-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.0.7-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.0.7-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.0.7-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.0.7-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.0.7-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
