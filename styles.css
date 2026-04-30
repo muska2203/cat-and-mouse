@@ -220,26 +220,55 @@ body {
   font-size: 13px;
 }
 
-.progression-panel {
-  margin-top: 0;
-}
-
 .progression-line {
   color: #cbd5e1;
   font-size: 13px;
   margin-top: 4px;
 }
 
-.upgrade-grid {
-  margin-top: 8px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.xp-block {
+  margin-bottom: 10px;
+}
+
+.xp-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #1f2937;
+  border: 1px solid #334155;
+  overflow: hidden;
+}
+
+.xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #60a5fa 0%, #2563eb 100%);
+}
+
+.xp-value {
+  margin-top: 6px;
+  color: #bfdbfe;
+  font-size: 13px;
+  text-align: right;
+}
+
+.stat-value-with-upgrade {
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 
-.upgrade-btn {
-  padding: 6px 8px;
-  font-size: 12px;
+.stat-total-value {
+  color: #86efac;
+}
+
+.stat-preview-value {
+  color: #fde047;
+}
+
+.upgrade-inline-btn {
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.1;
 }
 
 .run-log {
@@ -271,7 +300,10 @@ body {
   color: #86efac;
   font-size: 11px;
   margin-left: 8px;
-  white-space: nowrap;
+  white-space: normal;
+  display: block;
+  text-align: right;
+  line-height: 1.15;
 }
 
 .bag-title {
@@ -313,8 +345,20 @@ body {
 
 .bag-icon-bonus {
   font-size: 9px;
-  color: #86efac;
+  color: #e2e8f0;
   line-height: 1;
+}
+
+.bonus-up {
+  color: #86efac;
+}
+
+.bonus-down {
+  color: #fca5a5;
+}
+
+.bonus-eq {
+  color: #e2e8f0;
 }
 
 .empty-bag {

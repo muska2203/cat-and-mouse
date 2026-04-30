@@ -1,4 +1,4 @@
-import { buildDerivedStats } from "./rules.js?v=0.0.9-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.0.10-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -49,6 +49,10 @@ export function createInitialState() {
     run: null,
     uiHud: {
       hpVisual: null,
+      upgradePreviewStat: null,
+      equipPreviewBagInstanceId: null,
+      lastBagActionInstanceId: null,
+      lastBagActionAtMs: 0,
     },
   };
 }

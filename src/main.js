@@ -1,19 +1,19 @@
-import { createInitialState } from "./state.js?v=0.0.9-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.0.9-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.0.9-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.0.9-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.0.9-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.0.9-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.0.9-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.0.9-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.0.9-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.0.9-pre-alpha";
-import { createRunState } from "./game.js?v=0.0.9-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.0.9-pre-alpha";
-import { tryStep } from "./game.js?v=0.0.9-pre-alpha";
-import { useConsumable } from "./game.js?v=0.0.9-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.0.9-pre-alpha";
-import { renderApp } from "./ui.js?v=0.0.9-pre-alpha";
+import { createInitialState } from "./state.js?v=0.0.10-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.0.10-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.0.10-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.0.10-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.0.10-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.0.10-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.0.10-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.0.10-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.0.10-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.0.10-pre-alpha";
+import { createRunState } from "./game.js?v=0.0.10-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.0.10-pre-alpha";
+import { tryStep } from "./game.js?v=0.0.10-pre-alpha";
+import { useConsumable } from "./game.js?v=0.0.10-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.0.10-pre-alpha";
+import { renderApp } from "./ui.js?v=0.0.10-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
@@ -65,6 +65,16 @@ function onRootClick(event) {
     if (!itemId || !bagInstanceId || !state.playerSheet || !state.run) {
       return;
     }
+    const nowMs = performance.now();
+    const duplicateWindowMs = 220;
+    if (
+      state.uiHud.lastBagActionInstanceId === bagInstanceId &&
+      nowMs - (state.uiHud.lastBagActionAtMs || 0) < duplicateWindowMs
+    ) {
+      return;
+    }
+    state.uiHud.lastBagActionInstanceId = bagInstanceId;
+    state.uiHud.lastBagActionAtMs = nowMs;
 
     const item = getItemById(itemId);
     if (!item) {
@@ -256,8 +266,57 @@ function onRootWheel(event) {
   }
 }
 
+function onRootMouseOver(event) {
+  const upgradeButton = event.target.closest("[data-action='upgrade-stat']");
+  if (upgradeButton) {
+    const stat = upgradeButton.dataset.stat || null;
+    const changed = state.uiHud.upgradePreviewStat !== stat || state.uiHud.equipPreviewBagInstanceId !== null;
+    state.uiHud.upgradePreviewStat = stat;
+    state.uiHud.equipPreviewBagInstanceId = null;
+    if (changed) {
+      rerender();
+    }
+    return;
+  }
+
+  const bagButton = event.target.closest("[data-action='bag-item-action']");
+  if (!bagButton) {
+    return;
+  }
+  const itemId = bagButton.dataset.itemId;
+  const bagInstanceId = bagButton.dataset.bagInstanceId || null;
+  const item = itemId ? getItemById(itemId) : null;
+  if (!item || item.isConsumable || !bagInstanceId) {
+    return;
+  }
+  const changed = state.uiHud.equipPreviewBagInstanceId !== bagInstanceId || state.uiHud.upgradePreviewStat !== null;
+  state.uiHud.equipPreviewBagInstanceId = bagInstanceId;
+  state.uiHud.upgradePreviewStat = null;
+  if (changed) {
+    rerender();
+  }
+}
+
+function onRootMouseOut(event) {
+  const fromPreviewButton = event.target.closest("[data-action='upgrade-stat'], [data-action='bag-item-action']");
+  if (!fromPreviewButton) {
+    return;
+  }
+  const toPreviewButton = event.relatedTarget?.closest?.("[data-action='upgrade-stat'], [data-action='bag-item-action']");
+  if (toPreviewButton) {
+    return;
+  }
+  if (state.uiHud.upgradePreviewStat || state.uiHud.equipPreviewBagInstanceId) {
+    state.uiHud.upgradePreviewStat = null;
+    state.uiHud.equipPreviewBagInstanceId = null;
+    rerender();
+  }
+}
+
 root.addEventListener("click", onRootClick);
 root.addEventListener("wheel", onRootWheel, { passive: false });
+root.addEventListener("mouseover", onRootMouseOver);
+root.addEventListener("mouseout", onRootMouseOut);
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("resize", onResize);
 requestAnimationFrame(animationLoop);

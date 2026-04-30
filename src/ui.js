@@ -1,11 +1,13 @@
-import { CLASS_CONFIG } from "./state.js?v=0.0.9-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.0.9-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.0.9-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.0.9-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.0.9-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.0.9-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.0.9-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.0.9-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.0.10-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.0.10-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.0.10-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.0.10-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.0.10-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.0.10-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.0.10-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.0.10-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.0.10-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.0.10-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -26,9 +28,20 @@ const STAT_LABELS_COMPACT = {
   INT: "ИНТ",
   AGI: "ЛВК",
   LUK: "УДЧ",
-  HP_MAX: "HP+",
+  HP_MAX: "HP",
   HP: "HP",
 };
+const BONUS_SORT_ORDER = [
+  "STR",
+  "INT",
+  "AGI",
+  "LUK",
+  "HP_MAX",
+  "ATK_PHYS",
+  "ATK_MAGIC",
+  "CRIT_CHANCE",
+  "CRIT_MULT",
+];
 
 export function renderApp(root, state) {
   if (state.screen === "welcome") {
@@ -78,7 +91,7 @@ function renderWelcomeScreen(state) {
   const starterItemsMarkup = selectedStarterLoadout
     .map((id) => getItemById(id))
     .filter(Boolean)
-    .map((item) => `<li><span>${item.icon || getItemIcon(item.type)}</span><strong>${item.name}</strong></li>`)
+    .map((item) => `<li><span>${item.icon || getItemIcon(item.type)}</span><strong>${item.name}</strong><small class="item-bonus">${formatItemBonuses(item)}</small></li>`)
     .join("");
 
   return `
@@ -93,9 +106,22 @@ function renderWelcomeScreen(state) {
       <div class="sheet-grid">
         <article class="class-card">
           <h3>Характеристики: ${selectedSheet.classLabel}</h3>
-          <ul class="stats-list">
-            ${renderStatsList(buildWelcomeStats(selectedSheet))}
-          </ul>
+          <section class="stats-group">
+            <ul class="stats-list">
+              ${renderBaseAndTotalStats(selectedSheet)}
+            </ul>
+          </section>
+          <section class="stats-group">
+            <h4>Остальные</h4>
+            <ul class="stats-list">
+              ${renderStatsList({
+                ATK_PHYS: selectedSheet?.derived?.ATK_PHYS ?? 0,
+                ATK_MAGIC: selectedSheet?.derived?.ATK_MAGIC ?? 0,
+                CRIT_CHANCE: selectedSheet?.derived?.CRIT_CHANCE ?? 0,
+                CRIT_MULT: selectedSheet?.derived?.CRIT_MULT ?? 0,
+              })}
+            </ul>
+          </section>
         </article>
         <article class="class-card">
           <h3>Начальное снаряжение</h3>
@@ -138,27 +164,19 @@ function renderGameScreen(state) {
         <canvas id="gameCanvas" class="game-canvas" width="800" height="500"></canvas>
         <article class="class-card game-side">
           <h3>Параметры мышонка</h3>
-          ${renderProgressionPanel(state.playerSheet)}
           ${renderHpBar(state.playerSheet)}
+          ${renderXpBar(state.playerSheet)}
+          <p class="progression-line">Уровень: ${state.playerSheet?.level ?? 1}</p>
+          <p class="progression-line">Очки прокачки: ${state.playerSheet?.unspentPoints ?? 0}</p>
           <section class="stats-group">
             <ul class="stats-list">
-              ${renderStatsList({
-                STR: state.playerSheet?.stats?.STR ?? 0,
-                INT: state.playerSheet?.stats?.INT ?? 0,
-                AGI: state.playerSheet?.stats?.AGI ?? 0,
-                LUK: state.playerSheet?.stats?.LUK ?? 0,
-              })}
+              ${renderBaseAndTotalStatsWithUpgrades(state.playerSheet, state.uiHud)}
             </ul>
           </section>
           <section class="stats-group">
             <h4>Остальные</h4>
             <ul class="stats-list">
-              ${renderStatsList({
-                ATK_PHYS: state.playerSheet?.derived?.ATK_PHYS ?? 0,
-                ATK_MAGIC: state.playerSheet?.derived?.ATK_MAGIC ?? 0,
-                CRIT_CHANCE: state.playerSheet?.derived?.CRIT_CHANCE ?? 0,
-                CRIT_MULT: state.playerSheet?.derived?.CRIT_MULT ?? 0,
-              })}
+              ${renderDerivedStatsWithPreview(state.playerSheet, state.uiHud)}
             </ul>
           </section>
           <p class="run-log">${state.run.lastLog || "—"}</p>
@@ -274,6 +292,8 @@ function renderInventoryPanel(state) {
     const content = itemsForType.length
       ? itemsForType
           .map((entry) => {
+            const equippedItemId = equipped?.[type];
+            const equippedItem = equippedItemId ? getItemById(equippedItemId) : null;
             return `
               <button
                 class="bag-icon"
@@ -285,7 +305,7 @@ function renderInventoryPanel(state) {
                 title="${entry.item.name} (${toRuType(entry.item.type)}): ${localizeStatText(entry.item.effectText)}"
               >
                 <span class="bag-icon-glyph">${entry.item.icon || getItemIcon(entry.item.type)}</span>
-                <span class="bag-icon-bonus">${formatItemBonuses(entry.item)}</span>
+                <span class="bag-icon-bonus">${formatItemBonuses(entry.item, equippedItem)}</span>
               </button>
             `;
           })
@@ -319,6 +339,126 @@ function renderStatsList(statsObject) {
   return Object.entries(statsObject)
     .map(([name, value]) => `<li><span>${toRuStatName(name)}</span><strong>${value}</strong></li>`)
     .join("");
+}
+
+function renderBaseAndTotalStats(playerSheet) {
+  const statsOrder = ["STR", "INT", "AGI", "LUK", "HP_MAX"];
+  return statsOrder
+    .map((key) => {
+      const baseValue = playerSheet?.baseStats?.[key] ?? 0;
+      const totalValue = playerSheet?.stats?.[key] ?? baseValue;
+      const totalMarkup = totalValue !== baseValue
+        ? `<span class="stat-total-value"> (${totalValue})</span>`
+        : "";
+      return `<li><span>${toRuStatName(key)}</span><strong>${baseValue}${totalMarkup}</strong></li>`;
+    })
+    .join("");
+}
+
+function renderStatsListWithUpgrades(statsObject, playerSheet, upgradeByStat) {
+  const hasPoints = (playerSheet?.unspentPoints || 0) > 0;
+  return Object.entries(statsObject)
+    .map(([name, value]) => {
+      const upgradeValue = upgradeByStat[name];
+      const upgradeButton = hasPoints && upgradeValue
+        ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${name}">+${upgradeValue}</button>`
+        : "";
+      return `<li><span>${toRuStatName(name)}</span><div class="stat-value-with-upgrade"><strong>${value}</strong>${upgradeButton}</div></li>`;
+    })
+    .join("");
+}
+
+function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
+  const hasPoints = (playerSheet?.unspentPoints || 0) > 0;
+  const previewSheet = buildPreviewSheet(playerSheet, {
+    type: "upgrade",
+    stat: previewState?.upgradePreviewStat || null,
+    bagInstanceId: previewState?.equipPreviewBagInstanceId || null,
+  });
+  const statsOrder = [
+    { key: "STR", upgrade: 1 },
+    { key: "INT", upgrade: 1 },
+    { key: "AGI", upgrade: 1 },
+    { key: "LUK", upgrade: 1 },
+    { key: "HP_MAX", upgrade: 3 },
+  ];
+
+  return statsOrder
+    .map(({ key, upgrade }) => {
+      const baseValue = playerSheet?.baseStats?.[key] ?? 0;
+      const totalValue = playerSheet?.stats?.[key] ?? baseValue;
+      const previewBase = previewSheet?.baseStats?.[key];
+      const previewTotal = previewSheet?.stats?.[key];
+      const shownBase = previewBase != null ? previewBase : baseValue;
+      const shownTotal = previewTotal != null ? previewTotal : totalValue;
+      const isBasePreviewed = shownBase !== baseValue;
+      const isTotalPreviewed = shownTotal !== totalValue;
+      const totalClass = shownTotal !== shownBase ? "stat-total-value" : "";
+      const upgradeButton = hasPoints
+        ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${key}">+${upgrade}</button>`
+        : "";
+      const totalMarkup = shownTotal !== shownBase
+        ? `<span class="${totalClass} ${isTotalPreviewed ? "stat-preview-value" : ""}"> (${shownTotal})</span>`
+        : "";
+      return `
+        <li>
+          <span>${toRuStatName(key)}</span>
+          <div class="stat-value-with-upgrade">
+            <strong class="${isBasePreviewed ? "stat-preview-value" : ""}">${shownBase}${totalMarkup}</strong>
+            ${upgradeButton}
+          </div>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
+  const previewSheet = buildPreviewSheet(playerSheet, {
+    type: "upgrade",
+    stat: previewStat?.upgradePreviewStat || null,
+    bagInstanceId: previewStat?.equipPreviewBagInstanceId || null,
+  });
+  const current = {
+    ATK_PHYS: playerSheet?.derived?.ATK_PHYS ?? 0,
+    ATK_MAGIC: playerSheet?.derived?.ATK_MAGIC ?? 0,
+    CRIT_CHANCE: playerSheet?.derived?.CRIT_CHANCE ?? 0,
+    CRIT_MULT: playerSheet?.derived?.CRIT_MULT ?? 0,
+  };
+  return Object.entries(current)
+    .map(([key, value]) => {
+      const previewValue = previewSheet?.derived?.[key];
+      const isPreviewed = previewValue != null && previewValue !== value;
+      const shown = isPreviewed ? previewValue : value;
+      return `<li><span>${toRuStatName(key)}</span><strong class="${isPreviewed ? "stat-preview-value" : ""}">${shown}</strong></li>`;
+    })
+    .join("");
+}
+
+function buildPreviewSheet(playerSheet, preview) {
+  if (!playerSheet || !preview) {
+    return null;
+  }
+
+  const { stat, bagInstanceId } = preview;
+  const temp = {
+    ...playerSheet,
+    baseStats: { ...playerSheet.baseStats },
+    stats: { ...playerSheet.stats },
+    derived: { ...playerSheet.derived },
+    bag: [...(playerSheet.bag || [])],
+    equippedByType: { ...(playerSheet.equippedByType || {}) },
+  };
+
+  if (stat && (playerSheet.unspentPoints || 0) > 0) {
+    return spendLevelUpPoint(temp, stat);
+  }
+
+  if (bagInstanceId) {
+    return swapItemFromBag(temp, bagInstanceId);
+  }
+
+  return null;
 }
 
 function toRuType(itemType) {
@@ -356,15 +496,28 @@ function getItemIcon(type) {
   return "📦";
 }
 
-function formatItemBonuses(item) {
-  const entries = Object.entries(item.statBonuses || {});
+function formatItemBonuses(item, compareWithItem = null) {
+  const entries = Object.entries(item.statBonuses || {}).sort(([a], [b]) => {
+    const aIndex = BONUS_SORT_ORDER.indexOf(a);
+    const bIndex = BONUS_SORT_ORDER.indexOf(b);
+    const ai = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+    const bi = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+    if (ai !== bi) return ai - bi;
+    return a.localeCompare(b);
+  });
   if (entries.length === 0) {
     return "ЭФ";
   }
 
   return entries
-    .map(([statName, value]) => `+${toCompactStatName(statName)}${value}`)
-    .join(" ");
+    .map(([statName, value]) => {
+      const compareValue = compareWithItem?.statBonuses?.[statName] ?? 0;
+      let compareClass = "bonus-eq";
+      if (value > compareValue) compareClass = "bonus-up";
+      if (value < compareValue) compareClass = "bonus-down";
+      return `<span class="${compareClass}">+${toCompactStatName(statName)}${value}</span>`;
+    })
+    .join("<br>");
 }
 
 function getItemStatsSum(item) {
@@ -395,6 +548,20 @@ function renderHpBar(playerSheet) {
   `;
 }
 
+function renderXpBar(playerSheet) {
+  const xp = Math.max(0, playerSheet?.xp ?? 0);
+  const xpToNext = Math.max(1, playerSheet?.xpToNext ?? 1);
+  const percent = Math.max(0, Math.min(100, Math.round((xp / xpToNext) * 100)));
+  return `
+    <div class="xp-block">
+      <div class="xp-track">
+        <div class="xp-fill" style="width:${percent}%"></div>
+      </div>
+      <div class="xp-value">${xp} / ${xpToNext}</div>
+    </div>
+  `;
+}
+
 function buildFullStats(playerSheet) {
   return {
     STR: playerSheet?.stats?.STR ?? 0,
@@ -409,59 +576,6 @@ function buildFullStats(playerSheet) {
   };
 }
 
-function buildWelcomeStats(playerSheet) {
-  return {
-    STR: playerSheet?.stats?.STR ?? 0,
-    INT: playerSheet?.stats?.INT ?? 0,
-    AGI: playerSheet?.stats?.AGI ?? 0,
-    LUK: playerSheet?.stats?.LUK ?? 0,
-    HP: playerSheet?.stats?.HP_MAX ?? 0,
-    ATK_PHYS: playerSheet?.derived?.ATK_PHYS ?? 0,
-    ATK_MAGIC: playerSheet?.derived?.ATK_MAGIC ?? 0,
-    CRIT_CHANCE: playerSheet?.derived?.CRIT_CHANCE ?? 0,
-    CRIT_MULT: playerSheet?.derived?.CRIT_MULT ?? 0,
-  };
-}
-
 function renderBuildBadge() {
   return `<p class="build-badge">${APP_TITLE} · v${APP_VERSION}</p>`;
-}
-
-function renderProgressionPanel(playerSheet) {
-  if (!playerSheet) {
-    return "";
-  }
-
-  const points = playerSheet.unspentPoints || 0;
-  const upgrades = [
-    { key: "STR", label: "СИЛ" },
-    { key: "INT", label: "ИНТ" },
-    { key: "AGI", label: "ЛВК" },
-    { key: "LUK", label: "УДЧ" },
-    { key: "HP_MAX", label: "HP МАКС" },
-  ];
-
-  const buttons = upgrades
-    .map((upgrade) => `
-      <button
-        class="btn upgrade-btn"
-        type="button"
-        data-action="upgrade-stat"
-        data-stat="${upgrade.key}"
-        ${points > 0 ? "" : "disabled"}
-      >
-        + ${upgrade.label}
-      </button>
-    `)
-    .join("");
-
-  return `
-    <section class="stats-group progression-panel">
-      <h4>Прогресс</h4>
-      <p class="progression-line">Уровень: ${playerSheet.level}</p>
-      <p class="progression-line">XP: ${playerSheet.xp}/${playerSheet.xpToNext}</p>
-      <p class="progression-line">Очки прокачки: ${points}</p>
-      <div class="upgrade-grid">${buttons}</div>
-    </section>
-  `;
 }
