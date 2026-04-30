@@ -53,9 +53,9 @@ function generateObjects(maze, level = 1) {
   };
 
   const objectTemplates = {
-    cat_small: { id: "cat_small", name: "Котенок", type: "enemy", icon: "🐱", oneTime: false, data: { hp: 24, damage: 6 } },
-    cat_mid: { id: "cat_mid", name: "Домашний кот", type: "enemy", icon: "🐈", oneTime: false, data: { hp: 34, damage: 9 } },
-    cat_big: { id: "cat_big", name: "Дворовый кот", type: "enemy", icon: "😾", oneTime: false, data: { hp: 48, damage: 13 } },
+    cat_small: { id: "cat_small", name: "Котенок", type: "enemy", icon: "🐱", oneTime: false, data: { hp: 24, damage: 4 } },
+    cat_mid: { id: "cat_mid", name: "Домашний кот", type: "enemy", icon: "🐈", oneTime: false, data: { hp: 34, damage: 7 } },
+    cat_big: { id: "cat_big", name: "Дворовый кот", type: "enemy", icon: "😾", oneTime: false, data: { hp: 48, damage: 10 } },
     chest_common: { id: "chest_common", name: "Обычный сундук", type: "chest", icon: "📦", oneTime: true, data: { lootPool: "common" } },
     chest_rare: { id: "chest_rare", name: "Редкий сундук", type: "chest", icon: "🎁", oneTime: true, data: { lootPool: "rare" } },
   };

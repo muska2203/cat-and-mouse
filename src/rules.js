@@ -3,8 +3,8 @@ function clamp(value, min, max) {
 }
 
 export function buildDerivedStats(stats) {
-  const atkPhys = stats.STR * 2 + Math.floor(stats.AGI * 0.5);
-  const atkMagic = stats.INT * 2 + Math.floor(stats.LUK * 0.5);
+  const atkPhys = Math.floor(stats.STR * 1.5 + stats.AGI * 0.4);
+  const atkMagic = Math.floor(stats.INT * 1.5 + stats.LUK * 0.4);
   const critChance = clamp(5 + stats.AGI + Math.floor(stats.LUK * 0.5), 5, 30);
   const critMultiplier = 1.5;
   const computedHpMax = stats.HP_MAX;
