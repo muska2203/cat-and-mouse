@@ -1,6 +1,6 @@
-import { buildDerivedStats } from "./rules.js?v=0.2.1-pre-alpha";
-import { CLASS_START_MANA } from "./skills.js?v=0.2.1-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.2.1-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.2.2-pre-alpha";
+import { CLASS_START_MANA } from "./skills.js?v=0.2.2-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.2.2-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -14,14 +14,14 @@ export const CLASS_CONFIG = {
     label: "Маг",
     description: "Хитрый тактик с акцентом на эффекты и контроль.",
     baseStats: {
-      STR: 3,
-      INT: 9,
-      AGI: 6,
-      LUK: 5,
+      STR: 2,
+      INT: 7,
+      AGI: 4,
+      LUK: 3,
       VISION: 2,
-      baseHP: 24,
-      HP_MAX: 24,
-      HP: 24,
+      baseHP: 56,
+      HP_MAX: 56,
+      HP: 56,
     },
   },
   warrior: {
@@ -29,14 +29,14 @@ export const CLASS_CONFIG = {
     label: "Воин",
     description: "Надежный боец для прямых столкновений.",
     baseStats: {
-      STR: 8,
+      STR: 7,
       INT: 2,
       AGI: 4,
-      LUK: 4,
+      LUK: 3,
       VISION: 2,
-      baseHP: 34,
-      HP_MAX: 34,
-      HP: 34,
+      baseHP: 56,
+      HP_MAX: 56,
+      HP: 56,
     },
   },
 };
@@ -61,6 +61,7 @@ export function createInitialState() {
       dragPayload: null,
       skillTargeting: null,
       skillsPanelOpen: false,
+      helpOpen: false,
     },
   };
 }

@@ -1,7 +1,7 @@
-import { generateMazeRun } from "./maze.js?v=0.2.1-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.2.1-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.2.1-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.2.1-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.2.2-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.2.2-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.2.2-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.2.2-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -21,6 +21,84 @@ function randomInt(min, max) {
 
 function randomPick(list) {
   return list[Math.floor(Math.random() * list.length)];
+}
+
+function weightedPick(weightedEntries) {
+  const total = weightedEntries.reduce((sum, entry) => sum + entry.weight, 0);
+  if (total <= 0) {
+    return weightedEntries[0]?.value ?? null;
+  }
+  const roll = Math.random() * total;
+  let acc = 0;
+  for (const entry of weightedEntries) {
+    acc += entry.weight;
+    if (roll <= acc) {
+      return entry.value;
+    }
+  }
+  return weightedEntries[weightedEntries.length - 1]?.value ?? null;
+}
+
+function getChestSpawnWeights(level) {
+  const levelShift = Math.max(0, level - 1);
+  const unique = Math.min(0.35, 0.1 + levelShift * 0.015);
+  const rare = Math.max(0.15, 0.3 - levelShift * 0.0075);
+  const common = Math.max(0.05, 1 - unique - rare);
+  return { common, rare, unique };
+}
+
+function getChestCountsForLevel(level) {
+  const totalChests = randomInt(5, 8);
+  const weights = getChestSpawnWeights(level);
+  const counts = { chest_common: 0, chest_rare: 0, chest_unique: 0 };
+  for (let i = 0; i < totalChests; i += 1) {
+    const picked = weightedPick([
+      { value: "chest_common", weight: weights.common },
+      { value: "chest_rare", weight: weights.rare },
+      { value: "chest_unique", weight: weights.unique },
+    ]);
+    counts[picked] += 1;
+  }
+  return counts;
+}
+
+function rollLootPoolByChestRarity(chestRarity) {
+  const tables = {
+    common: [
+      { value: "common", weight: 90 },
+      { value: "rare", weight: 9 },
+      { value: "unique", weight: 1 },
+    ],
+    rare: [
+      { value: "common", weight: 80 },
+      { value: "rare", weight: 18 },
+      { value: "unique", weight: 2 },
+    ],
+    unique: [
+      { value: "common", weight: 50 },
+      { value: "rare", weight: 30 },
+      { value: "unique", weight: 20 },
+    ],
+  };
+  return weightedPick(tables[chestRarity] || tables.common);
+}
+
+function getLootFromChest(chestRarity, classId) {
+  const rolledPool = rollLootPoolByChestRarity(chestRarity);
+  const fallbackPools = {
+    common: ["common", "rare", "unique"],
+    rare: ["rare", "common", "unique"],
+    unique: ["unique", "rare", "common"],
+  };
+  const poolOrder = [rolledPool, ...(fallbackPools[chestRarity] || fallbackPools.common)]
+    .filter((poolName, index, list) => list.indexOf(poolName) === index);
+  for (const poolName of poolOrder) {
+    const pool = getLootPool(poolName, classId);
+    if (pool.length > 0) {
+      return randomPick(pool);
+    }
+  }
+  return null;
 }
 
 function weightedEnemyType(level) {
@@ -46,20 +124,23 @@ function generateObjects(maze, level = 1) {
   const freeCells = [];
   const reserved = new Set();
   const enemyCounts = getEnemyCountsForLevel(level);
+  const chestCounts = getChestCountsForLevel(level);
   const byTypeCount = {
     cat_small: enemyCounts.cat_small,
     cat_mid: enemyCounts.cat_mid,
     cat_big: enemyCounts.cat_big,
-    chest_common: randomInt(4, 6),
-    chest_rare: randomInt(1, 2),
+    chest_common: chestCounts.chest_common,
+    chest_rare: chestCounts.chest_rare,
+    chest_unique: chestCounts.chest_unique,
   };
 
   const objectTemplates = {
     cat_small: { id: "cat_small", name: "Котенок", type: "enemy", icon: "🐱", oneTime: false, data: { hp: 24, damage: 4 } },
     cat_mid: { id: "cat_mid", name: "Домашний кот", type: "enemy", icon: "🐈", oneTime: false, data: { hp: 34, damage: 7 } },
     cat_big: { id: "cat_big", name: "Дворовый кот", type: "enemy", icon: "😾", oneTime: false, data: { hp: 48, damage: 10 } },
-    chest_common: { id: "chest_common", name: "Обычный сундук", type: "chest", icon: "📦", oneTime: true, data: { lootPool: "common" } },
-    chest_rare: { id: "chest_rare", name: "Редкий сундук", type: "chest", icon: "🎁", oneTime: true, data: { lootPool: "rare" } },
+    chest_common: { id: "chest_common", name: "Обычный сундук", type: "chest", icon: "📦", oneTime: true, data: { chestRarity: "common" } },
+    chest_rare: { id: "chest_rare", name: "Редкий сундук", type: "chest", icon: "🎁", oneTime: true, data: { chestRarity: "rare" } },
+    chest_unique: { id: "chest_unique", name: "Уникальный сундук", type: "chest", icon: "👑", oneTime: true, data: { chestRarity: "unique" } },
   };
 
   for (let y = 0; y < maze.height; y += 1) {
@@ -127,6 +208,7 @@ function generateObjects(maze, level = 1) {
   }
 
   const chestPlacementPlan = [
+    { key: "chest_unique", fromDeadEnd: true },
     { key: "chest_rare", fromDeadEnd: true },
     { key: "chest_common", fromDeadEnd: true },
   ];
@@ -381,6 +463,66 @@ export function useConsumable(run, playerSheet, item) {
     playerSheet.baseStats.HP = nextHp;
     restoredMana = manaByHealingItem[item.id] || 0;
     log = `${item.name}: восстановлено 10 HP.`;
+  } else if (item.id === "common_crumb_ration") {
+    const nextHp = Math.min(currentHpMax, currentHp + 10);
+    playerSheet.baseStats.HP = nextHp;
+    log = `${item.name}: восстановлено 10 HP.`;
+  } else if (item.id === "common_mint_drop") {
+    const nextMana = Math.min(currentManaMax, currentMana + 10);
+    playerSheet.mana = nextMana;
+    const restored = Math.max(0, nextMana - currentMana);
+    log = `${item.name}: восстановлено ${restored} маны.`;
+  } else if (item.id === "common_warm_milk") {
+    const nextHp = Math.min(currentHpMax, currentHp + 6);
+    const nextMana = Math.min(currentManaMax, currentMana + 6);
+    playerSheet.baseStats.HP = nextHp;
+    playerSheet.mana = nextMana;
+    const restoredHp = Math.max(0, nextHp - currentHp);
+    const restoredMp = Math.max(0, nextMana - currentMana);
+    log = `${item.name}: восстановлено ${restoredHp} HP и ${restoredMp} маны.`;
+  } else if (item.id === "common_sharp_pepper") {
+    run.nextHitMultiplier = 1.5;
+    log = `${item.name}: следующая атака получает множитель x1.5.`;
+  } else if (item.id === "rare_hearty_stew") {
+    const nextHp = Math.min(currentHpMax, currentHp + 18);
+    playerSheet.baseStats.HP = nextHp;
+    log = `${item.name}: восстановлено 18 HP.`;
+  } else if (item.id === "rare_focus_tonic") {
+    const nextMana = Math.min(currentManaMax, currentMana + 16);
+    playerSheet.mana = nextMana;
+    const restored = Math.max(0, nextMana - currentMana);
+    log = `${item.name}: восстановлено ${restored} маны.`;
+  } else if (item.id === "rare_dual_elixir") {
+    const nextHp = Math.min(currentHpMax, currentHp + 12);
+    const nextMana = Math.min(currentManaMax, currentMana + 12);
+    playerSheet.baseStats.HP = nextHp;
+    playerSheet.mana = nextMana;
+    const restoredHp = Math.max(0, nextHp - currentHp);
+    const restoredMp = Math.max(0, nextMana - currentMana);
+    log = `${item.name}: восстановлено ${restoredHp} HP и ${restoredMp} маны.`;
+  } else if (item.id === "rare_battle_pepper") {
+    run.nextHitMultiplier = 2;
+    log = `${item.name}: следующая атака получает множитель x2.`;
+  } else if (item.id === "unique_phoenix_broth") {
+    const nextHp = Math.min(currentHpMax, currentHp + 28);
+    playerSheet.baseStats.HP = nextHp;
+    log = `${item.name}: восстановлено 28 HP.`;
+  } else if (item.id === "unique_aether_draught") {
+    const nextMana = Math.min(currentManaMax, currentMana + 24);
+    playerSheet.mana = nextMana;
+    const restored = Math.max(0, nextMana - currentMana);
+    log = `${item.name}: восстановлено ${restored} маны.`;
+  } else if (item.id === "unique_twilight_mix") {
+    const nextHp = Math.min(currentHpMax, currentHp + 20);
+    const nextMana = Math.min(currentManaMax, currentMana + 20);
+    playerSheet.baseStats.HP = nextHp;
+    playerSheet.mana = nextMana;
+    const restoredHp = Math.max(0, nextHp - currentHp);
+    const restoredMp = Math.max(0, nextMana - currentMana);
+    log = `${item.name}: восстановлено ${restoredHp} HP и ${restoredMp} маны.`;
+  } else if (item.id === "unique_storm_pepper") {
+    run.nextHitMultiplier = 2.5;
+    log = `${item.name}: следующая атака получает множитель x2.5.`;
   } else if (item.id === "hard_cheese") {
     playerSheet.baseStats.HP_MAX += 5;
     playerSheet.baseStats.HP = currentHp;
@@ -630,9 +772,8 @@ export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
     const landedObject = getObjectAt(run, targetX, targetY);
     if (landedObject?.type === "chest") {
       removeObject(run, landedObject.id);
-      const pool = getLootPool(landedObject.data.lootPool, playerSheet.classId);
-      if (pool.length > 0) {
-        const loot = randomPick(pool);
+      const loot = getLootFromChest(landedObject?.data?.chestRarity || "common", playerSheet.classId);
+      if (loot) {
         run.pendingLoot = { itemId: loot.id, source: landedObject.name };
         log += `${skillDef.name}: рывок выполнен, найдено: ${loot.name}.`;
       } else {
@@ -808,9 +949,8 @@ export function tryStep(run, playerSheet, direction) {
     run.player.x = nx;
     run.player.y = ny;
     removeObject(run, object.id);
-    const pool = getLootPool(object.data.lootPool, playerSheet.classId);
-    if (pool.length > 0) {
-      const loot = randomPick(pool);
+    const loot = getLootFromChest(object?.data?.chestRarity || "common", playerSheet.classId);
+    if (loot) {
       log = `Найдено: ${loot.name}.`;
       run.pendingLoot = { itemId: loot.id, source: object.name };
     } else {

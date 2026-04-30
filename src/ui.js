@@ -1,15 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.2.1-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.2.1-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.2.1-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.2.1-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.2.1-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.1-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.2.1-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.2.1-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.2.1-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.2.1-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.2.1-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.2.1-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.2.2-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.2.2-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.2.2-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.2.2-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.2.2-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.2.2-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.2.2-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.2.2-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.2.2-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.2.2-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.2.2-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.2.2-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -141,6 +141,7 @@ function renderWelcomeScreen(state) {
         Начать игру
       </button>
       ${renderBuildBadge()}
+      ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
     </section>
   `;
 }
@@ -197,6 +198,7 @@ function renderGameScreen(state) {
       </div>
       ${state.uiHud?.skillsPanelOpen ? renderSkillsModal(state) : ""}
       ${renderBuildBadge()}
+      ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
     </section>
   `;
 }
@@ -259,6 +261,7 @@ function renderEndingScreen(state) {
         <button class="btn btn-primary" type="button" data-action="end-to-welcome">В главное меню</button>
       </div>
       ${renderBuildBadge()}
+      ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
     </section>
   `;
 }
@@ -271,12 +274,13 @@ function renderInventoryPanel(state) {
     const itemId = equipped[type];
     const item = itemId ? getItemById(itemId) : null;
     const equippedBonus = item ? formatItemBonuses(item, item) : "—";
+    const rarityClass = item ? ` item-rarity-${getItemRarity(item)}` : "";
     return `
       <li class="slot-item">
         <span class="slot-name">${toRuType(type)}</span>
         ${item
           ? `
-            <div class="bag-icon slot-equipped-card" title="${item.name}">
+            <div class="bag-icon slot-equipped-card${rarityClass}" title="${item.name}">
               <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
               <span class="bag-icon-bonus">${equippedBonus}</span>
             </div>
@@ -304,13 +308,13 @@ function renderInventoryPanel(state) {
       }
 
       const consumableStacks = Array.from(grouped.values())
-        .sort((a, b) => a.item.name.localeCompare(b.item.name));
+        .sort((a, b) => compareItemsByRarityThenId(a.item, b.item));
 
       const content = consumableStacks.length
         ? consumableStacks
             .map(({ item, count }) => `
               <button
-                class="bag-icon"
+                class="bag-icon item-rarity-${getItemRarity(item)}"
                 type="button"
                 data-action="bag-item-action"
                 data-item-id="${item.id}"
@@ -347,17 +351,11 @@ function renderInventoryPanel(state) {
         return {
           ...entry,
           item,
-          statsSum: getItemStatsSum(item),
           bagIndex: bagEntries.findIndex((bagEntry) => bagEntry.instanceId === entry.instanceId),
         };
       })
       .filter(Boolean)
-      .sort((a, b) => {
-        if (b.statsSum !== a.statsSum) {
-          return b.statsSum - a.statsSum;
-        }
-        return String(a.instanceId).localeCompare(String(b.instanceId));
-      });
+      .sort((a, b) => compareItemsByRarityThenId(a.item, b.item));
 
     const content = itemsForType.length
       ? itemsForType
@@ -366,7 +364,7 @@ function renderInventoryPanel(state) {
             const equippedItem = equippedItemId ? getItemById(equippedItemId) : null;
             return `
               <button
-                class="bag-icon"
+                class="bag-icon item-rarity-${getItemRarity(entry.item)}"
                 type="button"
                 data-action="bag-item-action"
                 data-item-id="${entry.item.id}"
@@ -654,8 +652,24 @@ function formatItemBonuses(item, compareWithItem = null) {
     .join("<br>");
 }
 
-function getItemStatsSum(item) {
-  return Object.values(item?.statBonuses || {}).reduce((sum, value) => sum + value, 0);
+function getItemRarity(item) {
+  const id = String(item?.id || "");
+  if (id.startsWith("unique_")) return "unique";
+  if (id.startsWith("rare_")) return "rare";
+  return "common";
+}
+
+function getRaritySortWeight(item) {
+  const rarity = getItemRarity(item);
+  if (rarity === "unique") return 3;
+  if (rarity === "rare") return 2;
+  return 1;
+}
+
+function compareItemsByRarityThenId(a, b) {
+  const byRarity = getRaritySortWeight(b) - getRaritySortWeight(a);
+  if (byRarity !== 0) return byRarity;
+  return String(a?.id || "").localeCompare(String(b?.id || ""));
 }
 
 function toCompactStatName(statName) {
@@ -708,6 +722,42 @@ function getConsumableHoverText(item, count) {
   const stacksText = count > 1 ? `\nСтак: ${count}` : "";
   if (item.id === "cheese_ration") {
     return `${item.name}: лечит 10 HP (не выше HP МАКС), дополнительно +4 маны.${stacksText}`;
+  }
+  if (item.id === "common_crumb_ration") {
+    return `${item.name}: лечит 10 HP (не выше HP МАКС).${stacksText}`;
+  }
+  if (item.id === "common_mint_drop") {
+    return `${item.name}: восстанавливает 10 маны (не выше максимума).${stacksText}`;
+  }
+  if (item.id === "common_warm_milk") {
+    return `${item.name}: лечит 6 HP и восстанавливает 6 маны.${stacksText}`;
+  }
+  if (item.id === "common_sharp_pepper") {
+    return `${item.name}: следующая атака персонажа получает множитель x1.5.${stacksText}`;
+  }
+  if (item.id === "rare_hearty_stew") {
+    return `${item.name}: лечит 18 HP (не выше HP МАКС).${stacksText}`;
+  }
+  if (item.id === "rare_focus_tonic") {
+    return `${item.name}: восстанавливает 16 маны (не выше максимума).${stacksText}`;
+  }
+  if (item.id === "rare_dual_elixir") {
+    return `${item.name}: лечит 12 HP и восстанавливает 12 маны.${stacksText}`;
+  }
+  if (item.id === "rare_battle_pepper") {
+    return `${item.name}: следующая атака персонажа получает множитель x2.${stacksText}`;
+  }
+  if (item.id === "unique_phoenix_broth") {
+    return `${item.name}: лечит 28 HP (не выше HP МАКС).${stacksText}`;
+  }
+  if (item.id === "unique_aether_draught") {
+    return `${item.name}: восстанавливает 24 маны (не выше максимума).${stacksText}`;
+  }
+  if (item.id === "unique_twilight_mix") {
+    return `${item.name}: лечит 20 HP и восстанавливает 20 маны.${stacksText}`;
+  }
+  if (item.id === "unique_storm_pepper") {
+    return `${item.name}: следующая атака персонажа получает множитель x2.5.${stacksText}`;
   }
   if (item.id === "hard_cheese") {
     return `${item.name}: +5 HP МАКС до конца забега (эффект стакается).${stacksText}`;
@@ -819,7 +869,28 @@ function buildFullStats(playerSheet) {
 }
 
 function renderBuildBadge() {
-  return `<p class="build-badge">${APP_TITLE} · v${APP_VERSION}</p>`;
+  return `
+    <p class="build-badge">
+      ${APP_TITLE} · v${APP_VERSION}
+      <button class="build-help-btn" type="button" data-action="open-help" title="Справка по управлению">?</button>
+    </p>
+  `;
+}
+
+function renderHelpModal() {
+  return `
+    <div class="help-modal-backdrop">
+      <section class="help-modal">
+        <h3>Справка</h3>
+        <p><strong>Управление:</strong> WASD/стрелки — движение; 1-9 — слоты быстрого доступа; мышь — выбор клетки при подготовке скилла; пробел — применение подготовленного скилла на себя (если клетка валидна).</p>
+        <p><strong>Скрытые возможности:</strong> если скилл подготовлен, можно нажать направление и скилл сработает в этом направлении, но только когда там ровно одна доступная клетка. Активные эффекты показываются иконками сверху слева, а подробности — по наведению.</p>
+        <p><strong>Быстрый доступ:</strong> расходники и изученные скиллы можно перетаскивать в quickbar; при нехватке маны/ресурса слот затемняется.</p>
+        <div class="controls-row">
+          <button class="btn btn-primary" type="button" data-action="close-help">Закрыть</button>
+        </div>
+      </section>
+    </div>
+  `;
 }
 
 function renderSkillsModal(state) {
