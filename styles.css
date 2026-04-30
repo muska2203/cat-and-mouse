@@ -179,6 +179,12 @@ body {
   background: #020617;
 }
 
+.play-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .game-side p {
   color: #94a3b8;
   font-size: 14px;

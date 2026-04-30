@@ -1,19 +1,19 @@
-import { createInitialState } from "./state.js?v=0.1.1-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.1.1-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.1.1-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.1.1-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.1.1-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.1.1-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.1.1-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.1.1-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.1.1-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.1.1-pre-alpha";
-import { createRunState } from "./game.js?v=0.1.1-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.1.1-pre-alpha";
-import { tryStep } from "./game.js?v=0.1.1-pre-alpha";
-import { useConsumable } from "./game.js?v=0.1.1-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.1.1-pre-alpha";
-import { renderApp } from "./ui.js?v=0.1.1-pre-alpha";
+import { createInitialState } from "./state.js?v=0.1.2-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.1.2-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.1.2-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.1.2-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.1.2-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.1.2-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.1.2-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.1.2-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.1.2-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.1.2-pre-alpha";
+import { createRunState } from "./game.js?v=0.1.2-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.1.2-pre-alpha";
+import { tryStep } from "./game.js?v=0.1.2-pre-alpha";
+import { useConsumable } from "./game.js?v=0.1.2-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.1.2-pre-alpha";
+import { renderApp } from "./ui.js?v=0.1.2-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
@@ -138,6 +138,10 @@ function onKeyDown(event) {
   }
 
   const map = {
+    ArrowUp: "up",
+    ArrowLeft: "left",
+    ArrowDown: "down",
+    ArrowRight: "right",
     KeyW: "up",
     KeyA: "left",
     KeyS: "down",
