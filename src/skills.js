@@ -67,11 +67,14 @@ export const SKILL_DEFS = {
   },
 };
 
+const HP_RECOVERY_SKILL_IDS = new Set(["warrior_bandage", "mage_heal"]);
+
 export function getSkillsForClass(classId) {
+  const hpRecoverySkills = Object.values(SKILL_DEFS).filter((skill) => HP_RECOVERY_SKILL_IDS.has(skill.id));
   if (classId === "admin") {
-    return Object.values(SKILL_DEFS);
+    return hpRecoverySkills;
   }
-  return Object.values(SKILL_DEFS).filter((skill) => skill.classId === classId);
+  return hpRecoverySkills.filter((skill) => skill.classId === classId);
 }
 
 export function getSkillById(skillId) {

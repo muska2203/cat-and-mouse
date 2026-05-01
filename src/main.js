@@ -1,34 +1,33 @@
-import { createInitialState } from "./state.js?v=0.4.1-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.4.1-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.4.1-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.1-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.1-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.4.1-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.1-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.4.1-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.1-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.1-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.1-pre-alpha";
-import { getAllItemsForClass } from "./loadout.js?v=0.4.1-pre-alpha";
-import { createRunState } from "./game.js?v=0.4.1-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.4.1-pre-alpha";
-import { tryStep } from "./game.js?v=0.4.1-pre-alpha";
-import { useConsumable } from "./game.js?v=0.4.1-pre-alpha";
-import { useSkillAtCell } from "./game.js?v=0.4.1-pre-alpha";
-import { getSkillTargetCells } from "./game.js?v=0.4.1-pre-alpha";
-import { getTrapPlacementCells } from "./game.js?v=0.4.1-pre-alpha";
-import { placeTrap } from "./game.js?v=0.4.1-pre-alpha";
-import { beginEnvironmentTurn } from "./game.js?v=0.4.1-pre-alpha";
-import { stepEnvironmentTurn } from "./game.js?v=0.4.1-pre-alpha";
-import { buildPathToDiscoveredCell } from "./game.js?v=0.4.1-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.1-pre-alpha";
-import { renderApp } from "./ui.js?v=0.4.1-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.1-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.1-pre-alpha";
-import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.1-pre-alpha";
-import { initAnalytics } from "./analytics.js?v=0.4.1-pre-alpha";
-import { trackEvent } from "./analytics.js?v=0.4.1-pre-alpha";
-import { createRunAnalyticsId } from "./analytics.js?v=0.4.1-pre-alpha";
+import { createInitialState } from "./state.js?v=0.4.2-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.2-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.4.2-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.2-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.2-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.4.2-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.2-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.2-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.2-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.2-pre-alpha";
+import { getAllItemsForClass } from "./loadout.js?v=0.4.2-pre-alpha";
+import { createRunState } from "./game.js?v=0.4.2-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.4.2-pre-alpha";
+import { tryStep } from "./game.js?v=0.4.2-pre-alpha";
+import { useConsumable } from "./game.js?v=0.4.2-pre-alpha";
+import { useSkillAtCell } from "./game.js?v=0.4.2-pre-alpha";
+import { getSkillTargetCells } from "./game.js?v=0.4.2-pre-alpha";
+import { getTrapPlacementCells } from "./game.js?v=0.4.2-pre-alpha";
+import { placeTrap } from "./game.js?v=0.4.2-pre-alpha";
+import { beginEnvironmentTurn } from "./game.js?v=0.4.2-pre-alpha";
+import { stepEnvironmentTurn } from "./game.js?v=0.4.2-pre-alpha";
+import { buildPathToDiscoveredCell } from "./game.js?v=0.4.2-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.2-pre-alpha";
+import { renderApp } from "./ui.js?v=0.4.2-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.2-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.2-pre-alpha";
+import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.2-pre-alpha";
+import { initAnalytics } from "./analytics.js?v=0.4.2-pre-alpha";
+import { trackEvent } from "./analytics.js?v=0.4.2-pre-alpha";
+import { createRunAnalyticsId } from "./analytics.js?v=0.4.2-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
@@ -395,28 +394,12 @@ function performStep(direction) {
   }
   clearPathingState();
 
-  const previousSkillPoints = state.playerSheet?.skillPoints || 0;
+  const progressBefore = snapshotProgress();
   const stepResult = tryStep(state.run, state.playerSheet, direction);
   state.run = stepResult.run;
   state.playerSheet = stepResult.playerSheet;
   if (state.run && stepResult.motion) {
     state.run.motion = stepResult.motion;
-  }
-
-  if (state.run?.pendingLoot && state.playerSheet) {
-    const lootItemId = state.run.pendingLoot.itemId;
-    const lootResult = addLootItemToPlayer(state.playerSheet, lootItemId);
-    state.playerSheet = lootResult.playerSheet;
-    if (lootResult.addedTo === "bag") {
-      autoAssignConsumableLootToQuickbar(lootItemId);
-    }
-    if (lootResult.addedTo === "equip") {
-      state.run.lastLog = `${state.run.lastLog} Автоэкипировка.`;
-    }
-    if (lootResult.addedTo === "bag") {
-      state.run.lastLog = `${state.run.lastLog} Предмет отправлен в сумку.`;
-    }
-    delete state.run.pendingLoot;
   }
 
   if (state.run?.status === "victory" || state.run?.status === "defeat") {
@@ -425,7 +408,8 @@ function performStep(direction) {
   if (stepResult.actionConsumed) {
     consumePlayerActionAndStartEnvironment();
   }
-  maybeOpenSkillsOnNewPoint(previousSkillPoints);
+  maybeOpenSkillsOnNewPoint(progressBefore.skillPoints);
+  maybeTriggerLevelUpPulse(progressBefore);
 
   rerender();
   return Boolean(stepResult.actionConsumed);
@@ -447,6 +431,7 @@ function animationLoop(nowMs) {
     drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, nowMs);
     animateHpHud();
     animateManaHud();
+    maybeExpireLevelUpPulse(nowMs);
   }
   requestAnimationFrame(animationLoop);
 }
@@ -650,6 +635,20 @@ function onRootDragStart(event) {
     return;
   }
 
+  const equipItem = event.target.closest("[data-drag-kind='bag-equip']");
+  if (equipItem) {
+    const bagInstanceId = equipItem.dataset.dragBagInstanceId;
+    const itemType = equipItem.dataset.dragItemType;
+    if (!bagInstanceId || !itemType) {
+      event.preventDefault();
+      return;
+    }
+    state.uiHud.dragPayload = { kind: "bag-equip", bagInstanceId, itemType };
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", `bag-equip:${bagInstanceId}`);
+    return;
+  }
+
   const skill = event.target.closest("[data-drag-kind='skill']");
   if (!skill) {
     return;
@@ -666,17 +665,46 @@ function onRootDragStart(event) {
 
 function onRootDragOver(event) {
   const quickbarSlot = event.target.closest("[data-slot-index]");
-  if (!quickbarSlot) {
+  const equipSlot = event.target.closest("[data-equip-type]");
+  if (!state.uiHud.dragPayload || (!quickbarSlot && !equipSlot)) {
     return;
   }
-  if (!state.uiHud.dragPayload) {
-    return;
+  if (equipSlot) {
+    const equipType = equipSlot.dataset.equipType;
+    const payload = state.uiHud.dragPayload;
+    if (payload.kind !== "bag-equip" || !equipType || payload.itemType !== equipType) {
+      return;
+    }
   }
   event.preventDefault();
   event.dataTransfer.dropEffect = "move";
 }
 
 function onRootDrop(event) {
+  const equipSlot = event.target.closest("[data-equip-type]");
+  if (equipSlot && state.uiHud.dragPayload?.kind === "bag-equip") {
+    const equipType = equipSlot.dataset.equipType;
+    const payload = state.uiHud.dragPayload;
+    if (
+      state.playerSheet &&
+      state.run &&
+      state.run.turnPhase === "player" &&
+      equipType &&
+      payload.itemType === equipType &&
+      payload.bagInstanceId
+    ) {
+      event.preventDefault();
+      const previousSheet = state.playerSheet;
+      state.playerSheet = swapItemFromBag(state.playerSheet, payload.bagInstanceId, -1);
+      if (state.playerSheet !== previousSheet) {
+        consumePlayerActionAndStartEnvironment();
+      }
+      state.uiHud.dragPayload = null;
+      rerender();
+      return;
+    }
+  }
+
   const quickbarSlot = event.target.closest("[data-slot-index]");
   if (!quickbarSlot || !state.uiHud.dragPayload) {
     return;
@@ -799,6 +827,7 @@ function onCanvasClick(event, canvas) {
     rerender();
     return;
   }
+  const progressBefore = snapshotProgress();
   const result = useSkillAtCell(state.run, state.playerSheet, targeting.skillId, cell.x, cell.y);
   state.run = result.run;
   state.playerSheet = result.playerSheet;
@@ -810,16 +839,8 @@ function onCanvasClick(event, canvas) {
     pulseQuickbarSlot(targeting.slotIndex);
   }
   clearSkillTargeting();
-  if (state.run?.pendingLoot && state.playerSheet) {
-    const lootItemId = state.run.pendingLoot.itemId;
-    const lootResult = addLootItemToPlayer(state.playerSheet, lootItemId);
-    state.playerSheet = lootResult.playerSheet;
-    if (lootResult.addedTo === "bag") {
-      autoAssignConsumableLootToQuickbar(lootItemId);
-    }
-    delete state.run.pendingLoot;
-  }
-  maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  maybeOpenSkillsOnNewPoint(progressBefore.skillPoints);
+  maybeTriggerLevelUpPulse(progressBefore);
   if (result.actionConsumed) {
     trackSkillUse(targeting.skillId);
     consumePlayerActionAndStartEnvironment();
@@ -989,14 +1010,6 @@ function assignQuickbarSlotIfAvailable(payload) {
   return true;
 }
 
-function autoAssignConsumableLootToQuickbar(itemId) {
-  const item = getItemById(itemId);
-  if (!item?.isConsumable) {
-    return false;
-  }
-  return assignQuickbarSlotIfAvailable({ kind: "consumable", itemId: item.id });
-}
-
 function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
   if (!itemId || !state.playerSheet || !state.run || state.run.turnPhase !== "player") {
     return false;
@@ -1037,6 +1050,7 @@ function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
     return false;
   }
 
+  const progressBefore = snapshotProgress();
   const useResult = useConsumable(state.run, state.playerSheet, item);
   state.run = useResult.run;
   state.playerSheet = useResult.playerSheet;
@@ -1047,7 +1061,8 @@ function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
     nextBag
   );
   consumePlayerActionAndStartEnvironment();
-  maybeOpenSkillsOnNewPoint(0);
+  maybeOpenSkillsOnNewPoint(progressBefore.skillPoints);
+  maybeTriggerLevelUpPulse(progressBefore);
   return true;
 }
 
@@ -1116,6 +1131,33 @@ function maybeOpenSkillsOnNewPoint(previousPoints = 0) {
   state.uiHud.skillsPanelOpen = true;
   state.uiHud.deferSkillsPanelOpen = false;
   clearSkillTargeting();
+}
+
+function snapshotProgress() {
+  return {
+    level: state.playerSheet?.level || 1,
+    unspentPoints: state.playerSheet?.unspentPoints || 0,
+    skillPoints: state.playerSheet?.skillPoints || 0,
+  };
+}
+
+function maybeTriggerLevelUpPulse(previousProgress) {
+  const prev = previousProgress || { level: 1, unspentPoints: 0 };
+  const currentLevel = state.playerSheet?.level || 1;
+  const currentUnspent = state.playerSheet?.unspentPoints || 0;
+  const leveledUp = currentLevel > (prev.level || 1) || currentUnspent > (prev.unspentPoints || 0);
+  if (!leveledUp) {
+    return;
+  }
+  state.uiHud.levelUpPulseUntil = performance.now() + 2200;
+}
+
+function maybeExpireLevelUpPulse(nowMs) {
+  if (!state.uiHud.levelUpPulseUntil || nowMs < state.uiHud.levelUpPulseUntil) {
+    return;
+  }
+  state.uiHud.levelUpPulseUntil = 0;
+  rerender();
 }
 
 function maybeOpenDeferredSkillsPanel() {
@@ -1228,6 +1270,7 @@ function tryCastPreparedSkillByDirection(direction) {
   }
 
   const cell = directionalTargets[0];
+  const progressBefore = snapshotProgress();
   const result = useSkillAtCell(state.run, state.playerSheet, targeting.skillId, cell.x, cell.y);
   state.run = result.run;
   state.playerSheet = result.playerSheet;
@@ -1239,16 +1282,8 @@ function tryCastPreparedSkillByDirection(direction) {
     pulseQuickbarSlot(targeting.slotIndex);
   }
   clearSkillTargeting();
-  if (state.run?.pendingLoot && state.playerSheet) {
-    const lootItemId = state.run.pendingLoot.itemId;
-    const lootResult = addLootItemToPlayer(state.playerSheet, lootItemId);
-    state.playerSheet = lootResult.playerSheet;
-    if (lootResult.addedTo === "bag") {
-      autoAssignConsumableLootToQuickbar(lootItemId);
-    }
-    delete state.run.pendingLoot;
-  }
-  maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  maybeOpenSkillsOnNewPoint(progressBefore.skillPoints);
+  maybeTriggerLevelUpPulse(progressBefore);
   if (result.actionConsumed) {
     trackSkillUse(targeting.skillId);
     consumePlayerActionAndStartEnvironment();
@@ -1269,6 +1304,7 @@ function tryCastPreparedSkillOnSelf() {
     rerender();
     return;
   }
+  const progressBefore = snapshotProgress();
   const result = useSkillAtCell(state.run, state.playerSheet, targeting.skillId, px, py);
   state.run = result.run;
   state.playerSheet = result.playerSheet;
@@ -1280,7 +1316,8 @@ function tryCastPreparedSkillOnSelf() {
     pulseQuickbarSlot(targeting.slotIndex);
   }
   clearSkillTargeting();
-  maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
+  maybeOpenSkillsOnNewPoint(progressBefore.skillPoints);
+  maybeTriggerLevelUpPulse(progressBefore);
   if (result.actionConsumed) {
     trackSkillUse(targeting.skillId);
     consumePlayerActionAndStartEnvironment();
@@ -1572,15 +1609,6 @@ function maybeRunAutoMoveStep() {
   }
   const movedToNextCell = state.run.player.x === next.x && state.run.player.y === next.y;
   if (movedToNextCell) {
-    if (state.run?.pendingLoot && state.playerSheet) {
-      const lootItemId = state.run.pendingLoot.itemId;
-      const lootResult = addLootItemToPlayer(state.playerSheet, lootItemId);
-      state.playerSheet = lootResult.playerSheet;
-      if (lootResult.addedTo === "bag") {
-        autoAssignConsumableLootToQuickbar(lootItemId);
-      }
-      delete state.run.pendingLoot;
-    }
     advanceLockedPathAfterStep();
   }
   consumePlayerActionAndStartEnvironment();

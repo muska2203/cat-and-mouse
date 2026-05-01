@@ -1,15 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.4.1-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.4.1-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.4.1-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.1-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.1-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.1-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.1-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.1-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.4.1-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.1-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.1-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.4.1-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.4.2-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.2-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.4.2-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.2-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.2-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.2-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.2-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.2-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.4.2-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.2-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.2-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.4.2-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -108,10 +108,7 @@ function renderWelcomeScreen(state) {
 
   return `
     <section class="screen" aria-label="Приветственный экран">
-      <h1 class="screen-title">Mouse Rogue-like</h1>
-      <p class="screen-subtitle">
-        Проведи мышонка через квартиру-лабиринт до норы, избегая котов и ловушек.
-      </p>
+      <h1 class="screen-title screen-title-centered">Доберись до норы... если сможешь</h1>
       <div class="class-list" aria-label="Доступные классы персонажа">
         ${classesMarkup}
       </div>
@@ -191,8 +188,8 @@ function renderGameScreen(state) {
           ${renderHpBar(state.playerSheet)}
           ${renderManaBar(state.playerSheet)}
           ${renderXpBar(state.playerSheet)}
-          <p class="progression-line">Уровень: <span data-action="debug-level-up">${state.playerSheet?.level ?? 1}</span></p>
-          <p class="progression-line">Очки прокачки: ${state.playerSheet?.unspentPoints ?? 0}</p>
+          <p class="progression-line ${state.uiHud?.levelUpPulseUntil ? "progression-line-pulse" : ""}">Уровень: <span data-action="debug-level-up">${state.playerSheet?.level ?? 1}</span></p>
+          <p class="progression-line ${state.uiHud?.levelUpPulseUntil ? "progression-line-pulse" : ""}">Очки прокачки: ${state.playerSheet?.unspentPoints ?? 0}</p>
           <section class="stats-group">
             <ul class="stats-list">
               ${renderBaseAndTotalStatsWithUpgrades(state.playerSheet, state.uiHud)}
@@ -300,13 +297,13 @@ function renderInventoryPanel(state) {
         <span class="slot-name">${toRuType(type)}</span>
         ${item
           ? `
-            <div class="bag-icon slot-equipped-card${rarityClass}" title="${item.name}">
+            <div class="bag-icon slot-equipped-card${rarityClass}" data-equip-type="${type}" title="${item.name}">
               <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
               <span class="bag-icon-bonus">${equippedBonus}</span>
             </div>
           `
           : `
-            <div class="bag-icon slot-equipped-card slot-empty-card">
+            <div class="bag-icon slot-equipped-card slot-empty-card" data-equip-type="${type}">
               <span class="bag-icon-glyph">—</span>
               <span class="bag-icon-bonus">—</span>
             </div>
@@ -390,6 +387,10 @@ function renderInventoryPanel(state) {
                 data-item-id="${entry.item.id}"
                 data-bag-instance-id="${entry.instanceId}"
                 data-bag-index="${entry.bagIndex}"
+                data-drag-kind="bag-equip"
+                data-drag-bag-instance-id="${entry.instanceId}"
+                data-drag-item-type="${entry.item.type}"
+                draggable="true"
                 title="${getItemHoverText(entry.item)}"
               >
                 <span class="bag-icon-glyph">${entry.item.icon || getItemIcon(entry.item.type)}</span>
@@ -466,7 +467,10 @@ function renderSkillsMiniPanel(state) {
 
 function renderStatsList(statsObject, playerSheet = null) {
   return Object.entries(statsObject)
-    .map(([name, value]) => `<li><span title="${getStatDescriptionRu(name, playerSheet)}">${toRuStatName(name)}</span><strong>${value}</strong></li>`)
+    .map(([name, value]) => {
+      const tooltip = getStatDescriptionRu(name, playerSheet);
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(name)}</span><strong title="${tooltip}">${value}</strong></li>`;
+    })
     .join("");
 }
 
@@ -479,7 +483,8 @@ function renderBaseAndTotalStats(playerSheet) {
       const totalMarkup = totalValue !== baseValue
         ? `<span class="stat-total-value"> (${totalValue})</span>`
         : "";
-      return `<li><span title="${getStatDescriptionRu(key, playerSheet)}">${toRuStatName(key)}</span><strong>${baseValue}${totalMarkup}</strong></li>`;
+      const tooltip = getStatDescriptionRu(key, playerSheet);
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(key)}</span><strong title="${tooltip}">${baseValue}${totalMarkup}</strong></li>`;
     })
     .join("");
 }
@@ -488,11 +493,12 @@ function renderStatsListWithUpgrades(statsObject, playerSheet, upgradeByStat) {
   const hasPoints = (playerSheet?.unspentPoints || 0) > 0;
   return Object.entries(statsObject)
     .map(([name, value]) => {
+      const tooltip = getStatDescriptionRu(name, playerSheet);
       const upgradeValue = upgradeByStat[name];
       const upgradeButton = hasPoints && upgradeValue
-        ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${name}">+${upgradeValue}</button>`
+        ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${name}" title="${tooltip}. Потратить 1 очко: +${upgradeValue} ${toRuStatName(name)}.">+${upgradeValue}</button>`
         : "";
-      return `<li><span title="${getStatDescriptionRu(name, playerSheet)}">${toRuStatName(name)}</span><div class="stat-value-with-upgrade"><strong>${value}</strong>${upgradeButton}</div></li>`;
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(name)}</span><div class="stat-value-with-upgrade"><strong title="${tooltip}">${value}</strong>${upgradeButton}</div></li>`;
     })
     .join("");
 }
@@ -515,6 +521,7 @@ function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
 
   return statsOrder
     .map(({ key, upgrade }) => {
+      const tooltip = getStatDescriptionRu(key, playerSheet);
       const baseValue = playerSheet?.baseStats?.[key] ?? 0;
       const totalValue = playerSheet?.stats?.[key] ?? baseValue;
       const previewBase = previewSheet?.baseStats?.[key];
@@ -524,7 +531,7 @@ function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
       const isBasePreviewed = shownBase !== baseValue;
       const isTotalPreviewed = shownTotal !== totalValue;
       const upgradeButton = hasPoints
-        ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${key}">+${upgrade}</button>`
+        ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${key}" title="${tooltip}. Потратить 1 очко: +${upgrade} ${toRuStatName(key)}.">+${upgrade}</button>`
         : "";
       const totalDelta = shownTotal - totalValue;
       let previewClass = "";
@@ -538,10 +545,10 @@ function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
         ? `<span class="stat-total-neutral ${previewClass}"> (${shownTotal})</span>`
         : "";
       return `
-        <li>
-          <span title="${getStatDescriptionRu(key, playerSheet)}">${toRuStatName(key)}</span>
+        <li title="${tooltip}">
+          <span title="${tooltip}">${toRuStatName(key)}</span>
           <div class="stat-value-with-upgrade">
-            <strong>${shownBase}${totalMarkup}</strong>
+            <strong title="${tooltip}">${shownBase}${totalMarkup}</strong>
             ${upgradeButton}
           </div>
         </li>
@@ -565,6 +572,7 @@ function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
   };
   return Object.entries(current)
     .map(([key, value]) => {
+      const tooltip = getStatDescriptionRu(key, playerSheet);
       const previewValue = previewSheet?.derived?.[key];
       const isPreviewed = previewValue != null && previewValue !== value;
       const shown = isPreviewed ? previewValue : value;
@@ -576,7 +584,7 @@ function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
         if (delta > 0) previewClass = "stat-preview-up";
         if (delta < 0) previewClass = "stat-preview-down";
       }
-      return `<li><span title="${getStatDescriptionRu(key, playerSheet)}">${toRuStatName(key)}</span><strong class="${previewClass}">${shown}</strong></li>`;
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(key)}</span><strong title="${tooltip}" class="${previewClass}">${shown}</strong></li>`;
     })
     .join("");
 }
@@ -1013,6 +1021,7 @@ function renderQuickbar(state) {
         : `Слот ${slotIndex}`;
     const classes = [
       "quick-slot-btn",
+      item ? `item-rarity-${getItemRarity(item)}` : "",
       pulseSlot === idx ? "quick-slot-pulse" : "",
       (isOutOfStock || isNotEnoughMana) ? "quick-slot-out" : "",
     ].filter(Boolean).join(" ");

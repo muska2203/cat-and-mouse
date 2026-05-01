@@ -1,7 +1,9 @@
-import { generateMazeRun } from "./maze.js?v=0.4.1-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.4.1-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.4.1-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.1-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.4.2-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.4.2-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.2-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.4.2-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.4.2-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.2-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -118,7 +120,31 @@ function rollLootPoolByChestRarity(chestRarity) {
   return weightedPick(tables[chestRarity] || tables.common);
 }
 
-function getLootFromChest(chestRarity, classId) {
+function getLootCountFromChest(chestRarity) {
+  const ranges = {
+    common: { min: 1, max: 2 },
+    rare: { min: 2, max: 3 },
+    unique: { min: 3, max: 4 },
+  };
+  const range = ranges[chestRarity] || ranges.common;
+  return randomInt(range.min, range.max);
+}
+
+function isManaSustainItem(item) {
+  const manaItemIds = new Set([
+    "common_mint_drop",
+    "common_warm_milk",
+    "cheese_ration",
+    "rare_focus_tonic",
+    "rare_dual_elixir",
+    "rare_royal_cheese",
+    "unique_aether_draught",
+    "unique_twilight_mix",
+  ]);
+  return Boolean(item?.id && manaItemIds.has(item.id));
+}
+
+function getLootFromChest(chestRarity, classId, excludedItemIds = new Set()) {
   const rolledPool = rollLootPoolByChestRarity(chestRarity);
   const fallbackPools = {
     common: ["common", "rare", "unique"],
@@ -128,12 +154,96 @@ function getLootFromChest(chestRarity, classId) {
   const poolOrder = [rolledPool, ...(fallbackPools[chestRarity] || fallbackPools.common)]
     .filter((poolName, index, list) => list.indexOf(poolName) === index);
   for (const poolName of poolOrder) {
-    const pool = getLootPool(poolName, classId);
+    const pool = getLootPool(poolName, classId).filter((item) => !excludedItemIds.has(item.id));
     if (pool.length > 0) {
+      const manaWeightedChance = {
+        common: 0.38,
+        rare: 0.5,
+        unique: 0.62,
+      };
+      const manaCandidates = pool.filter((item) => isManaSustainItem(item));
+      const manaChance = manaWeightedChance[chestRarity] ?? manaWeightedChance.common;
+      if (manaCandidates.length > 0 && Math.random() < manaChance) {
+        return randomPick(manaCandidates);
+      }
       return randomPick(pool);
     }
   }
   return null;
+}
+
+function collectChestDropCells(run, x, y) {
+  const cells = [];
+  for (const dir of DIRS_8) {
+    const nx = x + dir.x;
+    const ny = y + dir.y;
+    if (!inBounds(nx, ny, run) || isWall(nx, ny, run)) continue;
+    const occupied = getObjectsAt(run, nx, ny);
+    const hasEnemy = occupied.some((object) => object.type === "enemy");
+    if (hasEnemy) continue;
+    cells.push({ x: nx, y: ny });
+  }
+  return cells;
+}
+
+function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
+  const candidateCells = collectChestDropCells(run, sourceX, sourceY);
+  let ord = 0;
+  const dropMotions = [];
+  for (const item of lootItems) {
+    if (!item?.id) continue;
+    const targetCell = candidateCells.shift() || { x: sourceX, y: sourceY };
+    const lootObject = {
+      id: `ground_loot_${Date.now()}_${targetCell.x}_${targetCell.y}_${ord}_${Math.floor(Math.random() * 10000)}`,
+      name: `Лут: ${item.name}`,
+      type: "ground_loot",
+      purpose: "ground_loot",
+      icon: "📦",
+      oneTime: true,
+      blocksMovement: false,
+      blocksEnemyMovement: false,
+      activation: { by: [ACTOR_KIND.PLAYER], effect: "pickup_loot" },
+      x: targetCell.x,
+      y: targetCell.y,
+      data: {
+        itemId: item.id,
+        itemName: item.name,
+        itemIcon: item.icon || "📦",
+        sourceName,
+      },
+    };
+    run.objects.push(lootObject);
+    if (targetCell.x !== sourceX || targetCell.y !== sourceY) {
+      dropMotions.push({
+        actorId: lootObject.id,
+        kind: "move",
+        from: { x: sourceX, y: sourceY },
+        to: { x: targetCell.x, y: targetCell.y },
+      });
+    }
+    ord += 1;
+  }
+  if (dropMotions.length > 0) {
+    run.environmentMotion = {
+      kind: "object-move-batch",
+      actors: dropMotions,
+      durationMs: 220,
+      startMs: null,
+    };
+  }
+}
+
+function rollChestLootItems(chestRarity, classId) {
+  const lootCount = getLootCountFromChest(chestRarity);
+  const picks = [];
+  const excluded = new Set();
+  for (let i = 0; i < lootCount; i += 1) {
+    const item = getLootFromChest(chestRarity, classId, excluded);
+    if (!item) continue;
+    picks.push(item);
+    excluded.add(item.id);
+  }
+  return picks;
 }
 
 function weightedEnemyType(level) {
@@ -705,18 +815,39 @@ function tickTemporaryObjects(run) {
 function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, actorEntity = null) {
   const objects = getObjectsAt(run, x, y);
   const logs = [];
+  let nextPlayerSheet = playerSheet;
   for (const object of objects) {
     if (!canObjectBeActivatedBy(object, actorKind)) {
       continue;
     }
     if (object.activation?.effect === "open_chest" && actorKind === ACTOR_KIND.PLAYER) {
       removeObject(run, object.id);
-      const loot = getLootFromChest(object?.data?.chestRarity || "common", playerSheet.classId);
-      if (loot) {
-        run.pendingLoot = { itemId: loot.id, source: object.name };
-        logs.push(`Найдено: ${loot.name}.`);
+      const chestRarity = object?.data?.chestRarity || "common";
+      const lootItems = rollChestLootItems(chestRarity, nextPlayerSheet.classId);
+      if (lootItems.length > 0) {
+        spawnGroundLootObjects(run, lootItems, x, y, object.name);
+        logs.push(`${object.name}: лут высыпан рядом (${lootItems.length}).`);
       } else {
         logs.push(`${object.name} оказался пустым.`);
+      }
+    }
+    if (object.activation?.effect === "pickup_loot" && actorKind === ACTOR_KIND.PLAYER) {
+      const itemId = object?.data?.itemId || null;
+      const item = itemId ? getItemById(itemId) : null;
+      if (!item) {
+        removeObject(run, object.id);
+        logs.push("Предмет испорчен и исчез.");
+      } else {
+        const lootResult = addLootItemToPlayer(nextPlayerSheet, item.id);
+        nextPlayerSheet = lootResult.playerSheet;
+        removeObject(run, object.id);
+        if (lootResult.addedTo === "equip") {
+          logs.push(`Подобрано: ${item.name}. Автоэкипировка.`);
+        } else if (lootResult.addedTo === "bag") {
+          logs.push(`Подобрано: ${item.name}. В сумке.`);
+        } else {
+          logs.push(`Подобрано: ${item.name}.`);
+        }
       }
     }
     if (object.activation?.effect === "trigger_trap" && object.type === "trap") {
@@ -761,7 +892,7 @@ function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, actorEnt
       logs.push(`Уровень ${run.level} пройден. Переход на ${run.level + 1}...`);
     }
   }
-  return { log: logs.join(" ") };
+  return { log: logs.join(" "), playerSheet: nextPlayerSheet };
 }
 
 function removeObject(run, objectId) {
@@ -1626,6 +1757,7 @@ export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
     run.player.x = targetX;
     run.player.y = targetY;
     const activationResult = applyObjectActivationOnCell(run, playerSheet, ACTOR_KIND.PLAYER, targetX, targetY);
+    playerSheet = activationResult.playerSheet || playerSheet;
     if (activationResult.log) {
       log += `${skillDef.name}: рывок выполнен, ${activationResult.log.toLowerCase()}`;
     } else {
@@ -1727,6 +1859,7 @@ export function tryStep(run, playerSheet, direction) {
     run.player.x = nx;
     run.player.y = ny;
     const activationResult = applyObjectActivationOnCell(run, playerSheet, ACTOR_KIND.PLAYER, nx, ny);
+    playerSheet = activationResult.playerSheet || playerSheet;
     log = activationResult.log || "Переход на соседнюю клетку.";
     motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 120 };
   } else if (blockingObject.type === "enemy") {
@@ -1781,6 +1914,7 @@ export function tryStep(run, playerSheet, direction) {
     run.player.x = nx;
     run.player.y = ny;
     const activationResult = applyObjectActivationOnCell(run, playerSheet, ACTOR_KIND.PLAYER, nx, ny);
+    playerSheet = activationResult.playerSheet || playerSheet;
     log = activationResult.log || "Переход на соседнюю клетку.";
     motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 120 };
   }

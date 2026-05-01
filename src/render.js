@@ -52,13 +52,6 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
-  if (run.discovered?.[run.goal.y]?.[run.goal.x]) {
-    ctx.fillText(
-      "🕳",
-      cameraOffsetX + run.goal.x * tile + tile / 2,
-      cameraOffsetY + run.goal.y * tile + tile / 2
-    );
-  }
 
   drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile);
 
@@ -114,6 +107,18 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
       ctx.lineWidth = 2;
       ctx.strokeRect(px + 2, py + 2, tile - 4, tile - 4);
     }
+  }
+
+  if (run.discovered?.[run.goal.y]?.[run.goal.x]) {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(
+      "🕳",
+      cameraOffsetX + run.goal.x * tile + tile / 2,
+      cameraOffsetY + run.goal.y * tile + tile / 2
+    );
   }
 
   ctx.font = `${Math.max(12, Math.floor(tile * 0.62))}px Arial`;
@@ -249,8 +254,31 @@ function getObjectVisualPosition(run, object, nowMs) {
 
 function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, nowMs) {
   const objectVisual = getObjectVisualPosition(run, object, nowMs);
+  const px = cameraOffsetX + objectVisual.x * tile;
+  const py = cameraOffsetY + objectVisual.y * tile;
   const cx = cameraOffsetX + objectVisual.x * tile + tile / 2;
   const cy = cameraOffsetY + objectVisual.y * tile + tile / 2;
+  if (object.type === "ground_loot") {
+    const icon = object?.data?.itemIcon || "?";
+    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.62)";
+    ctx.lineWidth = Math.max(1, Math.floor(tile * 0.04));
+    const boxPad = Math.max(2, Math.floor(tile * 0.1));
+    const boxSize = tile - boxPad * 2;
+    ctx.fillRect(px + boxPad, py + boxPad, boxSize, boxSize);
+    ctx.strokeRect(px + boxPad, py + boxPad, boxSize, boxSize);
+
+    ctx.fillStyle = "rgba(2, 6, 23, 0.72)";
+    const badgeSize = Math.max(12, Math.floor(tile * 0.52));
+    ctx.fillRect(cx - badgeSize / 2, cy - badgeSize / 2, badgeSize, badgeSize);
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.55)";
+    ctx.strokeRect(cx - badgeSize / 2, cy - badgeSize / 2, badgeSize, badgeSize);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${Math.max(11, Math.floor(tile * 0.42))}px Arial`;
+    ctx.fillText(icon, cx, cy);
+    return;
+  }
   ctx.fillStyle = "#ffffff";
   ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
   ctx.fillText(object.icon || "?", cx, cy);

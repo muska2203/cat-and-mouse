@@ -1,6 +1,6 @@
-import { buildDerivedStats } from "./rules.js?v=0.4.1-pre-alpha";
-import { CLASS_START_MANA } from "./skills.js?v=0.4.1-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.4.1-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.4.2-pre-alpha";
+import { CLASS_START_MANA } from "./skills.js?v=0.4.2-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.4.2-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -84,6 +84,7 @@ export function createInitialState() {
       autoMoveLastHp: null,
       skillsPanelOpen: false,
       helpOpen: false,
+      levelUpPulseUntil: 0,
     },
   };
 }
