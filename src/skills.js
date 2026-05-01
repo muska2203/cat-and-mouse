@@ -1,6 +1,7 @@
 export const CLASS_START_MANA = {
   mage: 100,
   warrior: 50,
+  admin: 120,
 };
 
 export const SKILL_DEFS = {
@@ -67,6 +68,9 @@ export const SKILL_DEFS = {
 };
 
 export function getSkillsForClass(classId) {
+  if (classId === "admin") {
+    return Object.values(SKILL_DEFS);
+  }
   return Object.values(SKILL_DEFS).filter((skill) => skill.classId === classId);
 }
 

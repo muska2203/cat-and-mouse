@@ -1,6 +1,6 @@
-import { buildDerivedStats } from "./rules.js?v=0.4.0-pre-alpha";
-import { CLASS_START_MANA } from "./skills.js?v=0.4.0-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.4.0-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.4.1-pre-alpha";
+import { CLASS_START_MANA } from "./skills.js?v=0.4.1-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.4.1-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -39,6 +39,21 @@ export const CLASS_CONFIG = {
       HP: 56,
     },
   },
+  admin: {
+    id: "admin",
+    label: "Админ",
+    description: "Тестовый персонаж с полным набором предметов.",
+    baseStats: {
+      STR: 8,
+      INT: 8,
+      AGI: 8,
+      LUK: 8,
+      VISION: 8,
+      baseHP: 72,
+      HP_MAX: 72,
+      HP: 72,
+    },
+  },
 };
 
 export function createInitialState() {
@@ -60,6 +75,7 @@ export function createInitialState() {
       quickbarPulseSlot: null,
       dragPayload: null,
       skillTargeting: null,
+      trapTargeting: null,
       pathHoverCell: null,
       pathPreviewCells: [],
       pathLockedCells: [],

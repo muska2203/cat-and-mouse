@@ -1,4 +1,4 @@
-import { buildDerivedStats } from "./rules.js?v=0.4.0-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.4.1-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const DEFAULT_STARTER_LOADOUT_BY_CLASS = {
@@ -9,8 +9,9 @@ export const DEFAULT_STARTER_LOADOUT_BY_CLASS = {
 export const LOOT_COMMON_ITEMS = [
   {
     id: "common_splinter_blade",
-    name: "Щепочный клинок",
+    name: "Щепочный меч",
     type: "weapon",
+    subtype: "sword",
     icon: "🗡",
     effectText: "+2 STR",
     classRestriction: ["mage", "warrior"],
@@ -19,8 +20,9 @@ export const LOOT_COMMON_ITEMS = [
   },
   {
     id: "common_school_wand",
-    name: "Школьная палочка",
+    name: "Посох клопа",
     type: "weapon",
+    subtype: "staff",
     icon: "🪄",
     effectText: "+2 INT",
     classRestriction: ["mage", "warrior"],
@@ -29,9 +31,10 @@ export const LOOT_COMMON_ITEMS = [
   },
   {
     id: "common_tin_plate",
-    name: "Жестяная пластина",
+    name: "Соломенная броня",
     type: "armor",
-    icon: "🛡",
+    subtype: "armor",
+    icon: "🥋",
     effectText: "+2 HP_MAX, +1 STR",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -39,9 +42,10 @@ export const LOOT_COMMON_ITEMS = [
   },
   {
     id: "common_patch_cloak",
-    name: "Лоскутный плащ",
+    name: "Плащ из фольги",
     type: "armor",
-    icon: "🧥",
+    subtype: "cloak",
+    icon: "👘",
     effectText: "+2 HP_MAX, +1 INT",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -49,8 +53,9 @@ export const LOOT_COMMON_ITEMS = [
   },
   {
     id: "common_knotted_fang",
-    name: "Узелок с клыком",
+    name: "Зуб таракана",
     type: "amulet",
+    subtype: "tooth",
     icon: "🦷",
     effectText: "+1 STR, +1 AGI",
     classRestriction: ["mage", "warrior"],
@@ -61,7 +66,8 @@ export const LOOT_COMMON_ITEMS = [
     id: "common_glass_bead",
     name: "Стеклянная бусина",
     type: "amulet",
-    icon: "🔹",
+    subtype: "bead",
+    icon: "🧿",
     effectText: "+1 INT, +1 LUK",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -69,9 +75,10 @@ export const LOOT_COMMON_ITEMS = [
   },
   {
     id: "common_crumb_ration",
-    name: "Крошечный паек",
+    name: "Ломтик сыра",
     type: "consumable",
-    icon: "🍞",
+    subtype: "heal_hp",
+    icon: "🧀",
     effectText: "Восстанавливает 10 HP",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -79,9 +86,10 @@ export const LOOT_COMMON_ITEMS = [
   },
   {
     id: "common_mint_drop",
-    name: "Мятная капля",
+    name: "Капля мяты",
     type: "consumable",
-    icon: "🧊",
+    subtype: "heal_mana",
+    icon: "💧",
     effectText: "Восстанавливает 10 маны",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -89,9 +97,10 @@ export const LOOT_COMMON_ITEMS = [
   },
   {
     id: "common_warm_milk",
-    name: "Теплое молоко",
+    name: "Капля молока",
     type: "consumable",
-    icon: "🥛",
+    subtype: "heal_hybrid",
+    icon: "🧴",
     effectText: "Восстанавливает 6 HP и 6 маны",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -101,10 +110,37 @@ export const LOOT_COMMON_ITEMS = [
     id: "common_sharp_pepper",
     name: "Острая перчинка",
     type: "consumable",
+    subtype: "buff",
     icon: "🌶",
     effectText: "Следующая атака x1.5",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
+    statBonuses: {},
+  },
+  {
+    id: "common_mousetrap",
+    name: "Мышеловка",
+    type: "consumable",
+    subtype: "trap",
+    icon: "🪤",
+    effectText: "Ставит ловушку: 8 урона и оглушение на 1 ход",
+    classRestriction: ["mage", "warrior"],
+    isConsumable: true,
+    isTrapItem: true,
+    trapConfig: { trapType: "mousetrap", rarity: "common", damage: 8, stunTurns: 1 },
+    statBonuses: {},
+  },
+  {
+    id: "common_glue_trap",
+    name: "Клейкая растяжка",
+    type: "consumable",
+    subtype: "trap",
+    icon: "🕸",
+    effectText: "Ставит ловушку: оглушение на 2 хода",
+    classRestriction: ["mage", "warrior"],
+    isConsumable: true,
+    isTrapItem: true,
+    trapConfig: { trapType: "glue", rarity: "common", stunTurns: 2 },
     statBonuses: {},
   },
 ];
@@ -112,9 +148,10 @@ export const LOOT_COMMON_ITEMS = [
 export const LOOT_RARE_ITEMS = [
   {
     id: "rare_fang_saber",
-    name: "Сабля клыка",
+    name: "Клыкастый меч",
     type: "weapon",
-    icon: "⚔",
+    subtype: "sword",
+    icon: "🗡",
     effectText: "+4 STR, +1 AGI",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -122,9 +159,10 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_ember_orb",
-    name: "Угольный фокус",
+    name: "Угольный посох",
     type: "weapon",
-    icon: "🔮",
+    subtype: "staff",
+    icon: "🪄",
     effectText: "+4 INT, +1 LUK",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -132,9 +170,10 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_bastion_shell",
-    name: "Панцирь бастиона",
+    name: "Пластилиновая броня",
     type: "armor",
-    icon: "🦺",
+    subtype: "armor",
+    icon: "🥋",
     effectText: "+5 HP_MAX, +2 STR",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -142,9 +181,10 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_sage_coat",
-    name: "Одеяние мудреца",
+    name: "Плащ ученика",
     type: "armor",
-    icon: "🥋",
+    subtype: "cloak",
+    icon: "👘",
     effectText: "+5 HP_MAX, +2 INT",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -152,9 +192,10 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_predator_totem",
-    name: "Тотем хищника",
+    name: "Клык хомяка",
     type: "amulet",
-    icon: "🧿",
+    subtype: "tooth",
+    icon: "🦷",
     effectText: "+2 STR, +2 AGI",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -162,9 +203,10 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_astrolabe_charm",
-    name: "Астролябия",
+    name: "Кристальная бусина",
     type: "amulet",
-    icon: "✨",
+    subtype: "bead",
+    icon: "🧿",
     effectText: "+2 INT, +2 LUK",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -172,9 +214,10 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_hearty_stew",
-    name: "Сытное рагу",
+    name: "Кусок сыра",
     type: "consumable",
-    icon: "🍲",
+    subtype: "heal_hp",
+    icon: "🧀",
     effectText: "Восстанавливает 18 HP",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -182,9 +225,10 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_focus_tonic",
-    name: "Тоник концентрации",
+    name: "Настойка мяты",
     type: "consumable",
-    icon: "🧴",
+    subtype: "heal_mana",
+    icon: "💧",
     effectText: "Восстанавливает 16 маны",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -192,9 +236,10 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_dual_elixir",
-    name: "Двойной эликсир",
+    name: "Крышка молока",
     type: "consumable",
-    icon: "🥤",
+    subtype: "heal_hybrid",
+    icon: "🧴",
     effectText: "Восстанавливает 12 HP и 12 маны",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -204,10 +249,33 @@ export const LOOT_RARE_ITEMS = [
     id: "rare_battle_pepper",
     name: "Боевой перец",
     type: "consumable",
+    subtype: "buff",
     icon: "🌶",
     effectText: "Следующая атака x2",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
+    statBonuses: {},
+  },
+  {
+    id: "rare_venom_trap",
+    name: "Ядовитая мина",
+    type: "consumable",
+    subtype: "trap",
+    icon: "☣",
+    effectText: "Ставит мину: 4 урона + ядовитый туман 3x3",
+    classRestriction: ["mage", "warrior"],
+    isConsumable: true,
+    isTrapItem: true,
+    trapConfig: {
+      trapType: "venom_mine",
+      rarity: "rare",
+      damage: 4,
+      spawnPoisonCloud: true,
+      cloudDurationTurns: 3,
+      cloudDamage: 2,
+      cloudPoisonTurns: 2,
+      cloudPoisonDamage: 2,
+    },
     statBonuses: {},
   },
 ];
@@ -215,8 +283,9 @@ export const LOOT_RARE_ITEMS = [
 export const LOOT_UNIQUE_ITEMS = [
   {
     id: "unique_kingbreaker",
-    name: "Королелом",
+    name: "Королевский меч",
     type: "weapon",
+    subtype: "sword",
     icon: "🗡",
     effectText: "+6 STR, +2 AGI",
     classRestriction: ["mage", "warrior"],
@@ -225,9 +294,10 @@ export const LOOT_UNIQUE_ITEMS = [
   },
   {
     id: "unique_star_scepter",
-    name: "Звездный скипетр",
+    name: "Звездный посох",
     type: "weapon",
-    icon: "🌟",
+    subtype: "staff",
+    icon: "🪄",
     effectText: "+6 INT, +2 LUK",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -235,9 +305,10 @@ export const LOOT_UNIQUE_ITEMS = [
   },
   {
     id: "unique_titan_carapace",
-    name: "Панцирь титана",
+    name: "Броня из костей",
     type: "armor",
-    icon: "🛡",
+    subtype: "armor",
+    icon: "🥋",
     effectText: "+8 HP_MAX, +3 STR",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -245,9 +316,10 @@ export const LOOT_UNIQUE_ITEMS = [
   },
   {
     id: "unique_oracle_robe",
-    name: "Риза оракула",
+    name: "Плащ мудреца",
     type: "armor",
-    icon: "🧥",
+    subtype: "cloak",
+    icon: "👘",
     effectText: "+8 HP_MAX, +3 INT",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -255,9 +327,10 @@ export const LOOT_UNIQUE_ITEMS = [
   },
   {
     id: "unique_war_sigil",
-    name: "Печать битвы",
+    name: "Коренной зуб белки",
     type: "amulet",
-    icon: "🔺",
+    subtype: "tooth",
+    icon: "🦷",
     effectText: "+3 STR, +2 AGI",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -265,9 +338,10 @@ export const LOOT_UNIQUE_ITEMS = [
   },
   {
     id: "unique_mind_sigil",
-    name: "Печать разума",
+    name: "Жемчужная бусина",
     type: "amulet",
-    icon: "🔷",
+    subtype: "bead",
+    icon: "🧿",
     effectText: "+3 INT, +2 LUK",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
@@ -275,9 +349,10 @@ export const LOOT_UNIQUE_ITEMS = [
   },
   {
     id: "unique_phoenix_broth",
-    name: "Отвар феникса",
+    name: "Головка сыра",
     type: "consumable",
-    icon: "🔥",
+    subtype: "heal_hp",
+    icon: "🧀",
     effectText: "Восстанавливает 28 HP",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -285,8 +360,9 @@ export const LOOT_UNIQUE_ITEMS = [
   },
   {
     id: "unique_aether_draught",
-    name: "Эфирный настой",
+    name: "Эликсир мяты",
     type: "consumable",
+    subtype: "heal_mana",
     icon: "💧",
     effectText: "Восстанавливает 24 маны",
     classRestriction: ["mage", "warrior"],
@@ -295,9 +371,10 @@ export const LOOT_UNIQUE_ITEMS = [
   },
   {
     id: "unique_twilight_mix",
-    name: "Сумеречный микс",
+    name: "Бурдюк молока",
     type: "consumable",
-    icon: "🍷",
+    subtype: "heal_hybrid",
+    icon: "🧴",
     effectText: "Восстанавливает 20 HP и 20 маны",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -307,7 +384,8 @@ export const LOOT_UNIQUE_ITEMS = [
     id: "unique_storm_pepper",
     name: "Грозовой перец",
     type: "consumable",
-    icon: "🌩",
+    subtype: "buff",
+    icon: "🌶",
     effectText: "Следующая атака x2.5",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -328,6 +406,18 @@ export function getDefaultStarterLoadout(classId) {
 
 export function getItemById(itemId) {
   return ALL_ITEMS.find((item) => item.id === itemId) || null;
+}
+
+export function getAllItemsForClass(classId) {
+  if (classId === "admin") {
+    return [...ALL_ITEMS];
+  }
+  return ALL_ITEMS.filter((item) => {
+    if (!classId) {
+      return true;
+    }
+    return Array.isArray(item.classRestriction) && item.classRestriction.includes(classId);
+  });
 }
 
 export function chooseLoadoutItem(currentLoadoutIds, itemToToggleId, classId) {

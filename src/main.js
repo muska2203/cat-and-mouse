@@ -1,35 +1,82 @@
-import { createInitialState } from "./state.js?v=0.4.0-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.4.0-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.4.0-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.0-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.0-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.4.0-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.0-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.4.0-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.0-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.0-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.0-pre-alpha";
-import { createRunState } from "./game.js?v=0.4.0-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.4.0-pre-alpha";
-import { tryStep } from "./game.js?v=0.4.0-pre-alpha";
-import { useConsumable } from "./game.js?v=0.4.0-pre-alpha";
-import { useSkillAtCell } from "./game.js?v=0.4.0-pre-alpha";
-import { getSkillTargetCells } from "./game.js?v=0.4.0-pre-alpha";
-import { beginEnvironmentTurn } from "./game.js?v=0.4.0-pre-alpha";
-import { stepEnvironmentTurn } from "./game.js?v=0.4.0-pre-alpha";
-import { buildPathToDiscoveredCell } from "./game.js?v=0.4.0-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.0-pre-alpha";
-import { renderApp } from "./ui.js?v=0.4.0-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.0-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.0-pre-alpha";
-import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.0-pre-alpha";
-import { initAnalytics } from "./analytics.js?v=0.4.0-pre-alpha";
-import { trackEvent } from "./analytics.js?v=0.4.0-pre-alpha";
-import { createRunAnalyticsId } from "./analytics.js?v=0.4.0-pre-alpha";
+import { createInitialState } from "./state.js?v=0.4.1-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.1-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.4.1-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.1-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.1-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.4.1-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.1-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.4.1-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.1-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.1-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.1-pre-alpha";
+import { getAllItemsForClass } from "./loadout.js?v=0.4.1-pre-alpha";
+import { createRunState } from "./game.js?v=0.4.1-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.4.1-pre-alpha";
+import { tryStep } from "./game.js?v=0.4.1-pre-alpha";
+import { useConsumable } from "./game.js?v=0.4.1-pre-alpha";
+import { useSkillAtCell } from "./game.js?v=0.4.1-pre-alpha";
+import { getSkillTargetCells } from "./game.js?v=0.4.1-pre-alpha";
+import { getTrapPlacementCells } from "./game.js?v=0.4.1-pre-alpha";
+import { placeTrap } from "./game.js?v=0.4.1-pre-alpha";
+import { beginEnvironmentTurn } from "./game.js?v=0.4.1-pre-alpha";
+import { stepEnvironmentTurn } from "./game.js?v=0.4.1-pre-alpha";
+import { buildPathToDiscoveredCell } from "./game.js?v=0.4.1-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.1-pre-alpha";
+import { renderApp } from "./ui.js?v=0.4.1-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.1-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.1-pre-alpha";
+import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.1-pre-alpha";
+import { initAnalytics } from "./analytics.js?v=0.4.1-pre-alpha";
+import { trackEvent } from "./analytics.js?v=0.4.1-pre-alpha";
+import { createRunAnalyticsId } from "./analytics.js?v=0.4.1-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
 initAnalytics({ measurementId: GA4_MEASUREMENT_ID, version: APP_VERSION });
+let heldMoveDirection = null;
+
+const MOVE_KEY_MAP = {
+  ArrowUp: "up",
+  ArrowLeft: "left",
+  ArrowDown: "down",
+  ArrowRight: "right",
+  KeyW: "up",
+  KeyA: "left",
+  KeyS: "down",
+  KeyD: "right",
+  w: "up",
+  W: "up",
+  a: "left",
+  A: "left",
+  s: "down",
+  S: "down",
+  d: "right",
+  D: "right",
+  ц: "up",
+  Ц: "up",
+  ф: "left",
+  Ф: "left",
+  ы: "down",
+  Ы: "down",
+  в: "right",
+  В: "right",
+  KeyQ: "up_left",
+  KeyE: "up_right",
+  KeyZ: "down_left",
+  KeyC: "down_right",
+  q: "up_left",
+  Q: "up_left",
+  e: "up_right",
+  E: "up_right",
+  z: "down_left",
+  Z: "down_left",
+  c: "down_right",
+  C: "down_right",
+};
+
+function resolveMoveDirectionFromEvent(event) {
+  return MOVE_KEY_MAP[event.code] || MOVE_KEY_MAP[event.key] || null;
+}
 
 function rerender() {
   syncSkillTargetPreview();
@@ -84,6 +131,15 @@ function onRootClick(event) {
       state.starterLoadout
     );
     state.playerSheet = initializeInventoryForRun(state.playerSheet);
+    if (state.selectedClassId === "admin") {
+      const adminItems = getAllItemsForClass("admin");
+      const adminBag = adminItems.map((item) => ({ itemId: item.id }));
+      state.playerSheet = recalculateSheetFromInventory(
+        state.playerSheet,
+        state.playerSheet.equippedByType,
+        adminBag
+      );
+    }
     state.playerSheet.baseStats.HP = state.playerSheet.stats.HP_MAX;
     state.playerSheet.stats.HP = state.playerSheet.stats.HP_MAX;
     state.uiHud.hpVisual = state.playerSheet.stats.HP;
@@ -218,9 +274,13 @@ function onRootClick(event) {
     if (skillDef.classId !== state.playerSheet.classId || skillState.level >= skillDef.maxLevel) {
       return;
     }
+    const wasLearned = Boolean(skillState.learned);
     skillState.learned = true;
     skillState.level += 1;
     state.playerSheet.skillPoints -= 1;
+    if (!wasLearned) {
+      assignQuickbarSlotIfAvailable({ kind: "skill", skillId });
+    }
     if ((state.playerSheet.skillPoints || 0) <= 0) {
       state.uiHud.skillsPanelOpen = false;
     }
@@ -255,6 +315,12 @@ function onKeyDown(event) {
   if (state.uiHud.skillsPanelOpen) {
     return;
   }
+  if (state.uiHud.trapTargeting?.itemId && (event.code === "Space" || event.key === " ")) {
+    event.preventDefault();
+    state.run.lastLog = "Выбери клетку мышью для установки ловушки.";
+    rerender();
+    return;
+  }
   if (state.uiHud.skillTargeting?.skillId && (event.code === "Space" || event.key === " ")) {
     event.preventDefault();
     tryCastPreparedSkillOnSelf();
@@ -268,49 +334,15 @@ function onKeyDown(event) {
     return;
   }
 
-  const map = {
-    ArrowUp: "up",
-    ArrowLeft: "left",
-    ArrowDown: "down",
-    ArrowRight: "right",
-    KeyW: "up",
-    KeyA: "left",
-    KeyS: "down",
-    KeyD: "right",
-    w: "up",
-    W: "up",
-    a: "left",
-    A: "left",
-    s: "down",
-    S: "down",
-    d: "right",
-    D: "right",
-    ц: "up",
-    Ц: "up",
-    ф: "left",
-    Ф: "left",
-    ы: "down",
-    Ы: "down",
-    в: "right",
-    В: "right",
-    KeyQ: "up_left",
-    KeyE: "up_right",
-    KeyZ: "down_left",
-    KeyC: "down_right",
-    q: "up_left",
-    Q: "up_left",
-    e: "up_right",
-    E: "up_right",
-    z: "down_left",
-    Z: "down_left",
-    c: "down_right",
-    C: "down_right",
-  };
-  const direction = map[event.code] || map[event.key];
+  const direction = resolveMoveDirectionFromEvent(event);
   if (direction) {
     event.preventDefault();
+    heldMoveDirection = direction;
     if (state.uiHud.skillTargeting?.skillId) {
       tryCastPreparedSkillByDirection(direction);
+      return;
+    }
+    if (event.repeat) {
       return;
     }
     clearSkillTargeting();
@@ -347,6 +379,16 @@ function onKeyDown(event) {
   useQuickbarSlot(quickSlot);
 }
 
+function onKeyUp(event) {
+  const direction = resolveMoveDirectionFromEvent(event);
+  if (!direction) {
+    return;
+  }
+  if (heldMoveDirection === direction) {
+    heldMoveDirection = null;
+  }
+}
+
 function performStep(direction) {
   if (state.screen !== "game" || !state.run || state.run.turnPhase !== "player") {
     return false;
@@ -362,8 +404,12 @@ function performStep(direction) {
   }
 
   if (state.run?.pendingLoot && state.playerSheet) {
-    const lootResult = addLootItemToPlayer(state.playerSheet, state.run.pendingLoot.itemId);
+    const lootItemId = state.run.pendingLoot.itemId;
+    const lootResult = addLootItemToPlayer(state.playerSheet, lootItemId);
     state.playerSheet = lootResult.playerSheet;
+    if (lootResult.addedTo === "bag") {
+      autoAssignConsumableLootToQuickbar(lootItemId);
+    }
     if (lootResult.addedTo === "equip") {
       state.run.lastLog = `${state.run.lastLog} Автоэкипировка.`;
     }
@@ -397,11 +443,32 @@ function animationLoop(nowMs) {
     maybeStartDeferredEnvironmentTurn(nowMs);
     runEnvironmentPhase(nowMs);
     maybeRunAutoMoveStep();
+    maybeRunHeldMoveStep(nowMs);
     drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, nowMs);
     animateHpHud();
     animateManaHud();
   }
   requestAnimationFrame(animationLoop);
+}
+
+function maybeRunHeldMoveStep(nowMs) {
+  if (!heldMoveDirection) {
+    return;
+  }
+  if (!state.run || !state.playerSheet || state.screen !== "game") {
+    return;
+  }
+  if (state.run.status !== "running" || state.run.turnPhase !== "player") {
+    return;
+  }
+  if (state.uiHud.skillsPanelOpen || state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
+    return;
+  }
+  if (isPlayerInputBlocked(nowMs)) {
+    return;
+  }
+  clearSkillTargeting();
+  performStep(heldMoveDirection);
 }
 
 function handleLevelTransition(nowMs) {
@@ -668,11 +735,43 @@ function onCanvasClick(event, canvas) {
   }
 
   const targeting = state.uiHud.skillTargeting;
+  const trapTargeting = state.uiHud.trapTargeting;
   const rect = canvas.getBoundingClientRect();
   const localX = event.clientX - rect.left;
   const localY = event.clientY - rect.top;
   const cell = screenPointToGrid(localX, localY, rect.width, rect.height);
   if (!cell) {
+    return;
+  }
+  if (trapTargeting?.itemId) {
+    const canPlace = (trapTargeting.targets || []).some((target) => target.x === cell.x && target.y === cell.y);
+    if (!canPlace) {
+      state.run.lastLog = "Выбери соседнюю свободную клетку для ловушки.";
+      rerender();
+      return;
+    }
+    const item = getItemById(trapTargeting.itemId);
+    const placeResult = placeTrap(state.run, state.playerSheet, item, cell.x, cell.y);
+    state.run = placeResult.run;
+    state.playerSheet = placeResult.playerSheet;
+    if (!placeResult.ok) {
+      state.run.lastLog = placeResult.log || "Не удалось поставить ловушку.";
+      rerender();
+      return;
+    }
+    const nextBag = [...(state.playerSheet.bag || [])];
+    const removeIndex = trapTargeting.bagRemoveIndex;
+    if (Number.isInteger(removeIndex) && removeIndex >= 0 && removeIndex < nextBag.length) {
+      nextBag.splice(removeIndex, 1);
+      state.playerSheet = recalculateSheetFromInventory(
+        state.playerSheet,
+        state.playerSheet.equippedByType,
+        nextBag
+      );
+    }
+    clearSkillTargeting();
+    consumePlayerActionAndStartEnvironment();
+    rerender();
     return;
   }
   if (!targeting?.skillId) {
@@ -712,8 +811,12 @@ function onCanvasClick(event, canvas) {
   }
   clearSkillTargeting();
   if (state.run?.pendingLoot && state.playerSheet) {
-    const lootResult = addLootItemToPlayer(state.playerSheet, state.run.pendingLoot.itemId);
+    const lootItemId = state.run.pendingLoot.itemId;
+    const lootResult = addLootItemToPlayer(state.playerSheet, lootItemId);
     state.playerSheet = lootResult.playerSheet;
+    if (lootResult.addedTo === "bag") {
+      autoAssignConsumableLootToQuickbar(lootItemId);
+    }
     delete state.run.pendingLoot;
   }
   maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
@@ -728,7 +831,7 @@ function onCanvasMouseMove(event, canvas) {
   if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
     return;
   }
-  if (state.uiHud.autoMoveActive || state.uiHud.skillTargeting?.skillId) {
+  if (state.uiHud.autoMoveActive || state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
     return;
   }
   const nowMs = performance.now();
@@ -845,6 +948,55 @@ function normalizeQuickbarSlot(value) {
   return null;
 }
 
+function findNearestEmptyQuickbarSlotIndex() {
+  const slots = state.uiHud.quickbarSlots || [];
+  for (let index = 0; index < 9; index += 1) {
+    if (!slots[index]) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function isQuickbarPayloadAssigned(targetPayload) {
+  const slots = state.uiHud.quickbarSlots || [];
+  for (const slotValue of slots) {
+    const slotPayload = normalizeQuickbarSlot(slotValue);
+    if (!slotPayload || slotPayload.kind !== targetPayload.kind) {
+      continue;
+    }
+    if (slotPayload.kind === "consumable" && slotPayload.itemId === targetPayload.itemId) {
+      return true;
+    }
+    if (slotPayload.kind === "skill" && slotPayload.skillId === targetPayload.skillId) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function assignQuickbarSlotIfAvailable(payload) {
+  if (!payload || isQuickbarPayloadAssigned(payload)) {
+    return false;
+  }
+  const slotIndex = findNearestEmptyQuickbarSlotIndex();
+  if (slotIndex < 0) {
+    return false;
+  }
+  const slots = [...(state.uiHud.quickbarSlots || [])];
+  slots[slotIndex] = payload;
+  state.uiHud.quickbarSlots = slots;
+  return true;
+}
+
+function autoAssignConsumableLootToQuickbar(itemId) {
+  const item = getItemById(itemId);
+  if (!item?.isConsumable) {
+    return false;
+  }
+  return assignQuickbarSlotIfAvailable({ kind: "consumable", itemId: item.id });
+}
+
 function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
   if (!itemId || !state.playerSheet || !state.run || state.run.turnPhase !== "player") {
     return false;
@@ -868,6 +1020,20 @@ function useConsumableByItemId(itemId, bagInstanceId, bagIndex) {
     removeIndex = bagIndex;
   }
   if (removeIndex === -1) {
+    return false;
+  }
+  if (item.isTrapItem) {
+    const targets = getTrapPlacementCells(state.run);
+    if (targets.length === 0) {
+      state.run.lastLog = "Нет свободных соседних клеток для установки ловушки.";
+      return false;
+    }
+    clearSkillTargeting();
+    state.uiHud.trapTargeting = {
+      itemId: item.id,
+      bagRemoveIndex: removeIndex,
+      targets,
+    };
     return false;
   }
 
@@ -898,6 +1064,7 @@ function pulseQuickbarSlot(slotIndex) {
 
 function clearSkillTargeting() {
   state.uiHud.skillTargeting = null;
+  state.uiHud.trapTargeting = null;
   if (state.run) {
     delete state.run.skillTargetCells;
     delete state.run.skillTargetingPreview;
@@ -923,7 +1090,7 @@ function syncSkillTargetPreview() {
   if (!state.run) {
     return;
   }
-  const targets = state.uiHud.skillTargeting?.targets || [];
+  const targets = state.uiHud.skillTargeting?.targets || state.uiHud.trapTargeting?.targets || [];
   state.run.skillTargetCells = targets;
   const skillId = state.uiHud.skillTargeting?.skillId;
   state.run.skillTargetingPreview = skillId ? buildPreparedSkillPreview(skillId) : null;
@@ -1073,8 +1240,12 @@ function tryCastPreparedSkillByDirection(direction) {
   }
   clearSkillTargeting();
   if (state.run?.pendingLoot && state.playerSheet) {
-    const lootResult = addLootItemToPlayer(state.playerSheet, state.run.pendingLoot.itemId);
+    const lootItemId = state.run.pendingLoot.itemId;
+    const lootResult = addLootItemToPlayer(state.playerSheet, lootItemId);
     state.playerSheet = lootResult.playerSheet;
+    if (lootResult.addedTo === "bag") {
+      autoAssignConsumableLootToQuickbar(lootItemId);
+    }
     delete state.run.pendingLoot;
   }
   maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
@@ -1402,8 +1573,12 @@ function maybeRunAutoMoveStep() {
   const movedToNextCell = state.run.player.x === next.x && state.run.player.y === next.y;
   if (movedToNextCell) {
     if (state.run?.pendingLoot && state.playerSheet) {
-      const lootResult = addLootItemToPlayer(state.playerSheet, state.run.pendingLoot.itemId);
+      const lootItemId = state.run.pendingLoot.itemId;
+      const lootResult = addLootItemToPlayer(state.playerSheet, lootItemId);
       state.playerSheet = lootResult.playerSheet;
+      if (lootResult.addedTo === "bag") {
+        autoAssignConsumableLootToQuickbar(lootItemId);
+      }
       delete state.run.pendingLoot;
     }
     advanceLockedPathAfterStep();
@@ -1448,6 +1623,7 @@ root.addEventListener("mouseout", (event) => {
   }
 });
 window.addEventListener("keydown", onKeyDown);
+window.addEventListener("keyup", onKeyUp);
 window.addEventListener("resize", onResize);
 requestAnimationFrame(animationLoop);
 rerender();

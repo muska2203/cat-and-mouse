@@ -63,56 +63,43 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile);
 
   if (Array.isArray(run.objects)) {
-    const playerHp = Math.max(0, playerSheet?.stats?.HP ?? 0);
-    const playerBaseAttack = Math.max(
-      playerSheet?.derived?.ATK_PHYS || 1,
-      playerSheet?.derived?.ATK_MAGIC || 1
-    );
-    const playerAttackMultiplier = Math.max(1, run?.nextHitMultiplier || 1);
-    const playerAttack = Math.max(1, Math.floor(playerBaseAttack * playerAttackMultiplier));
-    for (const object of run.objects) {
-      if (!run.discovered?.[object.y]?.[object.x]) {
-        continue;
-      }
-      const objectVisual = getObjectVisualPosition(run, object, nowMs);
-      const cx = cameraOffsetX + objectVisual.x * tile + tile / 2;
-      const cy = cameraOffsetY + objectVisual.y * tile + tile / 2;
+    const visibleObjects = run.objects.filter((object) => run.discovered?.[object.y]?.[object.x]);
+    const regularObjects = visibleObjects.filter((object) => object.type !== "enemy" && object.type !== "trap_cloud");
+    const cloudObjects = visibleObjects.filter((object) => object.type === "trap_cloud");
+    const enemies = visibleObjects.filter((object) => object.type === "enemy");
 
-      const enemyDamage = object?.data?.damage ?? 0;
-      const enemyHp = object?.data?.hp ?? 0;
-      const isLethalForPlayer = enemyDamage >= playerHp;
-      const playerCanFinishEnemy = playerAttack >= enemyHp;
-      if (object.type === "enemy" && isLethalForPlayer && !playerCanFinishEnemy) {
-        const glowRadius = Math.floor(tile * 0.62);
-        const glow = ctx.createRadialGradient(cx, cy, 2, cx, cy, glowRadius);
-        glow.addColorStop(0, "rgba(248, 113, 113, 0.34)");
-        glow.addColorStop(0.7, "rgba(220, 38, 38, 0.2)");
-        glow.addColorStop(1, "rgba(127, 29, 29, 0)");
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    for (const object of regularObjects) {
+      drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, nowMs);
+    }
 
+    for (const cloud of cloudObjects) {
+      const cloudVisual = getObjectVisualPosition(run, cloud, nowMs);
+      drawPoisonCloud(ctx, cameraOffsetX, cameraOffsetY, tile, cloudVisual, nowMs, cloud.icon || "☠");
+    }
+
+    for (const enemy of enemies) {
+      const enemyVisual = getObjectVisualPosition(run, enemy, nowMs);
+      const cx = cameraOffsetX + enemyVisual.x * tile + tile / 2;
+      const cy = cameraOffsetY + enemyVisual.y * tile + tile / 2;
+
+      ctx.fillStyle = "#ffffff";
       ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
-      ctx.fillText(object.icon || "?", cx, cy);
+      ctx.fillText(enemy.icon || "?", cx, cy);
 
-      if (object.type === "enemy") {
-        // HP и урон привязаны к иконке врага, чтобы не "прыгали" при анимации.
-        // HP справа сверху от иконки
-        ctx.textAlign = "left";
-        ctx.textBaseline = "bottom";
-        ctx.fillStyle = "#ef4444";
-        ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
-        ctx.fillText(`${object.data.hp}`, cx + tile * 0.2, cy - tile * 0.12);
-        // Урон слева снизу от иконки
-        ctx.textAlign = "right";
-        ctx.textBaseline = "top";
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(`${object.data.damage}`, cx - tile * 0.2, cy + tile * 0.1);
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-      }
+      // HP и урон привязаны к иконке врага, чтобы не "прыгали" при анимации.
+      // HP справа сверху от иконки
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = "#ef4444";
+      ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
+      ctx.fillText(`${enemy.data.hp}`, cx + tile * 0.2, cy - tile * 0.12);
+      // Урон слева снизу от иконки
+      ctx.textAlign = "right";
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(`${enemy.data.damage}`, cx - tile * 0.2, cy + tile * 0.1);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
     }
   }
 
@@ -258,6 +245,49 @@ function getObjectVisualPosition(run, object, nowMs) {
     return { x, y };
   }
   return { x: object.x, y: object.y };
+}
+
+function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, nowMs) {
+  const objectVisual = getObjectVisualPosition(run, object, nowMs);
+  const cx = cameraOffsetX + objectVisual.x * tile + tile / 2;
+  const cy = cameraOffsetY + objectVisual.y * tile + tile / 2;
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
+  ctx.fillText(object.icon || "?", cx, cy);
+}
+
+function drawPoisonCloud(ctx, cameraOffsetX, cameraOffsetY, tile, cloudVisual, nowMs, icon) {
+  const px = cameraOffsetX + cloudVisual.x * tile;
+  const py = cameraOffsetY + cloudVisual.y * tile;
+  const cx = px + tile / 2;
+  const cy = py + tile / 2;
+  const pulse = (Math.sin(nowMs * 0.006 + cloudVisual.x * 0.8 + cloudVisual.y * 1.1) + 1) / 2;
+
+  ctx.fillStyle = `rgba(110, 231, 183, ${0.13 + pulse * 0.08})`;
+  ctx.fillRect(px + 1, py + 1, tile - 2, tile - 2);
+
+  const puffs = [
+    { ox: -0.22, oy: -0.12, base: 0.2, speed: 0.004, alpha: 0.2 },
+    { ox: 0.18, oy: -0.18, base: 0.16, speed: 0.005, alpha: 0.16 },
+    { ox: -0.02, oy: 0.14, base: 0.22, speed: 0.0036, alpha: 0.18 },
+    { ox: 0.26, oy: 0.08, base: 0.14, speed: 0.0048, alpha: 0.14 },
+  ];
+
+  for (let i = 0; i < puffs.length; i += 1) {
+    const puff = puffs[i];
+    const phase = nowMs * puff.speed + i * 1.7 + cloudVisual.x * 0.9 + cloudVisual.y * 0.5;
+    const driftX = Math.sin(phase) * tile * 0.06;
+    const driftY = Math.cos(phase * 1.2) * tile * 0.05;
+    const radius = tile * (puff.base + (Math.sin(phase * 0.9) + 1) * 0.04);
+    ctx.fillStyle = `rgba(74, 222, 128, ${puff.alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx + puff.ox * tile + driftX, cy + puff.oy * tile + driftY, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = `rgba(240, 253, 250, ${0.62 + pulse * 0.18})`;
+  ctx.font = `${Math.max(11, Math.floor(tile * 0.42))}px Arial`;
+  ctx.fillText(icon, cx, cy);
 }
 
 function getPlayerVisual(run, nowMs) {

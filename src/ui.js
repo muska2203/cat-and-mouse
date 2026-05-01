@@ -1,15 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.4.0-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.4.0-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.4.0-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.0-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.0-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.0-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.0-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.0-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.4.0-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.0-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.0-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.4.0-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.4.1-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.1-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.4.1-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.1-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.1-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.1-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.1-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.1-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.4.1-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.1-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.1-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.4.1-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -44,6 +44,12 @@ const BONUS_SORT_ORDER = [
   "CRIT_CHANCE",
   "CRIT_MULT",
 ];
+const SUBTYPE_SORT_ORDER_BY_TYPE = {
+  weapon: ["sword", "staff"],
+  armor: ["armor", "cloak"],
+  amulet: ["tooth", "bead"],
+  consumable: ["heal_hp", "heal_mana", "heal_hybrid", "buff", "trap"],
+};
 
 export function renderApp(root, state) {
   if (state.screen === "welcome") {
@@ -70,14 +76,18 @@ export function renderApp(root, state) {
 }
 
 function renderWelcomeScreen(state) {
-  const selectedClassId = state.selectedClassId || Object.keys(CLASS_CONFIG)[0];
+  const visibleClasses = Object.values(CLASS_CONFIG).filter((playerClass) => playerClass.id !== "admin");
+  const fallbackClassId = visibleClasses[0]?.id || Object.keys(CLASS_CONFIG)[0];
+  const selectedClassId = visibleClasses.some((playerClass) => playerClass.id === state.selectedClassId)
+    ? state.selectedClassId
+    : fallbackClassId;
   const selectedStarterLoadout = getDefaultStarterLoadout(selectedClassId);
   const selectedSheet = applyLoadoutToSheet(
     createPlayerSheet(selectedClassId),
     selectedStarterLoadout
   );
 
-  const classesMarkup = Object.values(CLASS_CONFIG).map(
+  const classesMarkup = visibleClasses.map(
     (playerClass) => {
       return `
       <article class="class-card ${
@@ -676,7 +686,20 @@ function getRaritySortWeight(item) {
   return 1;
 }
 
+function getSubtypeSortWeight(item) {
+  const type = String(item?.type || "");
+  const subtype = String(item?.subtype || "");
+  const orderedSubtypes = SUBTYPE_SORT_ORDER_BY_TYPE[type];
+  if (!Array.isArray(orderedSubtypes) || orderedSubtypes.length === 0) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  const index = orderedSubtypes.indexOf(subtype);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+
 function compareItemsByRarityThenId(a, b) {
+  const bySubtype = getSubtypeSortWeight(a) - getSubtypeSortWeight(b);
+  if (bySubtype !== 0) return bySubtype;
   const byRarity = getRaritySortWeight(b) - getRaritySortWeight(a);
   if (byRarity !== 0) return byRarity;
   return String(a?.id || "").localeCompare(String(b?.id || ""));
@@ -745,6 +768,12 @@ function getConsumableHoverText(item, count) {
   if (item.id === "common_sharp_pepper") {
     return `${item.name}: следующая атака персонажа получает множитель x1.5.${stacksText}`;
   }
+  if (item.id === "common_mousetrap") {
+    return `${item.name}: установка в соседнюю свободную клетку. При срабатывании наносит 8 урона и оглушает на 1 ход.${stacksText}`;
+  }
+  if (item.id === "common_glue_trap") {
+    return `${item.name}: установка в соседнюю свободную клетку. При срабатывании оглушает на 2 хода.${stacksText}`;
+  }
   if (item.id === "rare_hearty_stew") {
     return `${item.name}: лечит 18 HP (не выше HP МАКС).${stacksText}`;
   }
@@ -756,6 +785,9 @@ function getConsumableHoverText(item, count) {
   }
   if (item.id === "rare_battle_pepper") {
     return `${item.name}: следующая атака персонажа получает множитель x2.${stacksText}`;
+  }
+  if (item.id === "rare_venom_trap") {
+    return `${item.name}: установка в соседнюю свободную клетку. При срабатывании: 4 урона и ядовитый туман на клетке и вокруг (3x3).${stacksText}`;
   }
   if (item.id === "unique_phoenix_broth") {
     return `${item.name}: лечит 28 HP (не выше HP МАКС).${stacksText}`;
@@ -961,19 +993,23 @@ function renderQuickbar(state) {
     const slotPayload = normalizeQuickbarSlot(slotValue);
     const item = slotPayload?.kind === "consumable" ? getItemById(slotPayload.itemId) : null;
     const skill = slotPayload?.kind === "skill" ? getSkillById(slotPayload.skillId) : null;
+    const skillState = skill ? (state.playerSheet?.skills?.[skill.id] || { learned: false, level: 0 }) : null;
     const count = item ? (counts.get(item.id) || 0) : 0;
     const isDraggable = Boolean(slotPayload);
     const isOutOfStock = Boolean(item) && count <= 0;
-    const isNotEnoughMana = Boolean(skill) && mana < (skill.manaCost || 0);
+    const manaCost = skill
+      ? Math.max(1, skill.manaCost - (skill.id === "warrior_roll" ? ((skillState?.level || 0) - 1) : 0))
+      : 0;
+    const isNotEnoughMana = Boolean(skill) && mana < manaCost;
     const glyph = item
       ? (item.icon || getItemIcon(item.type))
       : skill
         ? (skill.icon || "✨")
         : "·";
     const title = item
-      ? `${item.name} (${count})`
+      ? getConsumableHoverText(item, count)
       : skill
-        ? `${skill.name} (${skill.manaCost} маны)`
+        ? buildSkillHoverText(skill, skillState, state.playerSheet)
         : `Слот ${slotIndex}`;
     const classes = [
       "quick-slot-btn",
@@ -995,7 +1031,7 @@ function renderQuickbar(state) {
         <span class="quick-slot-key">${slotIndex}</span>
         <span class="quick-slot-glyph">${glyph}</span>
         ${item ? `<span class="quick-slot-count">${count}</span>` : ""}
-        ${skill ? `<span class="quick-slot-count">${skill.manaCost}</span>` : ""}
+        ${skill ? `<span class="quick-slot-count">${manaCost}</span>` : ""}
       </button>
     `;
   }).join("");
