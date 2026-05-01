@@ -1,4 +1,5 @@
 const USER_ID_STORAGE_KEY = "cam_analytics_user_id";
+const USER_ID_COOKIE_KEY = "cam_analytics_user_id";
 
 let analyticsEnabled = false;
 let appVersion = "unknown";
@@ -28,13 +29,42 @@ function safeStorageSet(key, value) {
   }
 }
 
+function safeCookieGet(name) {
+  try {
+    const encoded = encodeURIComponent(name);
+    const chunk = document.cookie
+      .split("; ")
+      .find((part) => part.startsWith(`${encoded}=`));
+    if (!chunk) {
+      return null;
+    }
+    return decodeURIComponent(chunk.slice(encoded.length + 1));
+  } catch {
+    return null;
+  }
+}
+
+function safeCookieSet(name, value) {
+  try {
+    const encodedName = encodeURIComponent(name);
+    const encodedValue = encodeURIComponent(value);
+    const maxAgeSeconds = 60 * 60 * 24 * 365 * 2;
+    document.cookie = `${encodedName}=${encodedValue}; path=/; max-age=${maxAgeSeconds}; samesite=lax`;
+  } catch {
+    // Ignore cookie write errors.
+  }
+}
+
 function getOrCreateUserId() {
-  const existing = safeStorageGet(USER_ID_STORAGE_KEY);
+  const existing = safeStorageGet(USER_ID_STORAGE_KEY) || safeCookieGet(USER_ID_COOKIE_KEY);
   if (existing) {
+    safeStorageSet(USER_ID_STORAGE_KEY, existing);
+    safeCookieSet(USER_ID_COOKIE_KEY, existing);
     return existing;
   }
   const created = makeId();
   safeStorageSet(USER_ID_STORAGE_KEY, created);
+  safeCookieSet(USER_ID_COOKIE_KEY, created);
   return created;
 }
 
@@ -65,6 +95,7 @@ export function initAnalytics({ measurementId, version }) {
   window.gtag("config", measurementId, {
     anonymize_ip: true,
     send_page_view: true,
+    user_id: userId,
   });
   analyticsEnabled = true;
 }
@@ -73,7 +104,7 @@ function buildBasePayload(extra = {}) {
   return {
     app_version: appVersion,
     session_id: sessionId,
-    user_id: userId,
+    anon_user_id: userId,
     ...extra,
   };
 }

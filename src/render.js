@@ -180,16 +180,35 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
 
 function getObjectVisualPosition(run, object, nowMs) {
   const motion = run?.environmentMotion;
-  if (!motion || motion.kind !== "object-move" || motion.actorId !== object.id) {
+  if (!motion) {
     return { x: object.x, y: object.y };
   }
-  if (motion.startMs == null) {
-    motion.startMs = nowMs;
+  if (motion.kind === "object-move") {
+    if (motion.actorId !== object.id) {
+      return { x: object.x, y: object.y };
+    }
+    if (motion.startMs == null) {
+      motion.startMs = nowMs;
+    }
+    const t = Math.min(1, (nowMs - motion.startMs) / Math.max(1, motion.durationMs || 1));
+    const x = motion.from.x + (motion.to.x - motion.from.x) * t;
+    const y = motion.from.y + (motion.to.y - motion.from.y) * t;
+    return { x, y };
   }
-  const t = Math.min(1, (nowMs - motion.startMs) / Math.max(1, motion.durationMs || 1));
-  const x = motion.from.x + (motion.to.x - motion.from.x) * t;
-  const y = motion.from.y + (motion.to.y - motion.from.y) * t;
-  return { x, y };
+  if (motion.kind === "object-move-batch") {
+    const actorMotion = (motion.actors || []).find((entry) => entry.actorId === object.id);
+    if (!actorMotion) {
+      return { x: object.x, y: object.y };
+    }
+    if (motion.startMs == null) {
+      motion.startMs = nowMs;
+    }
+    const t = Math.min(1, (nowMs - motion.startMs) / Math.max(1, motion.durationMs || 1));
+    const x = actorMotion.from.x + (actorMotion.to.x - actorMotion.from.x) * t;
+    const y = actorMotion.from.y + (actorMotion.to.y - actorMotion.from.y) * t;
+    return { x, y };
+  }
+  return { x: object.x, y: object.y };
 }
 
 function getPlayerVisual(run, nowMs) {

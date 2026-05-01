@@ -1,7 +1,7 @@
-import { generateMazeRun } from "./maze.js?v=0.3.2-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.3.2-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.3.2-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.3.2-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.3.3-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.3.3-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.3.3-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.3.3-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -307,6 +307,24 @@ function isCellBlockedForEnemy(run, x, y, selfId) {
     return false;
   }
   return run.objects.some((object) => object.id !== selfId && object.x === x && object.y === y);
+}
+
+function isCellBlockedForEnemyWithReservations(run, x, y, selfId, occupiedKeys, reservedKeys) {
+  if (!inBounds(x, y, run) || isWall(x, y, run)) {
+    return true;
+  }
+  if (run.goal?.x === x && run.goal?.y === y) {
+    return true;
+  }
+  if (run.player?.x === x && run.player?.y === y) {
+    return false;
+  }
+  const key = `${x}:${y}`;
+  if (reservedKeys?.has(key)) {
+    return true;
+  }
+  const occupiedBy = occupiedKeys?.get(key);
+  return Boolean(occupiedBy && occupiedBy !== selfId);
 }
 
 function bresenhamLine(x0, y0, x1, y1) {
@@ -1023,6 +1041,123 @@ export function beginEnvironmentTurn(run) {
 export function stepEnvironmentTurn(run, playerSheet) {
   if (!run || !playerSheet || run.status !== "running" || run.turnPhase !== "environment") {
     return { run, playerSheet, finished: true, progressed: false };
+  }
+
+  if ((run.environmentActionQueue || []).length > 0) {
+    const actionQueue = [...run.environmentActionQueue];
+    run.environmentActionQueue = [];
+    const plannedMoves = [];
+    const reservedDestinations = new Set();
+    const occupiedByCell = new Map();
+    for (const object of run.objects || []) {
+      occupiedByCell.set(`${object.x}:${object.y}`, object.id);
+    }
+
+    let attackCount = 0;
+    let movedCount = 0;
+    let lastAttackerName = "";
+
+    for (const enemyId of actionQueue) {
+      const enemy = getEnemyById(run, enemyId);
+      if (!enemy) {
+        continue;
+      }
+
+      // Кот действует только если игрок видит его на карте.
+      if (!run.discovered?.[enemy.y]?.[enemy.x]) {
+        continue;
+      }
+
+      const distance = Math.abs(enemy.x - run.player.x) + Math.abs(enemy.y - run.player.y);
+      if (distance === 1) {
+        const veilReduction = run.mirrorVeil?.reduction || 0;
+        const damageTaken = Math.max(0, (enemy.data?.damage || 0) - veilReduction);
+        if (run.mirrorVeil?.charges) {
+          run.mirrorVeil.charges -= 1;
+          if (run.mirrorVeil.charges <= 0) {
+            delete run.mirrorVeil;
+          }
+        }
+        const hpNow = playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0;
+        const nextHp = Math.max(0, hpNow - damageTaken);
+        playerSheet.stats.HP = nextHp;
+        playerSheet.baseStats.HP = nextHp;
+        run.floatingTexts.push({
+          x: run.player.x,
+          y: run.player.y,
+          value: `-${damageTaken}`,
+          color: "#fca5a5",
+          durationMs: 620,
+          scale: 1.05,
+          startMs: null,
+        });
+        attackCount += 1;
+        lastAttackerName = enemy.name;
+        if (nextHp <= 0) {
+          run.status = "defeat";
+          run.lastLog = `${enemy.name} атакует мышонка на ${damageTaken}.`;
+          return { run, playerSheet, finished: true, progressed: true };
+        }
+        continue;
+      }
+
+      const candidates = [
+        { x: enemy.x + 1, y: enemy.y },
+        { x: enemy.x - 1, y: enemy.y },
+        { x: enemy.x, y: enemy.y + 1 },
+        { x: enemy.x, y: enemy.y - 1 },
+      ]
+        .filter((cell) => !isCellBlockedForEnemyWithReservations(
+          run,
+          cell.x,
+          cell.y,
+          enemy.id,
+          occupiedByCell,
+          reservedDestinations
+        ))
+        .map((cell) => ({
+          ...cell,
+          d: Math.abs(cell.x - run.player.x) + Math.abs(cell.y - run.player.y),
+        }))
+        .sort((a, b) => a.d - b.d);
+
+      if (candidates.length > 0 && candidates[0].d < distance) {
+        const from = { x: enemy.x, y: enemy.y };
+        const to = { x: candidates[0].x, y: candidates[0].y };
+        plannedMoves.push({ actorId: enemy.id, from, to });
+        reservedDestinations.add(`${to.x}:${to.y}`);
+        occupiedByCell.delete(`${from.x}:${from.y}`);
+        occupiedByCell.set(`${to.x}:${to.y}`, enemy.id);
+        movedCount += 1;
+      }
+    }
+
+    for (const motion of plannedMoves) {
+      const enemy = getEnemyById(run, motion.actorId);
+      if (!enemy) continue;
+      enemy.x = motion.to.x;
+      enemy.y = motion.to.y;
+    }
+
+    if (plannedMoves.length > 0) {
+      run.environmentMotion = {
+        kind: "object-move-batch",
+        actors: plannedMoves,
+        durationMs: 170,
+        startMs: null,
+      };
+    }
+
+    if (attackCount > 0 && movedCount > 0) {
+      run.lastLog = `${lastAttackerName} и другие коты действуют (${attackCount} атак, ${movedCount} перемещений).`;
+    } else if (attackCount > 0) {
+      run.lastLog = `${lastAttackerName} и другие коты атакуют (${attackCount}).`;
+    } else if (movedCount > 0) {
+      run.lastLog = `Коты перемещаются (${movedCount}).`;
+    } else {
+      run.lastLog = "Коты затаились.";
+    }
+    return { run, playerSheet, finished: false, progressed: attackCount > 0 || movedCount > 0 };
   }
 
   while ((run.environmentActionQueue || []).length > 0) {

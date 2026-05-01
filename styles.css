@@ -701,6 +701,16 @@ body {
   gap: 6px;
 }
 
+.build-badge-note {
+  position: absolute;
+  right: 12px;
+  bottom: 26px;
+  max-width: min(72ch, 72%);
+  font-size: 11px;
+  color: #64748b;
+  text-align: right;
+}
+
 .build-help-btn {
   width: 16px;
   height: 16px;
