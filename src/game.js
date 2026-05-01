@@ -1,9 +1,9 @@
-import { generateMazeRun } from "./maze.js?v=0.4.2-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.4.2-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.2-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.4.2-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.4.2-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.2-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.4.3-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.4.3-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.3-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.4.3-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.4.3-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.3-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -392,6 +392,7 @@ function generateObjects(maze, level = 1, options = {}) {
   const freeCells = [];
   const reserved = new Set();
   const rooms = Array.isArray(maze.rooms) ? maze.rooms : [];
+  const roomIndexByCellKey = new Map();
   const blockedSpawnKeys = options.blockedSpawnKeys instanceof Set
     ? options.blockedSpawnKeys
     : new Set(options.blockedSpawnKeys || []);
@@ -479,7 +480,8 @@ function generateObjects(maze, level = 1, options = {}) {
   }
 
   const roomCellKeySet = new Set();
-  for (const room of rooms) {
+  for (let roomIndex = 0; roomIndex < rooms.length; roomIndex += 1) {
+    const room = rooms[roomIndex];
     const maxY = Math.min(maze.height - 1, room.y + room.h - 1);
     const maxX = Math.min(maze.width - 1, room.x + room.w - 1);
     for (let y = Math.max(0, room.y); y <= maxY; y += 1) {
@@ -488,7 +490,9 @@ function generateObjects(maze, level = 1, options = {}) {
         if (x === maze.start.x && y === maze.start.y) continue;
         if (x === maze.goal.x && y === maze.goal.y) continue;
         if (blockedSpawnKeys.has(`${x}:${y}`)) continue;
-        roomCellKeySet.add(`${x}:${y}`);
+        const key = `${x}:${y}`;
+        roomCellKeySet.add(key);
+        roomIndexByCellKey.set(key, roomIndex);
       }
     }
   }
@@ -553,6 +557,55 @@ function generateObjects(maze, level = 1, options = {}) {
     return null;
   }
 
+  const roomBuckets = rooms.map((_, roomIndex) => ({
+    roomIndex,
+    deadEnds: [],
+    regular: [],
+  }));
+  for (const cell of freeCells) {
+    const roomIndex = roomIndexByCellKey.get(keyOf(cell.x, cell.y));
+    if (!Number.isInteger(roomIndex)) continue;
+    const bucket = roomBuckets[roomIndex];
+    if (!bucket) continue;
+    const isDeadEnd = neighbors4(cell.x, cell.y).length === 1;
+    if (isDeadEnd) {
+      bucket.deadEnds.push(cell);
+    } else {
+      bucket.regular.push(cell);
+    }
+  }
+  for (const bucket of roomBuckets) {
+    for (let i = bucket.deadEnds.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = bucket.deadEnds[i];
+      bucket.deadEnds[i] = bucket.deadEnds[j];
+      bucket.deadEnds[j] = tmp;
+    }
+    for (let i = bucket.regular.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = bucket.regular[i];
+      bucket.regular[i] = bucket.regular[j];
+      bucket.regular[j] = tmp;
+    }
+  }
+  let roomBucketCursor = 0;
+  function takeCellFromRoomsRoundRobin(kind = "regular") {
+    if (roomBuckets.length === 0) {
+      return null;
+    }
+    const targetKind = kind === "deadEnds" ? "deadEnds" : "regular";
+    for (let attempt = 0; attempt < roomBuckets.length; attempt += 1) {
+      const bucket = roomBuckets[roomBucketCursor % roomBuckets.length];
+      roomBucketCursor += 1;
+      const pool = bucket[targetKind];
+      while (pool.length > 0) {
+        const cell = pool.pop();
+        if (!reserved.has(keyOf(cell.x, cell.y))) return cell;
+      }
+    }
+    return null;
+  }
+
   function placeObject(list, template, cell, ordinal) {
     reserved.add(keyOf(cell.x, cell.y));
     list.push({
@@ -590,10 +643,10 @@ function generateObjects(maze, level = 1, options = {}) {
     for (let i = 0; i < count; i += 1) {
       let cell = null;
       if (plan.fromDeadEnd) {
-        cell = takeCellFrom(roomDeadEnds);
+        cell = takeCellFromRoomsRoundRobin("deadEnds") || takeCellFrom(roomDeadEnds);
       }
       if (!cell) {
-        cell = takeCellFrom(roomCells);
+        cell = takeCellFromRoomsRoundRobin("regular") || takeCellFrom(roomCells);
       }
       if (!cell) break;
       placeObject(objects, template, cell, i);
@@ -621,7 +674,11 @@ function generateObjects(maze, level = 1, options = {}) {
 
   // 3) Остальных котов досыпаем случайно.
   while (enemyQueue.length > 0) {
-    const cell = takeCellFrom(roomCells) || takeCellFrom(nonDeadEnds) || takeCellFrom(corridorCells) || takeCellFrom(deadEnds);
+    const cell = takeCellFromRoomsRoundRobin("regular")
+      || takeCellFrom(roomCells)
+      || takeCellFrom(nonDeadEnds)
+      || takeCellFrom(corridorCells)
+      || takeCellFrom(deadEnds);
     if (!cell) break;
     const enemyKey = enemyQueue.shift();
     const enemyTemplate = objectTemplates[enemyKey];

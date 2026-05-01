@@ -236,8 +236,8 @@ function carveRoomsAndCorridors(grid, width, height) {
 
   // Шаг 1: генерируем случайное количество комнат в случайных местах.
   for (let i = 0; i < targetRooms * 8 && rooms.length < targetRooms; i += 1) {
-    const w = randomInt(4, 8);
-    const h = randomInt(4, 8);
+    const w = randomInt(3, 6);
+    const h = randomInt(3, 6);
     const x = randomInt(1, Math.max(1, width - w - 2));
     const y = randomInt(1, Math.max(1, height - h - 2));
     const room = { x, y, w, h };

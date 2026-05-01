@@ -1,33 +1,33 @@
-import { createInitialState } from "./state.js?v=0.4.2-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.4.2-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.4.2-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.2-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.2-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.4.2-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.2-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.2-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.2-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.2-pre-alpha";
-import { getAllItemsForClass } from "./loadout.js?v=0.4.2-pre-alpha";
-import { createRunState } from "./game.js?v=0.4.2-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.4.2-pre-alpha";
-import { tryStep } from "./game.js?v=0.4.2-pre-alpha";
-import { useConsumable } from "./game.js?v=0.4.2-pre-alpha";
-import { useSkillAtCell } from "./game.js?v=0.4.2-pre-alpha";
-import { getSkillTargetCells } from "./game.js?v=0.4.2-pre-alpha";
-import { getTrapPlacementCells } from "./game.js?v=0.4.2-pre-alpha";
-import { placeTrap } from "./game.js?v=0.4.2-pre-alpha";
-import { beginEnvironmentTurn } from "./game.js?v=0.4.2-pre-alpha";
-import { stepEnvironmentTurn } from "./game.js?v=0.4.2-pre-alpha";
-import { buildPathToDiscoveredCell } from "./game.js?v=0.4.2-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.2-pre-alpha";
-import { renderApp } from "./ui.js?v=0.4.2-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.2-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.2-pre-alpha";
-import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.2-pre-alpha";
-import { initAnalytics } from "./analytics.js?v=0.4.2-pre-alpha";
-import { trackEvent } from "./analytics.js?v=0.4.2-pre-alpha";
-import { createRunAnalyticsId } from "./analytics.js?v=0.4.2-pre-alpha";
+import { createInitialState } from "./state.js?v=0.4.3-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.3-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.4.3-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.3-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.3-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.4.3-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.3-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.3-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.3-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.3-pre-alpha";
+import { getAllItemsForClass } from "./loadout.js?v=0.4.3-pre-alpha";
+import { createRunState } from "./game.js?v=0.4.3-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.4.3-pre-alpha";
+import { tryStep } from "./game.js?v=0.4.3-pre-alpha";
+import { useConsumable } from "./game.js?v=0.4.3-pre-alpha";
+import { useSkillAtCell } from "./game.js?v=0.4.3-pre-alpha";
+import { getSkillTargetCells } from "./game.js?v=0.4.3-pre-alpha";
+import { getTrapPlacementCells } from "./game.js?v=0.4.3-pre-alpha";
+import { placeTrap } from "./game.js?v=0.4.3-pre-alpha";
+import { beginEnvironmentTurn } from "./game.js?v=0.4.3-pre-alpha";
+import { stepEnvironmentTurn } from "./game.js?v=0.4.3-pre-alpha";
+import { buildPathToDiscoveredCell } from "./game.js?v=0.4.3-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.3-pre-alpha";
+import { renderApp } from "./ui.js?v=0.4.3-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.3-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.3-pre-alpha";
+import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.3-pre-alpha";
+import { initAnalytics } from "./analytics.js?v=0.4.3-pre-alpha";
+import { trackEvent } from "./analytics.js?v=0.4.3-pre-alpha";
+import { createRunAnalyticsId } from "./analytics.js?v=0.4.3-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
@@ -108,7 +108,12 @@ function onRootClick(event) {
   }
 
   const action = button.dataset.action;
-  if (state.uiHud.skillsPanelOpen && action !== "learn-skill" && action !== "upgrade-skill") {
+  if (
+    state.uiHud.skillsPanelOpen &&
+    action !== "learn-skill" &&
+    action !== "upgrade-skill" &&
+    action !== "close-skills"
+  ) {
     return;
   }
   if (action === "open-help") {
@@ -218,6 +223,13 @@ function onRootClick(event) {
       return;
     }
     performStep(direction);
+  }
+
+  if (action === "close-skills") {
+    state.uiHud.skillsPanelOpen = false;
+    clearSkillTargeting();
+    rerender();
+    return;
   }
 
   if (action === "quickbar-use") {
@@ -1120,6 +1132,10 @@ function maybeOpenSkillsOnNewPoint(previousPoints = 0) {
   if (state.screen !== "game" || nowPoints <= previousPoints) {
     return;
   }
+  if (!hasAvailableSkillUpgrade(state.playerSheet)) {
+    state.uiHud.deferSkillsPanelOpen = false;
+    return;
+  }
   const nowMs = performance.now();
   const shouldDeferOpen = !state.run
     || state.run.turnPhase !== "player"
@@ -1171,6 +1187,10 @@ function maybeOpenDeferredSkillsPanel() {
     state.uiHud.deferSkillsPanelOpen = false;
     return false;
   }
+  if (!hasAvailableSkillUpgrade(state.playerSheet)) {
+    state.uiHud.deferSkillsPanelOpen = false;
+    return false;
+  }
   const nowMs = performance.now();
   if (isPlayerInputBlocked(nowMs)) {
     return false;
@@ -1179,6 +1199,25 @@ function maybeOpenDeferredSkillsPanel() {
   state.uiHud.deferSkillsPanelOpen = false;
   clearSkillTargeting();
   return true;
+}
+
+function hasAvailableSkillUpgrade(playerSheet) {
+  if (!playerSheet || (playerSheet.skillPoints || 0) <= 0) {
+    return false;
+  }
+  const classId = playerSheet.classId;
+  const skillsState = playerSheet.skills || {};
+  for (const [skillId, skillState] of Object.entries(skillsState)) {
+    const skillDef = getSkillById(skillId);
+    if (!skillDef || skillDef.classId !== classId) {
+      continue;
+    }
+    const currentLevel = skillState?.level || 0;
+    if (currentLevel < skillDef.maxLevel) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function screenPointToGrid(localX, localY, width, height) {

@@ -1,15 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.4.2-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.4.2-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.4.2-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.2-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.2-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.2-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.2-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.2-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.4.2-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.2-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.2-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.4.2-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.4.3-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.3-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.4.3-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.3-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.3-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.3-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.3-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.3-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.4.3-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.3-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.3-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.4.3-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -977,6 +977,9 @@ function renderSkillsModal(state) {
       <section class="screen skills-screen-enter skills-modal-panel">
         <h1 class="screen-title">Скиллы</h1>
         <p class="screen-subtitle">Каждые 2 уровня дается 1 очко скилла. Доступно: ${state.playerSheet?.skillPoints || 0}</p>
+        <div class="controls-row">
+          <button class="btn" type="button" data-action="close-skills">Закрыть</button>
+        </div>
         <div class="sheet-grid">${cards}</div>
       </section>
     </div>
