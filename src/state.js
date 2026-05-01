@@ -1,6 +1,6 @@
-import { buildDerivedStats } from "./rules.js?v=0.3.0-pre-alpha";
-import { CLASS_START_MANA } from "./skills.js?v=0.3.0-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.3.0-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.3.1-pre-alpha";
+import { CLASS_START_MANA } from "./skills.js?v=0.3.1-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.3.1-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,

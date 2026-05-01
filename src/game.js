@@ -1,7 +1,7 @@
-import { generateMazeRun } from "./maze.js?v=0.3.0-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.3.0-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.3.0-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.3.0-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.3.1-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.3.1-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.3.1-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.3.1-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -298,6 +298,9 @@ function getEnemyById(run, enemyId) {
 
 function isCellBlockedForEnemy(run, x, y, selfId) {
   if (!inBounds(x, y, run) || isWall(x, y, run)) {
+    return true;
+  }
+  if (run.goal?.x === x && run.goal?.y === y) {
     return true;
   }
   if (run.player?.x === x && run.player?.y === y) {
