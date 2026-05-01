@@ -1,15 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.3.3-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.3.3-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.3.3-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.3.3-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.3.3-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.3.3-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.3.3-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.3.3-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.3.3-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.3.3-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.3.3-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.3.3-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.4.0-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.0-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.4.0-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.0-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.0-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.0-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.0-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.0-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.4.0-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.0-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.0-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.4.0-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -880,11 +880,13 @@ function buildFullStats(playerSheet) {
 
 function renderBuildBadge() {
   return `
-    <p class="build-badge">
-      ${APP_TITLE} · v${APP_VERSION}
-      <button class="build-help-btn" type="button" data-action="open-help" title="Справка по управлению">?</button>
-    </p>
-    <p class="build-badge-note">Используется анонимная аналитика: запуски, класс, исход забега, причины поражения и применение скиллов.</p>
+    <div class="build-badge-wrap">
+      <p class="build-badge-note">Используется анонимная аналитика: запуски, класс, исход забега, причины поражения и применение скиллов.</p>
+      <p class="build-badge">
+        ${APP_TITLE} · v${APP_VERSION}
+        <button class="build-help-btn" type="button" data-action="open-help" title="Справка по управлению">?</button>
+      </p>
+    </div>
   `;
 }
 
@@ -893,9 +895,12 @@ function renderHelpModal() {
     <div class="help-modal-backdrop">
       <section class="help-modal">
         <h3>Справка</h3>
-        <p><strong>Управление:</strong> WASD/стрелки — движение; 1-9 — слоты быстрого доступа; мышь — выбор клетки при подготовке скилла; пробел — применение подготовленного скилла на себя (если клетка валидна).</p>
-        <p><strong>Скрытые возможности:</strong> если скилл подготовлен, можно нажать направление и скилл сработает в этом направлении, но только когда там ровно одна доступная клетка. Активные эффекты показываются иконками сверху слева, а подробности — по наведению.</p>
-        <p><strong>Быстрый доступ:</strong> расходники и изученные скиллы можно перетаскивать в quickbar; при нехватке маны/ресурса слот затемняется.</p>
+        <p><strong>Как ходить:</strong> используй WASD или стрелки. По диагонали — Q, E, Z, C.</p>
+        <p><strong>Мышка:</strong> наведи курсор на клетку, чтобы увидеть путь. Клик по соседней клетке — шаг (или удар, если там кот). Клик по дальней клетке — герой запомнит маршрут и пойдет по нему сам.</p>
+        <p><strong>Автоход:</strong> герой идет по запомненному пути между ходами. Автодвижение остановится, если герой получил урон, путь перекрыт или цель уже достигнута.</p>
+        <p><strong>Скиллы и предметы:</strong> кнопки 1-9 — быстрые слоты. Можно положить туда скиллы и расходники. Нажми на скилл, затем на клетку цели. Пробел — использовать подготовленный скилл на себя (если это разрешено).</p>
+        <p><strong>Как идут ходы:</strong> сначала ходишь ты, потом ходят коты. Коты могут обходить стены и двигаться одновременно.</p>
+        <p><strong>Подсказки в бою:</strong> активные эффекты показаны в левом верхнем углу, подробности — по наведению.</p>
         <div class="controls-row">
           <button class="btn btn-primary" type="button" data-action="close-help">Закрыть</button>
         </div>

@@ -60,6 +60,8 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     );
   }
 
+  drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile);
+
   if (Array.isArray(run.objects)) {
     const playerHp = Math.max(0, playerSheet?.stats?.HP ?? 0);
     const playerBaseAttack = Math.max(
@@ -178,6 +180,45 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   drawLevelTransitionOverlay(ctx, run, width, height, nowMs);
 }
 
+function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile) {
+  const hoverCell = run.hoverCell;
+  const previewCells = Array.isArray(run.previewPathCells) ? run.previewPathCells : [];
+  const lockedCells = Array.isArray(run.lockedPathCells) ? run.lockedPathCells : [];
+  const lockedTarget = run.lockedPathTarget;
+
+  if (hoverCell && run.discovered?.[hoverCell.y]?.[hoverCell.x] && !lockedTarget) {
+    const px = Math.floor(cameraOffsetX + hoverCell.x * tile);
+    const py = Math.floor(cameraOffsetY + hoverCell.y * tile);
+    ctx.strokeStyle = "rgba(203, 213, 225, 0.8)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(px + 2, py + 2, tile - 4, tile - 4);
+  }
+
+  const pathForDraw = lockedCells.length > 0 ? lockedCells : previewCells;
+  if (pathForDraw.length > 0) {
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = lockedCells.length > 0 ? "rgba(34, 197, 94, 0.95)" : "rgba(148, 163, 184, 0.9)";
+    ctx.beginPath();
+    ctx.moveTo(cameraOffsetX + run.player.x * tile + tile / 2, cameraOffsetY + run.player.y * tile + tile / 2);
+    for (let i = 0; i < pathForDraw.length; i += 1) {
+      const cell = pathForDraw[i];
+      ctx.lineTo(cameraOffsetX + cell.x * tile + tile / 2, cameraOffsetY + cell.y * tile + tile / 2);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (lockedTarget && run.discovered?.[lockedTarget.y]?.[lockedTarget.x]) {
+    const px = Math.floor(cameraOffsetX + lockedTarget.x * tile);
+    const py = Math.floor(cameraOffsetY + lockedTarget.y * tile);
+    ctx.strokeStyle = "rgba(74, 222, 128, 0.95)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px + 2, py + 2, tile - 4, tile - 4);
+  }
+}
+
 function getObjectVisualPosition(run, object, nowMs) {
   const motion = run?.environmentMotion;
   if (!motion) {
@@ -204,6 +245,14 @@ function getObjectVisualPosition(run, object, nowMs) {
       motion.startMs = nowMs;
     }
     const t = Math.min(1, (nowMs - motion.startMs) / Math.max(1, motion.durationMs || 1));
+    if (actorMotion.kind === "bounce") {
+      const push = Math.sin(Math.PI * t) * 0.36;
+      const dirX = actorMotion.target.x - actorMotion.from.x;
+      const dirY = actorMotion.target.y - actorMotion.from.y;
+      const x = actorMotion.from.x + dirX * push;
+      const y = actorMotion.from.y + dirY * push;
+      return { x, y };
+    }
     const x = actorMotion.from.x + (actorMotion.to.x - actorMotion.from.x) * t;
     const y = actorMotion.from.y + (actorMotion.to.y - actorMotion.from.y) * t;
     return { x, y };

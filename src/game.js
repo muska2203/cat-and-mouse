@@ -1,11 +1,22 @@
-import { generateMazeRun } from "./maze.js?v=0.3.3-pre-alpha";
-import { getLootPool } from "./loadout.js?v=0.3.3-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.3.3-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.3.3-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.4.0-pre-alpha";
+import { getLootPool } from "./loadout.js?v=0.4.0-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.4.0-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.4.0-pre-alpha";
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
 }
+
+const DIRS_8 = [
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 },
+  { x: 1, y: 1 },
+  { x: -1, y: -1 },
+  { x: 1, y: -1 },
+  { x: -1, y: 1 },
+];
 
 function isWall(x, y, run) {
   return run.grid[y][x] === 1;
@@ -121,10 +132,135 @@ function getEnemyCountsForLevel(level, walkableCells = 120) {
   return counts;
 }
 
-function generateObjects(maze, level = 1) {
+function buildDistanceMapFromCell(maze, start) {
+  const distances = createMask(maze.width, maze.height, -1);
+  const queue = [{ x: start.x, y: start.y }];
+  distances[start.y][start.x] = 0;
+  const dirs = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 },
+  ];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const base = distances[current.y][current.x];
+    for (const dir of dirs) {
+      const nx = current.x + dir.x;
+      const ny = current.y + dir.y;
+      if (nx < 0 || ny < 0 || nx >= maze.width || ny >= maze.height) continue;
+      if (maze.grid[ny][nx] === 1) continue;
+      if (distances[ny][nx] !== -1) continue;
+      distances[ny][nx] = base + 1;
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return distances;
+}
+
+function getWalkableCellsInRoom(maze, room) {
+  const cells = [];
+  const maxY = Math.min(maze.height - 1, room.y + room.h - 1);
+  const maxX = Math.min(maze.width - 1, room.x + room.w - 1);
+  for (let y = Math.max(0, room.y); y <= maxY; y += 1) {
+    for (let x = Math.max(0, room.x); x <= maxX; x += 1) {
+      if (maze.grid[y][x] === 0) {
+        cells.push({ x, y });
+      }
+    }
+  }
+  return cells;
+}
+
+function isEdgeRoom(maze, room) {
+  return (
+    room.x <= 1 ||
+    room.y <= 1 ||
+    room.x + room.w >= maze.width - 1 ||
+    room.y + room.h >= maze.height - 1
+  );
+}
+
+function planStartAndGoalSpawn(maze) {
+  const rooms = Array.isArray(maze.rooms) ? maze.rooms : [];
+  const roomCandidates = rooms
+    .map((room, index) => ({ room, index, cells: getWalkableCellsInRoom(maze, room) }))
+    .filter((entry) => entry.cells.length > 0);
+
+  if (roomCandidates.length === 0) {
+    return {
+      start: maze.start,
+      goal: maze.goal,
+      playerRoomIndex: -1,
+      blockedSpawnKeys: new Set(),
+    };
+  }
+
+  const edgeCandidates = roomCandidates.filter((entry) => isEdgeRoom(maze, entry.room));
+  const startRoomEntry = randomPick(edgeCandidates.length > 0 ? edgeCandidates : roomCandidates);
+  const start = randomPick(startRoomEntry.cells);
+  const blockedSpawnKeys = new Set(startRoomEntry.cells.map((cell) => `${cell.x}:${cell.y}`));
+
+  const distances = buildDistanceMapFromCell(maze, start);
+  const targetRoomCandidates = roomCandidates.filter((entry) => entry.index !== startRoomEntry.index);
+  let chosenGoalCell = null;
+  let chosenDistance = -1;
+
+  for (const entry of targetRoomCandidates) {
+    const reachableCells = entry.cells
+      .map((cell) => ({ ...cell, d: distances[cell.y][cell.x] }))
+      .filter((cell) => cell.d >= 0);
+    if (reachableCells.length === 0) {
+      continue;
+    }
+    reachableCells.sort((a, b) => b.d - a.d);
+    const bestDistance = reachableCells[0].d;
+    if (bestDistance < chosenDistance) {
+      continue;
+    }
+    const farthestGroup = reachableCells.filter((cell) => cell.d === bestDistance);
+    const picked = randomPick(farthestGroup);
+    if (bestDistance > chosenDistance || Math.random() < 0.5) {
+      chosenDistance = bestDistance;
+      chosenGoalCell = { x: picked.x, y: picked.y };
+    }
+  }
+
+  if (!chosenGoalCell) {
+    const fallbackCells = [];
+    for (let y = 0; y < maze.height; y += 1) {
+      for (let x = 0; x < maze.width; x += 1) {
+        const d = distances[y][x];
+        if (d < 0 || (x === start.x && y === start.y)) continue;
+        fallbackCells.push({ x, y, d });
+      }
+    }
+    if (fallbackCells.length > 0) {
+      fallbackCells.sort((a, b) => b.d - a.d);
+      const maxD = fallbackCells[0].d;
+      const farthest = fallbackCells.filter((cell) => cell.d === maxD);
+      const picked = randomPick(farthest);
+      chosenGoalCell = { x: picked.x, y: picked.y };
+    } else {
+      chosenGoalCell = maze.goal;
+    }
+  }
+
+  return {
+    start,
+    goal: chosenGoalCell,
+    playerRoomIndex: startRoomEntry.index,
+    blockedSpawnKeys,
+  };
+}
+
+function generateObjects(maze, level = 1, options = {}) {
   const freeCells = [];
   const reserved = new Set();
   const rooms = Array.isArray(maze.rooms) ? maze.rooms : [];
+  const blockedSpawnKeys = options.blockedSpawnKeys instanceof Set
+    ? options.blockedSpawnKeys
+    : new Set(options.blockedSpawnKeys || []);
 
   const objectTemplates = {
     cat_small: { id: "cat_small", name: "Котенок", type: "enemy", icon: "🐱", oneTime: false, data: { hp: 18, damage: 2 } },
@@ -140,6 +276,7 @@ function generateObjects(maze, level = 1) {
       if (maze.grid[y][x] === 1) continue;
       if (x === maze.start.x && y === maze.start.y) continue;
       if (x === maze.goal.x && y === maze.goal.y) continue;
+      if (blockedSpawnKeys.has(`${x}:${y}`)) continue;
       freeCells.push({ x, y });
     }
   }
@@ -153,6 +290,7 @@ function generateObjects(maze, level = 1) {
         if (maze.grid[y][x] === 1) continue;
         if (x === maze.start.x && y === maze.start.y) continue;
         if (x === maze.goal.x && y === maze.goal.y) continue;
+        if (blockedSpawnKeys.has(`${x}:${y}`)) continue;
         roomCellKeySet.add(`${x}:${y}`);
       }
     }
@@ -196,6 +334,7 @@ function generateObjects(maze, level = 1) {
       if (maze.grid[ny][nx] === 1) continue;
       if (nx === maze.start.x && ny === maze.start.y) continue;
       if (nx === maze.goal.x && ny === maze.goal.y) continue;
+      if (blockedSpawnKeys.has(`${nx}:${ny}`)) continue;
       result.push({ x: nx, y: ny });
     }
     return result;
@@ -207,6 +346,7 @@ function generateObjects(maze, level = 1) {
   const corridorCells = freeCells.filter((cell) => !roomCellKeySet.has(keyOf(cell.x, cell.y)));
   const roomDeadEnds = deadEnds.filter((cell) => roomCellKeySet.has(keyOf(cell.x, cell.y)));
   const corridorDeadEnds = deadEnds.filter((cell) => !roomCellKeySet.has(keyOf(cell.x, cell.y)));
+  const spawnableCellKeySet = new Set(freeCells.map((cell) => keyOf(cell.x, cell.y)));
 
   function takeCellFrom(pool) {
     while (pool.length > 0) {
@@ -263,7 +403,9 @@ function generateObjects(maze, level = 1) {
   let enemyOrdinal = 0;
   for (const chest of objects.filter((object) => object.type === "chest")) {
     if (enemyQueue.length === 0) break;
-    const guardCell = neighbors4(chest.x, chest.y).find((cell) => !reserved.has(keyOf(cell.x, cell.y)));
+    const guardCell = neighbors4(chest.x, chest.y).find(
+      (cell) => spawnableCellKeySet.has(keyOf(cell.x, cell.y)) && !reserved.has(keyOf(cell.x, cell.y))
+    );
     if (!guardCell) continue;
     const enemyKey = enemyQueue.shift();
     const enemyTemplate = objectTemplates[enemyKey];
@@ -294,6 +436,110 @@ function removeObject(run, objectId) {
 
 function getEnemyById(run, enemyId) {
   return run.objects.find((object) => object.id === enemyId && object.type === "enemy") || null;
+}
+
+function isDiagonalCutBlocked(run, fromX, fromY, toX, toY) {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  if (Math.abs(dx) !== 1 || Math.abs(dy) !== 1) {
+    return false;
+  }
+  return isWall(fromX + dx, fromY, run) || isWall(fromX, fromY + dy, run);
+}
+
+function chebyshevDistance(a, b) {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+function defaultCellBlocked(run, x, y, options = {}) {
+  if (!inBounds(x, y, run) || isWall(x, y, run)) {
+    return true;
+  }
+  if (options.allowGoal !== true && run.goal?.x === x && run.goal?.y === y) {
+    return true;
+  }
+  if (options.allowPlayer !== true && run.player?.x === x && run.player?.y === y) {
+    return true;
+  }
+  if (options.blockObjects !== false) {
+    if ((run.objects || []).some((object) => object.x === x && object.y === y && object.id !== options.ignoreObjectId)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function buildPathToCell(run, start, target, options = {}) {
+  if (!run || !start || !target) {
+    return [];
+  }
+  if (!inBounds(start.x, start.y, run) || !inBounds(target.x, target.y, run)) {
+    return [];
+  }
+  const blockCell = options.isCellBlocked || ((x, y) => defaultCellBlocked(run, x, y, options));
+  const open = [{ x: start.x, y: start.y }];
+  const cameFrom = new Map();
+  const gScore = new Map([[`${start.x}:${start.y}`, 0]]);
+  const fScore = new Map([[`${start.x}:${start.y}`, chebyshevDistance(start, target)]]);
+
+  while (open.length > 0) {
+    open.sort((a, b) => (fScore.get(`${a.x}:${a.y}`) ?? Infinity) - (fScore.get(`${b.x}:${b.y}`) ?? Infinity));
+    const current = open.shift();
+    const currentKey = `${current.x}:${current.y}`;
+    if (current.x === target.x && current.y === target.y) {
+      const path = [{ x: current.x, y: current.y }];
+      let key = currentKey;
+      while (cameFrom.has(key)) {
+        const prev = cameFrom.get(key);
+        path.push({ x: prev.x, y: prev.y });
+        key = `${prev.x}:${prev.y}`;
+      }
+      path.reverse();
+      return path;
+    }
+
+    for (const dir of DIRS_8) {
+      const nx = current.x + dir.x;
+      const ny = current.y + dir.y;
+      if (!inBounds(nx, ny, run)) continue;
+      if (nx === target.x && ny === target.y) {
+        // allow target explicitly
+      } else if (blockCell(nx, ny)) {
+        continue;
+      }
+      if (isDiagonalCutBlocked(run, current.x, current.y, nx, ny)) {
+        continue;
+      }
+
+      const tentative = (gScore.get(currentKey) ?? Infinity) + (dir.x !== 0 && dir.y !== 0 ? 1.4142 : 1);
+      const nKey = `${nx}:${ny}`;
+      if (tentative >= (gScore.get(nKey) ?? Infinity)) {
+        continue;
+      }
+      cameFrom.set(nKey, { x: current.x, y: current.y });
+      gScore.set(nKey, tentative);
+      fScore.set(nKey, tentative + chebyshevDistance({ x: nx, y: ny }, target));
+      if (!open.some((n) => n.x === nx && n.y === ny)) {
+        open.push({ x: nx, y: ny });
+      }
+    }
+  }
+  return [];
+}
+
+export function buildPathToDiscoveredCell(run, start, target, options = {}) {
+  return buildPathToCell(run, start, target, {
+    ...options,
+    isCellBlocked: (x, y) => {
+      if (!run?.discovered?.[y]?.[x]) {
+        return true;
+      }
+      if (options.isCellBlocked) {
+        return options.isCellBlocked(x, y);
+      }
+      return defaultCellBlocked(run, x, y, options);
+    },
+  });
 }
 
 function isCellBlockedForEnemy(run, x, y, selfId) {
@@ -429,18 +675,24 @@ function applyXpGain(playerSheet, gainedXp) {
 
 export function createRunState(playerSheet, level = 1) {
   const maze = generateMazeRun();
-  const run = {
+  const spawnPlan = planStartAndGoalSpawn(maze);
+  const mazeWithSpawn = {
     ...maze,
-    player: { x: maze.start.x, y: maze.start.y },
+    start: { x: spawnPlan.start.x, y: spawnPlan.start.y },
+    goal: { x: spawnPlan.goal.x, y: spawnPlan.goal.y },
+  };
+  const run = {
+    ...mazeWithSpawn,
+    player: { x: mazeWithSpawn.start.x, y: mazeWithSpawn.start.y },
     level,
     maxLevel: 10,
     turns: 0,
     status: "running",
-    objects: generateObjects(maze, level),
+    objects: generateObjects(mazeWithSpawn, level, { blockedSpawnKeys: spawnPlan.blockedSpawnKeys }),
     lastLog: level === 1 ? "Забег начался." : `Уровень ${level} начался.`,
     nextHitMultiplier: 1,
     visionRange: playerSheet?.stats?.VISION ?? 6,
-    discovered: createMask(maze.width, maze.height, false),
+    discovered: createMask(mazeWithSpawn.width, mazeWithSpawn.height, false),
     motion: null,
     floatingTexts: [],
     screenShake: null,
@@ -670,12 +922,7 @@ export function getSkillTargetCells(run, playerSheet, skillId) {
   } else if (skillId === "mage_mirror_veil") {
     result.push({ x: px, y: py });
   } else if (skillId === "warrior_power_hit") {
-    const neighbors = [
-      { x: px + 1, y: py },
-      { x: px - 1, y: py },
-      { x: px, y: py + 1 },
-      { x: px, y: py - 1 },
-    ];
+    const neighbors = DIRS_8.map((dir) => ({ x: px + dir.x, y: py + dir.y }));
     for (const cell of neighbors) {
       if (!inBounds(cell.x, cell.y, run)) continue;
       const object = getObjectAt(run, cell.x, cell.y);
@@ -914,6 +1161,10 @@ export function tryStep(run, playerSheet, direction) {
     down: { x: 0, y: 1 },
     left: { x: -1, y: 0 },
     right: { x: 1, y: 0 },
+    up_left: { x: -1, y: -1 },
+    up_right: { x: 1, y: -1 },
+    down_left: { x: -1, y: 1 },
+    down_right: { x: 1, y: 1 },
   }[direction];
 
   if (!delta) {
@@ -932,6 +1183,10 @@ export function tryStep(run, playerSheet, direction) {
     return { run, playerSheet, log: "Стена перекрывает путь.", motion: null, actionConsumed: false };
   }
   const object = getObjectAt(run, nx, ny);
+  // Диагональный "срез угла" блокирует перемещение, но не ближнюю атаку по врагу.
+  if (isDiagonalCutBlocked(run, run.player.x, run.player.y, nx, ny) && object?.type !== "enemy") {
+    return { run, playerSheet, log: "Нельзя пройти по диагонали через угол стены.", motion: null, actionConsumed: false };
+  }
   let log = "";
   let motion = null;
   const from = { x: run.player.x, y: run.player.y };
@@ -1047,6 +1302,7 @@ export function stepEnvironmentTurn(run, playerSheet) {
     const actionQueue = [...run.environmentActionQueue];
     run.environmentActionQueue = [];
     const plannedMoves = [];
+    const plannedAttacks = [];
     const reservedDestinations = new Set();
     const occupiedByCell = new Map();
     for (const object of run.objects || []) {
@@ -1068,7 +1324,7 @@ export function stepEnvironmentTurn(run, playerSheet) {
         continue;
       }
 
-      const distance = Math.abs(enemy.x - run.player.x) + Math.abs(enemy.y - run.player.y);
+      const distance = chebyshevDistance(enemy, run.player);
       if (distance === 1) {
         const veilReduction = run.mirrorVeil?.reduction || 0;
         const damageTaken = Math.max(0, (enemy.data?.damage || 0) - veilReduction);
@@ -1093,6 +1349,12 @@ export function stepEnvironmentTurn(run, playerSheet) {
         });
         attackCount += 1;
         lastAttackerName = enemy.name;
+        plannedAttacks.push({
+          actorId: enemy.id,
+          kind: "bounce",
+          from: { x: enemy.x, y: enemy.y },
+          target: { x: run.player.x, y: run.player.y },
+        });
         if (nextHp <= 0) {
           run.status = "defeat";
           run.lastLog = `${enemy.name} атакует мышонка на ${damageTaken}.`;
@@ -1101,30 +1363,20 @@ export function stepEnvironmentTurn(run, playerSheet) {
         continue;
       }
 
-      const candidates = [
-        { x: enemy.x + 1, y: enemy.y },
-        { x: enemy.x - 1, y: enemy.y },
-        { x: enemy.x, y: enemy.y + 1 },
-        { x: enemy.x, y: enemy.y - 1 },
-      ]
-        .filter((cell) => !isCellBlockedForEnemyWithReservations(
-          run,
-          cell.x,
-          cell.y,
-          enemy.id,
-          occupiedByCell,
-          reservedDestinations
-        ))
-        .map((cell) => ({
-          ...cell,
-          d: Math.abs(cell.x - run.player.x) + Math.abs(cell.y - run.player.y),
-        }))
-        .sort((a, b) => a.d - b.d);
-
-      if (candidates.length > 0 && candidates[0].d < distance) {
+      const path = buildPathToCell(run, { x: enemy.x, y: enemy.y }, { x: run.player.x, y: run.player.y }, {
+        allowPlayer: true,
+        allowGoal: false,
+        ignoreObjectId: enemy.id,
+        isCellBlocked: (x, y) => {
+          if (x === run.player.x && y === run.player.y) return false;
+          return isCellBlockedForEnemyWithReservations(run, x, y, enemy.id, occupiedByCell, reservedDestinations);
+        },
+      });
+      if (path.length > 1) {
+        const nextCell = path[1];
         const from = { x: enemy.x, y: enemy.y };
-        const to = { x: candidates[0].x, y: candidates[0].y };
-        plannedMoves.push({ actorId: enemy.id, from, to });
+        const to = { x: nextCell.x, y: nextCell.y };
+        plannedMoves.push({ actorId: enemy.id, kind: "move", from, to });
         reservedDestinations.add(`${to.x}:${to.y}`);
         occupiedByCell.delete(`${from.x}:${from.y}`);
         occupiedByCell.set(`${to.x}:${to.y}`, enemy.id);
@@ -1139,10 +1391,11 @@ export function stepEnvironmentTurn(run, playerSheet) {
       enemy.y = motion.to.y;
     }
 
-    if (plannedMoves.length > 0) {
+    const plannedMotions = [...plannedMoves, ...plannedAttacks];
+    if (plannedMotions.length > 0) {
       run.environmentMotion = {
         kind: "object-move-batch",
-        actors: plannedMoves,
+        actors: plannedMotions,
         durationMs: 170,
         startMs: null,
       };

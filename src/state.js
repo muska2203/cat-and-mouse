@@ -1,6 +1,6 @@
-import { buildDerivedStats } from "./rules.js?v=0.3.3-pre-alpha";
-import { CLASS_START_MANA } from "./skills.js?v=0.3.3-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.3.3-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.4.0-pre-alpha";
+import { CLASS_START_MANA } from "./skills.js?v=0.4.0-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.4.0-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -60,6 +60,12 @@ export function createInitialState() {
       quickbarPulseSlot: null,
       dragPayload: null,
       skillTargeting: null,
+      pathHoverCell: null,
+      pathPreviewCells: [],
+      pathLockedCells: [],
+      pathLockedTarget: null,
+      autoMoveActive: false,
+      autoMoveLastHp: null,
       skillsPanelOpen: false,
       helpOpen: false,
     },
