@@ -1,15 +1,15 @@
-import { CLASS_CONFIG } from "./state.js?v=0.3.1-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.3.1-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.3.1-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.3.1-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.3.1-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.3.1-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.3.1-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.3.1-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.3.1-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.3.1-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.3.1-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.3.1-pre-alpha";
+import { CLASS_CONFIG } from "./state.js?v=0.3.2-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.3.2-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.3.2-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.3.2-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.3.2-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.3.2-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.3.2-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.3.2-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.3.2-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.3.2-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.3.2-pre-alpha";
+import { getSkillsForClass } from "./skills.js?v=0.3.2-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -884,6 +884,7 @@ function renderBuildBadge() {
       ${APP_TITLE} · v${APP_VERSION}
       <button class="build-help-btn" type="button" data-action="open-help" title="Справка по управлению">?</button>
     </p>
+    <p class="build-badge">Используется анонимная аналитика: запуски, класс, исход забега, причины поражения и применение скиллов.</p>
   `;
 }
 

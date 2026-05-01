@@ -1,31 +1,38 @@
-import { createInitialState } from "./state.js?v=0.3.1-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.3.1-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.3.1-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.3.1-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.3.1-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.3.1-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.3.1-pre-alpha";
-import { addLootItemToPlayer } from "./loadout.js?v=0.3.1-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.3.1-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.3.1-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.3.1-pre-alpha";
-import { createRunState } from "./game.js?v=0.3.1-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.3.1-pre-alpha";
-import { tryStep } from "./game.js?v=0.3.1-pre-alpha";
-import { useConsumable } from "./game.js?v=0.3.1-pre-alpha";
-import { useSkillAtCell } from "./game.js?v=0.3.1-pre-alpha";
-import { getSkillTargetCells } from "./game.js?v=0.3.1-pre-alpha";
-import { beginEnvironmentTurn } from "./game.js?v=0.3.1-pre-alpha";
-import { stepEnvironmentTurn } from "./game.js?v=0.3.1-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.3.1-pre-alpha";
-import { renderApp } from "./ui.js?v=0.3.1-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.3.1-pre-alpha";
+import { createInitialState } from "./state.js?v=0.3.2-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.3.2-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.3.2-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.3.2-pre-alpha";
+import { getDefaultStarterLoadout } from "./loadout.js?v=0.3.2-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.3.2-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.3.2-pre-alpha";
+import { addLootItemToPlayer } from "./loadout.js?v=0.3.2-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.3.2-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.3.2-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.3.2-pre-alpha";
+import { createRunState } from "./game.js?v=0.3.2-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.3.2-pre-alpha";
+import { tryStep } from "./game.js?v=0.3.2-pre-alpha";
+import { useConsumable } from "./game.js?v=0.3.2-pre-alpha";
+import { useSkillAtCell } from "./game.js?v=0.3.2-pre-alpha";
+import { getSkillTargetCells } from "./game.js?v=0.3.2-pre-alpha";
+import { beginEnvironmentTurn } from "./game.js?v=0.3.2-pre-alpha";
+import { stepEnvironmentTurn } from "./game.js?v=0.3.2-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.3.2-pre-alpha";
+import { renderApp } from "./ui.js?v=0.3.2-pre-alpha";
+import { getSkillById } from "./skills.js?v=0.3.2-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.3.2-pre-alpha";
+import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.3.2-pre-alpha";
+import { initAnalytics } from "./analytics.js?v=0.3.2-pre-alpha";
+import { trackEvent } from "./analytics.js?v=0.3.2-pre-alpha";
+import { createRunAnalyticsId } from "./analytics.js?v=0.3.2-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
+initAnalytics({ measurementId: GA4_MEASUREMENT_ID, version: APP_VERSION });
 
 function rerender() {
   syncSkillTargetPreview();
+  maybeTrackRunEnd();
   renderApp(root, state);
   drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, performance.now());
   syncHpHud();
@@ -73,7 +80,13 @@ function onRootClick(event) {
     state.uiHud.hpVisual = state.playerSheet.stats.HP;
     state.uiHud.manaVisual = state.playerSheet.mana || 0;
     state.run = createRunState(state.playerSheet, 1);
+    state.run.analyticsRunId = createRunAnalyticsId();
+    state.run.analyticsRunEndTracked = false;
     state.screen = "game";
+    trackEvent("game_start", {
+      class_id: state.playerSheet.classId,
+      run_id: state.run.analyticsRunId,
+    });
     rerender();
   }
 
@@ -645,6 +658,7 @@ function onCanvasClick(event, canvas) {
   }
   maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
   if (result.actionConsumed) {
+    trackSkillUse(targeting.skillId);
     consumePlayerActionAndStartEnvironment();
   }
   rerender();
@@ -876,6 +890,7 @@ function tryCastPreparedSkillByDirection(direction) {
   }
   maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
   if (result.actionConsumed) {
+    trackSkillUse(targeting.skillId);
     consumePlayerActionAndStartEnvironment();
   }
   rerender();
@@ -907,9 +922,57 @@ function tryCastPreparedSkillOnSelf() {
   clearSkillTargeting();
   maybeOpenSkillsOnNewPoint(targeting.previousSkillPoints || 0);
   if (result.actionConsumed) {
+    trackSkillUse(targeting.skillId);
     consumePlayerActionAndStartEnvironment();
   }
   rerender();
+}
+
+function maybeTrackRunEnd() {
+  if (!state.run || !state.playerSheet) {
+    return;
+  }
+  if (state.run.analyticsRunEndTracked) {
+    return;
+  }
+  if (state.run.status !== "victory" && state.run.status !== "defeat") {
+    return;
+  }
+
+  const commonPayload = {
+    run_id: state.run.analyticsRunId || null,
+    class_id: state.playerSheet.classId || null,
+    result: state.run.status,
+  };
+  trackEvent("run_end", commonPayload);
+
+  if (state.run.status === "defeat") {
+    trackEvent("defeat_reason", {
+      ...commonPayload,
+      level: state.run.level || 1,
+      reason: inferDefeatReason(state.run),
+    });
+  }
+  state.run.analyticsRunEndTracked = true;
+}
+
+function inferDefeatReason(run) {
+  const log = String(run?.lastLog || "").toLowerCase();
+  if (log.includes("атакует")) {
+    return "enemy_attack";
+  }
+  return "hp_zero";
+}
+
+function trackSkillUse(skillId) {
+  if (!state.run || !state.playerSheet || !skillId) {
+    return;
+  }
+  trackEvent("skill_use", {
+    run_id: state.run.analyticsRunId || null,
+    class_id: state.playerSheet.classId || null,
+    skill_id: skillId,
+  });
 }
 
 function consumePlayerActionAndStartEnvironment() {
