@@ -4,6 +4,14 @@ import { getItemById } from "./loadout.js?v=0.4.3-pre-alpha";
 import { addLootItemToPlayer } from "./loadout.js?v=0.4.3-pre-alpha";
 import { PROGRESSION_CONFIG } from "./state.js?v=0.4.3-pre-alpha";
 import { getSkillById } from "./skills.js?v=0.4.3-pre-alpha";
+import { computeBasicMeleeDamage, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.3-pre-alpha";
+import { getConsumableApplyLog, appendManaToLog } from "./items/itemPresentation.js?v=0.4.3-pre-alpha";
+
+function syncPlayerHp(playerSheet, hpValue) {
+  const h = floorHp(hpValue);
+  playerSheet.stats.HP = h;
+  playerSheet.baseStats.HP = h;
+}
 
 function inBounds(x, y, run) {
   return x >= 0 && y >= 0 && x < run.width && y < run.height;
@@ -99,7 +107,7 @@ function getChestCountsForLevel(level) {
   return counts;
 }
 
-function rollLootPoolByChestRarity(chestRarity) {
+function rollLootPoolByChestRarity(chestRarity, luck = 0) {
   const tables = {
     common: [
       { value: "common", weight: 90 },
@@ -117,17 +125,37 @@ function rollLootPoolByChestRarity(chestRarity) {
       { value: "unique", weight: 20 },
     ],
   };
-  return weightedPick(tables[chestRarity] || tables.common);
+  const baseTable = tables[chestRarity] || tables.common;
+  const luckMult = Math.min(1.6, 1 + Math.max(0, luck) * 0.03);
+  const adjustedTable = baseTable.map((entry) => {
+    if (entry.value === "rare" || entry.value === "unique") {
+      return { ...entry, weight: entry.weight * luckMult };
+    }
+    return { ...entry };
+  });
+  return weightedPick(adjustedTable);
 }
 
 function getLootCountFromChest(chestRarity) {
-  const ranges = {
-    common: { min: 1, max: 2 },
-    rare: { min: 2, max: 3 },
-    unique: { min: 3, max: 4 },
+  const tables = {
+    common: [
+      { value: 1, weight: 80 },
+      { value: 2, weight: 20 },
+    ],
+    rare: [
+      { value: 1, weight: 50 },
+      { value: 2, weight: 30 },
+      { value: 3, weight: 20 },
+    ],
+    unique: [
+      { value: 1, weight: 10 },
+      { value: 2, weight: 20 },
+      { value: 3, weight: 50 },
+      { value: 4, weight: 20 },
+    ],
   };
-  const range = ranges[chestRarity] || ranges.common;
-  return randomInt(range.min, range.max);
+  const table = tables[chestRarity] || tables.common;
+  return weightedPick(table);
 }
 
 function isManaSustainItem(item) {
@@ -144,8 +172,8 @@ function isManaSustainItem(item) {
   return Boolean(item?.id && manaItemIds.has(item.id));
 }
 
-function getLootFromChest(chestRarity, classId, excludedItemIds = new Set()) {
-  const rolledPool = rollLootPoolByChestRarity(chestRarity);
+function getLootFromChest(chestRarity, excludedItemIds = new Set(), luck = 0) {
+  const rolledPool = rollLootPoolByChestRarity(chestRarity, luck);
   const fallbackPools = {
     common: ["common", "rare", "unique"],
     rare: ["rare", "common", "unique"],
@@ -154,7 +182,7 @@ function getLootFromChest(chestRarity, classId, excludedItemIds = new Set()) {
   const poolOrder = [rolledPool, ...(fallbackPools[chestRarity] || fallbackPools.common)]
     .filter((poolName, index, list) => list.indexOf(poolName) === index);
   for (const poolName of poolOrder) {
-    const pool = getLootPool(poolName, classId).filter((item) => !excludedItemIds.has(item.id));
+    const pool = getLootPool(poolName).filter((item) => !excludedItemIds.has(item.id));
     if (pool.length > 0) {
       const manaWeightedChance = {
         common: 0.38,
@@ -233,12 +261,12 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
   }
 }
 
-function rollChestLootItems(chestRarity, classId) {
+function rollChestLootItems(chestRarity, luck = 0) {
   const lootCount = getLootCountFromChest(chestRarity);
   const picks = [];
   const excluded = new Set();
   for (let i = 0; i < lootCount; i += 1) {
-    const item = getLootFromChest(chestRarity, classId, excluded);
+    const item = getLootFromChest(chestRarity, excluded, luck);
     if (!item) continue;
     picks.push(item);
     excluded.add(item.id);
@@ -776,10 +804,9 @@ function applyTrapEffectToPlayer(run, playerSheet, trapConfig) {
   const parts = [];
   const damage = Math.max(0, trapConfig?.damage || 0);
   if (damage > 0) {
-    const hpNow = playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0;
-    const nextHp = Math.max(0, hpNow - damage);
-    playerSheet.stats.HP = nextHp;
-    playerSheet.baseStats.HP = nextHp;
+    const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+    const nextHp = floorHp(hpNow - damage);
+    syncPlayerHp(playerSheet, nextHp);
     run.floatingTexts.push({
       x: run.player.x,
       y: run.player.y,
@@ -830,8 +857,8 @@ function spawnPoisonCloudObjects(run, centerX, centerY, sourceName, trapConfig) 
     run.objects.push({
       id: `poison_cloud_${Date.now()}_${cell.x}_${cell.y}_${Math.floor(Math.random() * 10000)}`,
       name: "Ядовитый туман",
-      type: "trap_cloud",
-      purpose: "trap_cloud",
+      type: "poison_cloud",
+      purpose: "poison_cloud",
       icon: "☠",
       oneTime: false,
       blocksMovement: false,
@@ -856,7 +883,7 @@ function tickTemporaryObjects(run) {
   const objects = run.objects || [];
   const alive = [];
   for (const object of objects) {
-    if (object.type !== "trap_cloud") {
+    if (object.type !== "poison_cloud") {
       alive.push(object);
       continue;
     }
@@ -880,7 +907,7 @@ function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, actorEnt
     if (object.activation?.effect === "open_chest" && actorKind === ACTOR_KIND.PLAYER) {
       removeObject(run, object.id);
       const chestRarity = object?.data?.chestRarity || "common";
-      const lootItems = rollChestLootItems(chestRarity, nextPlayerSheet.classId);
+      const lootItems = rollChestLootItems(chestRarity, nextPlayerSheet?.stats?.LUK ?? 0);
       if (lootItems.length > 0) {
         spawnGroundLootObjects(run, lootItems, x, y, object.name);
         logs.push(`${object.name}: лут высыпан рядом (${lootItems.length}).`);
@@ -922,7 +949,7 @@ function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, actorEnt
       const triggerLog = effectLog ? `${object.name}: ${effectLog}.` : `${object.name}: сработала.`;
       logs.push(triggerLog);
     }
-    if (object.activation?.effect === "trigger_poison_cloud" && object.type === "trap_cloud") {
+    if (object.activation?.effect === "trigger_poison_cloud" && object.type === "poison_cloud") {
       const cloudConfig = object?.data?.trapConfig || {};
       let effectLog = "";
       if (actorKind === ACTOR_KIND.ENEMY) {
@@ -1374,11 +1401,10 @@ function processTurnEffects(run, playerSheet) {
   for (const effect of effects) {
     if (effect.type === "bandage_regen") {
       const healPerTurn = Math.max(1, effect.healPerTurn || 0);
-      const hpMax = Math.max(1, playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1);
-      const hpNow = Math.max(0, playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
-      const nextHp = Math.min(hpMax, hpNow + healPerTurn);
-      playerSheet.stats.HP = nextHp;
-      playerSheet.baseStats.HP = nextHp;
+      const hpMax = floorHpMax(playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1);
+      const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+      const nextHp = floorHp(Math.min(hpMax, hpNow + healPerTurn));
+      syncPlayerHp(playerSheet, nextHp);
       run.floatingTexts.push({
         x: run.player.x,
         y: run.player.y,
@@ -1390,10 +1416,9 @@ function processTurnEffects(run, playerSheet) {
       });
     } else if (effect.type === "poison_player") {
       const poisonDamage = Math.max(1, effect.poisonDamage || 1);
-      const hpNow = Math.max(0, playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
-      const nextHp = Math.max(0, hpNow - poisonDamage);
-      playerSheet.stats.HP = nextHp;
-      playerSheet.baseStats.HP = nextHp;
+      const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+      const nextHp = floorHp(hpNow - poisonDamage);
+      syncPlayerHp(playerSheet, nextHp);
       run.floatingTexts.push({
         x: run.player.x,
         y: run.player.y,
@@ -1416,12 +1441,6 @@ export function createNextLevelRun(previousRun, playerSheet) {
   const nextLevel = (previousRun?.level || 1) + 1;
   const nextRun = createRunState(playerSheet, nextLevel);
   nextRun.nextHitMultiplier = Math.max(1, previousRun?.nextHitMultiplier || 1);
-  if (previousRun?.mirrorVeil?.charges > 0) {
-    nextRun.mirrorVeil = {
-      charges: previousRun.mirrorVeil.charges,
-      reduction: previousRun.mirrorVeil.reduction,
-    };
-  }
   if (Array.isArray(previousRun?.overTimeEffects) && previousRun.overTimeEffects.length > 0) {
     nextRun.overTimeEffects = previousRun.overTimeEffects.map((effect) => ({ ...effect }));
   }
@@ -1438,12 +1457,12 @@ export function useConsumable(run, playerSheet, item) {
     return { run, playerSheet, log: "" };
   }
   if (item.isTrapItem) {
-    return { run, playerSheet, log: `${item.name}: выбери соседнюю свободную клетку для установки.`, actionConsumed: false };
+    return { run, playerSheet, log: getConsumableApplyLog(item, "trap_prompt"), actionConsumed: false };
   }
 
-  let log = `${item.name} применен.`;
-  const currentHp = playerSheet.stats?.HP ?? playerSheet.baseStats.HP ?? 0;
-  const currentHpMax = playerSheet.stats?.HP_MAX ?? playerSheet.baseStats.HP_MAX ?? 1;
+  let log = getConsumableApplyLog(item, "generic");
+  const currentHp = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats.HP ?? 0);
+  const currentHpMax = floorHpMax(playerSheet.stats?.HP_MAX ?? playerSheet.baseStats.HP_MAX ?? 1);
   const currentMana = playerSheet.mana ?? 0;
   const currentManaMax = playerSheet.manaMax ?? 0;
   const manaByHealingItem = {
@@ -1452,106 +1471,107 @@ export function useConsumable(run, playerSheet, item) {
   };
   let restoredMana = 0;
   if (item.id === "cheese_ration") {
-    const nextHp = Math.min(currentHpMax, currentHp + 10);
-    playerSheet.baseStats.HP = nextHp;
+    const nextHp = floorHp(Math.min(currentHpMax, currentHp + 10));
+    syncPlayerHp(playerSheet, nextHp);
     restoredMana = manaByHealingItem[item.id] || 0;
-    log = `${item.name}: восстановлено 10 HP.`;
+    log = getConsumableApplyLog(item, "heal_hp_10");
   } else if (item.id === "common_crumb_ration") {
-    const nextHp = Math.min(currentHpMax, currentHp + 10);
-    playerSheet.baseStats.HP = nextHp;
-    log = `${item.name}: восстановлено 10 HP.`;
+    const nextHp = floorHp(Math.min(currentHpMax, currentHp + 10));
+    syncPlayerHp(playerSheet, nextHp);
+    log = getConsumableApplyLog(item, "heal_hp_10");
   } else if (item.id === "common_mint_drop") {
     const nextMana = Math.min(currentManaMax, currentMana + 10);
     playerSheet.mana = nextMana;
     const restored = Math.max(0, nextMana - currentMana);
-    log = `${item.name}: восстановлено ${restored} маны.`;
+    log = getConsumableApplyLog(item, "heal_mana", { restored });
   } else if (item.id === "common_warm_milk") {
-    const nextHp = Math.min(currentHpMax, currentHp + 6);
+    const nextHp = floorHp(Math.min(currentHpMax, currentHp + 6));
     const nextMana = Math.min(currentManaMax, currentMana + 6);
-    playerSheet.baseStats.HP = nextHp;
+    syncPlayerHp(playerSheet, nextHp);
     playerSheet.mana = nextMana;
-    const restoredHp = Math.max(0, nextHp - currentHp);
+    const restoredHp = floorHp(nextHp - currentHp);
     const restoredMp = Math.max(0, nextMana - currentMana);
-    log = `${item.name}: восстановлено ${restoredHp} HP и ${restoredMp} маны.`;
+    log = getConsumableApplyLog(item, "heal_hybrid_small", { restoredHp, restoredMp });
   } else if (item.id === "common_sharp_pepper") {
     run.nextHitMultiplier = 1.5;
-    log = `${item.name}: следующая атака получает множитель x1.5.`;
+    log = getConsumableApplyLog(item, "next_hit_1_5");
   } else if (item.id === "rare_hearty_stew") {
-    const nextHp = Math.min(currentHpMax, currentHp + 18);
-    playerSheet.baseStats.HP = nextHp;
-    log = `${item.name}: восстановлено 18 HP.`;
+    const nextHp = floorHp(Math.min(currentHpMax, currentHp + 18));
+    syncPlayerHp(playerSheet, nextHp);
+    log = getConsumableApplyLog(item, "heal_hp_18");
   } else if (item.id === "rare_focus_tonic") {
     const nextMana = Math.min(currentManaMax, currentMana + 16);
     playerSheet.mana = nextMana;
     const restored = Math.max(0, nextMana - currentMana);
-    log = `${item.name}: восстановлено ${restored} маны.`;
+    log = getConsumableApplyLog(item, "heal_mana", { restored });
   } else if (item.id === "rare_dual_elixir") {
-    const nextHp = Math.min(currentHpMax, currentHp + 12);
+    const nextHp = floorHp(Math.min(currentHpMax, currentHp + 12));
     const nextMana = Math.min(currentManaMax, currentMana + 12);
-    playerSheet.baseStats.HP = nextHp;
+    syncPlayerHp(playerSheet, nextHp);
     playerSheet.mana = nextMana;
-    const restoredHp = Math.max(0, nextHp - currentHp);
+    const restoredHp = floorHp(nextHp - currentHp);
     const restoredMp = Math.max(0, nextMana - currentMana);
-    log = `${item.name}: восстановлено ${restoredHp} HP и ${restoredMp} маны.`;
+    log = getConsumableApplyLog(item, "heal_hybrid_12", { restoredHp, restoredMp });
   } else if (item.id === "rare_battle_pepper") {
     run.nextHitMultiplier = 2;
-    log = `${item.name}: следующая атака получает множитель x2.`;
+    log = getConsumableApplyLog(item, "next_hit_2");
   } else if (item.id === "unique_phoenix_broth") {
-    const nextHp = Math.min(currentHpMax, currentHp + 28);
-    playerSheet.baseStats.HP = nextHp;
-    log = `${item.name}: восстановлено 28 HP.`;
+    const nextHp = floorHp(Math.min(currentHpMax, currentHp + 28));
+    syncPlayerHp(playerSheet, nextHp);
+    log = getConsumableApplyLog(item, "heal_hp_28");
   } else if (item.id === "unique_aether_draught") {
     const nextMana = Math.min(currentManaMax, currentMana + 24);
     playerSheet.mana = nextMana;
     const restored = Math.max(0, nextMana - currentMana);
-    log = `${item.name}: восстановлено ${restored} маны.`;
+    log = getConsumableApplyLog(item, "heal_mana", { restored });
   } else if (item.id === "unique_twilight_mix") {
-    const nextHp = Math.min(currentHpMax, currentHp + 20);
+    const nextHp = floorHp(Math.min(currentHpMax, currentHp + 20));
     const nextMana = Math.min(currentManaMax, currentMana + 20);
-    playerSheet.baseStats.HP = nextHp;
+    syncPlayerHp(playerSheet, nextHp);
     playerSheet.mana = nextMana;
-    const restoredHp = Math.max(0, nextHp - currentHp);
+    const restoredHp = floorHp(nextHp - currentHp);
     const restoredMp = Math.max(0, nextMana - currentMana);
-    log = `${item.name}: восстановлено ${restoredHp} HP и ${restoredMp} маны.`;
+    log = getConsumableApplyLog(item, "heal_hybrid_20", { restoredHp, restoredMp });
   } else if (item.id === "unique_storm_pepper") {
     run.nextHitMultiplier = 2.5;
-    log = `${item.name}: следующая атака получает множитель x2.5.`;
+    log = getConsumableApplyLog(item, "next_hit_2_5");
   } else if (item.id === "hard_cheese") {
-    playerSheet.baseStats.HP_MAX += 5;
-    playerSheet.baseStats.HP = currentHp;
+    playerSheet.bonusHpMaxFromEffects = (playerSheet.bonusHpMaxFromEffects || 0) + 5;
+    syncPlayerHp(playerSheet, currentHp);
     playerSheet.effectStacks = {
       ...(playerSheet.effectStacks || {}),
       hard_cheese: (playerSheet.effectStacks?.hard_cheese || 0) + 1,
     };
-    log = `${item.name}: HP МАКС +5 до конца забега.`;
+    log = getConsumableApplyLog(item, "hp_max_5");
   } else if (item.id === "common_cracker") {
-    playerSheet.baseStats.HP_MAX += 4;
-    playerSheet.baseStats.HP = currentHp;
+    playerSheet.bonusHpMaxFromEffects = (playerSheet.bonusHpMaxFromEffects || 0) + 4;
+    syncPlayerHp(playerSheet, currentHp);
     playerSheet.effectStacks = {
       ...(playerSheet.effectStacks || {}),
       common_cracker: (playerSheet.effectStacks?.common_cracker || 0) + 1,
     };
-    log = `${item.name}: HP МАКС +4 до конца забега.`;
+    log = getConsumableApplyLog(item, "hp_max_4");
   } else if (item.id === "rare_royal_cheese") {
-    const nextHp = Math.min(currentHpMax + 1, currentHp + 20);
-    playerSheet.baseStats.HP_MAX += 1;
-    playerSheet.baseStats.HP = nextHp;
+    const nextHpMaxApprox = currentHpMax + 1;
+    const nextHp = floorHp(Math.min(nextHpMaxApprox, currentHp + 20));
+    playerSheet.bonusHpMaxFromEffects = (playerSheet.bonusHpMaxFromEffects || 0) + 1;
+    syncPlayerHp(playerSheet, nextHp);
     playerSheet.effectStacks = {
       ...(playerSheet.effectStacks || {}),
       rare_royal_cheese: (playerSheet.effectStacks?.rare_royal_cheese || 0) + 1,
     };
     restoredMana = manaByHealingItem[item.id] || 0;
-    log = `${item.name}: +1 HP МАКС и лечение 20 HP.`;
+    log = getConsumableApplyLog(item, "royal_cheese");
   } else if (item.id === "rare_spice_vial") {
     run.nextHitMultiplier = 2;
-    log = `${item.name}: следующий удар мышки x2.`;
+    log = getConsumableApplyLog(item, "next_hit_spice");
   } else if (item.id === "pepper_bomb") {
     const enemy = findNearestEnemy(run);
     if (!enemy) {
-      log = `${item.name}: поблизости нет котов.`;
+      log = getConsumableApplyLog(item, "pepper_no_enemy");
     } else {
       enemy.data.hp = Math.max(0, enemy.data.hp - 8);
-      log = `${item.name}: ${enemy.name} получает 8 урона.`;
+      log = getConsumableApplyLog(item, "pepper_hit", { enemyName: enemy.name });
       if (enemy.data.hp <= 0) {
         const gainedXp = getXpForEnemy(enemy.id);
         const xpResult = applyXpGain(playerSheet, gainedXp);
@@ -1567,9 +1587,7 @@ export function useConsumable(run, playerSheet, item) {
     const nextMana = Math.min(currentManaMax, currentMana + restoredMana);
     const deltaMana = nextMana - currentMana;
     playerSheet.mana = nextMana;
-    if (deltaMana > 0) {
-      log = `${log} Маны: +${deltaMana}.`;
-    }
+    log = appendManaToLog(log, deltaMana);
   }
 
   run.lastLog = log;
@@ -1647,44 +1665,7 @@ export function getSkillTargetCells(run, playerSheet, skillId) {
   const px = run.player.x;
   const py = run.player.y;
   const result = [];
-  if (skillId === "mage_arc_shot") {
-    for (const object of run.objects || []) {
-      if (object.type !== "enemy") continue;
-      if (!run.discovered?.[object.y]?.[object.x]) continue;
-      if (!hasLineOfSight(run, run.player.x, run.player.y, object.x, object.y)) continue;
-      result.push({ x: object.x, y: object.y });
-    }
-  } else if (skillId === "mage_mirror_veil") {
-    result.push({ x: px, y: py });
-  } else if (skillId === "warrior_power_hit") {
-    const neighbors = DIRS_8.map((dir) => ({ x: px + dir.x, y: py + dir.y }));
-    for (const cell of neighbors) {
-      if (!inBounds(cell.x, cell.y, run)) continue;
-      const object = getObjectAt(run, cell.x, cell.y);
-      if (object?.type === "enemy") {
-        result.push(cell);
-      }
-    }
-  } else if (skillId === "warrior_roll") {
-    const deltas = [
-      { x: 1, y: 0 },
-      { x: -1, y: 0 },
-      { x: 0, y: 1 },
-      { x: 0, y: -1 },
-    ];
-    for (const delta of deltas) {
-      const midX = px + delta.x;
-      const midY = py + delta.y;
-      const targetX = px + delta.x * 2;
-      const targetY = py + delta.y * 2;
-      if (!inBounds(targetX, targetY, run)) continue;
-      if (!inBounds(midX, midY, run)) continue;
-      if (isWall(midX, midY, run) || isWall(targetX, targetY, run)) continue;
-      const targetObject = getObjectAt(run, targetX, targetY);
-      if (targetObject?.type === "enemy") continue;
-      result.push({ x: targetX, y: targetY });
-    }
-  } else if (skillId === "warrior_bandage") {
+  if (skillId === "warrior_bandage") {
     const hasBandageActive = (run.overTimeEffects || []).some((effect) => effect.type === "bandage_regen");
     if (!hasBandageActive) {
       result.push({ x: px, y: py });
@@ -1706,7 +1687,7 @@ export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
   }
 
   const skillLevel = skillState.level;
-  const manaCost = Math.max(1, skillDef.manaCost - (skillId === "warrior_roll" ? (skillLevel - 1) : 0));
+  const manaCost = Math.max(1, skillDef.manaCost);
   const mana = playerSheet.mana ?? 0;
   if (mana < manaCost) {
     return { run, playerSheet, ok: false, log: "Недостаточно маны.", actionConsumed: false };
@@ -1719,109 +1700,7 @@ export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
 
   let log = "";
   let ok = false;
-  if (skillId === "mage_arc_shot") {
-    const enemy = getObjectAt(run, targetX, targetY);
-    if (enemy) {
-      const base = playerSheet.derived?.ATK_MAGIC ?? 1;
-      const damage = Math.max(1, Math.floor(base * (1.1 + skillLevel * 0.2)));
-      enemy.data.hp = Math.max(0, enemy.data.hp - damage);
-      run.floatingTexts.push({
-        x: enemy.x,
-        y: enemy.y,
-        value: `-${damage}`,
-        color: "#93c5fd",
-        durationMs: 700,
-        scale: 1.2,
-        startMs: null,
-      });
-      if (enemy.data.hp <= 0) {
-        const gainedXp = getXpForEnemy(enemy.id);
-        const xpResult = applyXpGain(playerSheet, gainedXp);
-        removeObject(run, enemy.id);
-        const levelUpLog = xpResult.levelUps > 0
-          ? ` Уровень повышен: ${playerSheet.level}.`
-          : "";
-        log = `${skillDef.name}: ${enemy.name} получает ${damage}. Кот повержен. +${gainedXp} XP.${levelUpLog}`;
-      } else {
-        log = `${skillDef.name}: ${enemy.name} получает ${damage} урона.`;
-      }
-      ok = true;
-    } else {
-      log = `${skillDef.name}: рядом нет цели.`;
-    }
-  } else if (skillId === "mage_mirror_veil") {
-    run.mirrorVeil = {
-      charges: 1 + skillLevel,
-      reduction: 1 + skillLevel,
-    };
-    log = `${skillDef.name}: защита активна (${run.mirrorVeil.charges} уд.).`;
-    ok = true;
-  } else if (skillId === "warrior_power_hit") {
-    const enemy = getObjectAt(run, targetX, targetY);
-    if (enemy) {
-      const base = playerSheet.derived?.ATK_PHYS ?? 1;
-      const damage = Math.max(1, Math.floor(base * (1.25 + skillLevel * 0.2)));
-      enemy.data.hp = Math.max(0, enemy.data.hp - damage);
-      run.floatingTexts.push({
-        x: enemy.x,
-        y: enemy.y,
-        value: `-${damage}`,
-        color: "#fca5a5",
-        durationMs: 700,
-        scale: 1.2,
-        startMs: null,
-      });
-      if (enemy.data.hp <= 0) {
-        const gainedXp = getXpForEnemy(enemy.id);
-        const xpResult = applyXpGain(playerSheet, gainedXp);
-        removeObject(run, enemy.id);
-        const levelUpLog = xpResult.levelUps > 0
-          ? ` Уровень повышен: ${playerSheet.level}.`
-          : "";
-        log = `${skillDef.name}: ${enemy.name} повержен. +${gainedXp} XP.${levelUpLog}`;
-      } else {
-        log = `${skillDef.name}: ${enemy.name} получает ${damage} урона.`;
-      }
-      ok = true;
-    } else {
-      log = `${skillDef.name}: рядом нет цели.`;
-    }
-  } else if (skillId === "warrior_roll") {
-    const dx = Math.sign(targetX - run.player.x);
-    const dy = Math.sign(targetY - run.player.y);
-    const midX = run.player.x + dx;
-    const midY = run.player.y + dy;
-    const midObject = getObjectAt(run, midX, midY);
-    if (midObject?.type === "enemy") {
-      const rollDamage = Math.max(1, Math.floor((playerSheet?.stats?.AGI || 0) * 0.6 + skillLevel));
-      midObject.data.hp = Math.max(0, midObject.data.hp - rollDamage);
-      run.floatingTexts.push({
-        x: midObject.x,
-        y: midObject.y,
-        value: `-${rollDamage}`,
-        color: "#f59e0b",
-        durationMs: 650,
-        scale: 1.1,
-        startMs: null,
-      });
-      if (midObject.data.hp <= 0) {
-        const gainedXp = getXpForEnemy(midObject.id);
-        applyXpGain(playerSheet, gainedXp);
-        removeObject(run, midObject.id);
-        log = `${skillDef.name}: урон по пути ${rollDamage}. Кот повержен (+${gainedXp} XP). `;
-      }
-    }
-    run.player.x = targetX;
-    run.player.y = targetY;
-    const activationResult = applyObjectActivationOnCell(run, playerSheet, ACTOR_KIND.PLAYER, targetX, targetY);
-    playerSheet = activationResult.playerSheet || playerSheet;
-    if (activationResult.log) {
-      log += `${skillDef.name}: рывок выполнен, ${activationResult.log.toLowerCase()}`;
-    } else {
-      log += `${skillDef.name}: рывок выполнен.`;
-    }
-    ok = true;
-  } else if (skillId === "warrior_bandage") {
+  if (skillId === "warrior_bandage") {
     const hasBandageActive = (run.overTimeEffects || []).some((effect) => effect.type === "bandage_regen");
     if (hasBandageActive) {
       log = `${skillDef.name}: эффект уже активен.`;
@@ -1838,12 +1717,11 @@ export function useSkillAtCell(run, playerSheet, skillId, targetX, targetY) {
     }
   } else if (skillId === "mage_heal") {
     const healValue = 40 + Math.max(0, (skillLevel - 1) * 10);
-    const hpMax = Math.max(1, playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1);
-    const hpNow = Math.max(0, playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
-    const nextHp = Math.min(hpMax, hpNow + healValue);
-    const healed = Math.max(0, nextHp - hpNow);
-    playerSheet.stats.HP = nextHp;
-    playerSheet.baseStats.HP = nextHp;
+    const hpMax = floorHpMax(playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1);
+    const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+    const nextHp = floorHp(Math.min(hpMax, hpNow + healValue));
+    const healed = floorHp(nextHp - hpNow);
+    syncPlayerHp(playerSheet, nextHp);
     run.floatingTexts.push({
       x: run.player.x,
       y: run.player.y,
@@ -1920,16 +1798,10 @@ export function tryStep(run, playerSheet, direction) {
     log = activationResult.log || "Переход на соседнюю клетку.";
     motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 120 };
   } else if (blockingObject.type === "enemy") {
-    const baseDamage = Math.max(
-      playerSheet?.derived?.ATK_PHYS || 1,
-      playerSheet?.derived?.ATK_MAGIC || 1
-    );
-    const critChance = Math.max(0, Math.min(100, playerSheet?.derived?.CRIT_CHANCE ?? 0));
-    const critMult = Math.max(1, playerSheet?.derived?.CRIT_MULT ?? 1);
-    const isCrit = Math.random() * 100 < critChance;
-    const totalMultiplier = (run.nextHitMultiplier || 1) * (isCrit ? critMult : 1);
-    const playerDamage = Math.max(1, Math.floor(baseDamage * totalMultiplier));
+    const hit = computeBasicMeleeDamage(playerSheet, run.nextHitMultiplier || 1);
     run.nextHitMultiplier = 1;
+    const playerDamage = hit.damage;
+    const isCrit = hit.isCrit;
     blockingObject.data.hp = Math.max(0, blockingObject.data.hp - playerDamage);
     run.floatingTexts.push({
       x: blockingObject.x,
@@ -2062,18 +1934,10 @@ export function stepEnvironmentTurn(run, playerSheet) {
 
       const distance = chebyshevDistance(enemy, run.player);
       if (distance === 1) {
-        const veilReduction = run.mirrorVeil?.reduction || 0;
-        const damageTaken = Math.max(0, (enemy.data?.damage || 0) - veilReduction);
-        if (run.mirrorVeil?.charges) {
-          run.mirrorVeil.charges -= 1;
-          if (run.mirrorVeil.charges <= 0) {
-            delete run.mirrorVeil;
-          }
-        }
-        const hpNow = playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0;
-        const nextHp = Math.max(0, hpNow - damageTaken);
-        playerSheet.stats.HP = nextHp;
-        playerSheet.baseStats.HP = nextHp;
+        const damageTaken = Math.max(0, enemy.data?.damage || 0);
+        const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+        const nextHp = floorHp(hpNow - damageTaken);
+        syncPlayerHp(playerSheet, nextHp);
         run.floatingTexts.push({
           x: run.player.x,
           y: run.player.y,
@@ -2175,18 +2039,10 @@ export function stepEnvironmentTurn(run, playerSheet) {
 
     const distance = Math.abs(enemy.x - run.player.x) + Math.abs(enemy.y - run.player.y);
     if (distance === 1) {
-      const veilReduction = run.mirrorVeil?.reduction || 0;
-      const damageTaken = Math.max(0, (enemy.data?.damage || 0) - veilReduction);
-      if (run.mirrorVeil?.charges) {
-        run.mirrorVeil.charges -= 1;
-        if (run.mirrorVeil.charges <= 0) {
-          delete run.mirrorVeil;
-        }
-      }
-      const hpNow = playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0;
-      const nextHp = Math.max(0, hpNow - damageTaken);
-      playerSheet.stats.HP = nextHp;
-      playerSheet.baseStats.HP = nextHp;
+      const damageTaken = Math.max(0, enemy.data?.damage || 0);
+      const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+      const nextHp = floorHp(hpNow - damageTaken);
+      syncPlayerHp(playerSheet, nextHp);
       run.floatingTexts.push({
         x: run.player.x,
         y: run.player.y,

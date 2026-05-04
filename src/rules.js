@@ -2,11 +2,57 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(value, max));
 }
 
-export function buildDerivedStats(stats) {
-  const atkPhys = Math.floor(stats.STR * 1.5 + stats.AGI * 0.4);
-  const atkMagic = Math.floor(stats.INT * 1.5 + stats.LUK * 0.4);
-  const critChance = clamp(5 + stats.AGI + Math.floor(stats.LUK * 0.5), 5, 30);
-  const critMultiplier = 1.5;
+/** Округление расчётных значений характеристик до 2 знаков после запятой */
+export function roundStat(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
+/** Текущее HP: целое вниз, не ниже 0. */
+export function floorHp(value) {
+  return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+/** HP_MAX из формул: целое вниз, минимум 1. */
+export function floorHpMax(value) {
+  return Math.max(1, Math.floor(Number(value) || 0));
+}
+
+export function getDefaultUnarmedWeaponProfile() {
+  return {
+    weaponDamage: roundStat(4),
+    weaponCritChance: roundStat(5),
+    weaponCritMult: roundStat(1.5),
+  };
+}
+
+export function getWeaponCombatProfile(weaponItem) {
+  if (!weaponItem || weaponItem.type !== "weapon") {
+    return getDefaultUnarmedWeaponProfile();
+  }
+  const fallback = getDefaultUnarmedWeaponProfile();
+  return {
+    weaponDamage: roundStat(weaponItem.weaponDamage ?? fallback.weaponDamage),
+    weaponCritChance: roundStat(weaponItem.weaponCritChance ?? fallback.weaponCritChance),
+    weaponCritMult: roundStat(weaponItem.weaponCritMult ?? fallback.weaponCritMult),
+  };
+}
+
+export function buildDerivedStats(stats, weaponItem) {
+  const profile = getWeaponCombatProfile(weaponItem);
+
+  const str = stats.STR || 0;
+  const intStat = stats.INT || 0;
+  const agi = stats.AGI || 0;
+  const luk = stats.LUK || 0;
+
+  const atkPhys = roundStat(str * 1.5 + agi * 0.4);
+  const atkMagic = roundStat(intStat * 1.5 + luk * 0.4);
+
+  const critChance = roundStat(
+    clamp(profile.weaponCritChance + agi * 0.8 + luk * 0.4, 0, 75),
+  );
+  const critMult = roundStat(profile.weaponCritMult + agi * 0.02 + str * 0.03);
+
   const computedHpMax = stats.HP_MAX;
 
   return {
@@ -14,6 +60,20 @@ export function buildDerivedStats(stats) {
     ATK_PHYS: atkPhys,
     ATK_MAGIC: atkMagic,
     CRIT_CHANCE: critChance,
-    CRIT_MULT: critMultiplier,
+    CRIT_MULT: critMult,
+    WEAPON_DAMAGE: roundStat(profile.weaponDamage),
   };
+}
+
+export function computeBasicMeleeDamage(playerSheet, runNextHitMult = 1) {
+  const wd = playerSheet?.derived?.WEAPON_DAMAGE ?? getDefaultUnarmedWeaponProfile().weaponDamage;
+  const str = playerSheet?.stats?.STR ?? 0;
+  const baseRaw = wd + str * 1;
+  const base = Math.max(1, Math.floor(roundStat(baseRaw)));
+  const critChance = clamp(playerSheet?.derived?.CRIT_CHANCE ?? 0, 0, 100);
+  const critMult = Math.max(1, roundStat(playerSheet?.derived?.CRIT_MULT ?? 1));
+  const isCrit = Math.random() * 100 < critChance;
+  const totalMultiplier = (runNextHitMult || 1) * (isCrit ? critMult : 1);
+  const damage = Math.max(1, Math.floor(base * totalMultiplier));
+  return { damage, isCrit, baseBeforeCrit: base };
 }

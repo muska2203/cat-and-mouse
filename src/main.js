@@ -2,13 +2,12 @@ import { createInitialState } from "./state.js?v=0.4.3-pre-alpha";
 import { createPlayerSheet } from "./state.js?v=0.4.3-pre-alpha";
 import { PROGRESSION_CONFIG } from "./state.js?v=0.4.3-pre-alpha";
 import { applyLoadoutToSheet } from "./loadout.js?v=0.4.3-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.3-pre-alpha";
+import { chooseStarterLoadoutItem } from "./loadout.js?v=0.4.3-pre-alpha";
 import { initializeInventoryForRun } from "./loadout.js?v=0.4.3-pre-alpha";
 import { swapItemFromBag } from "./loadout.js?v=0.4.3-pre-alpha";
 import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.3-pre-alpha";
 import { spendLevelUpPoint } from "./loadout.js?v=0.4.3-pre-alpha";
 import { getItemById } from "./loadout.js?v=0.4.3-pre-alpha";
-import { getAllItemsForClass } from "./loadout.js?v=0.4.3-pre-alpha";
 import { createRunState } from "./game.js?v=0.4.3-pre-alpha";
 import { createNextLevelRun } from "./game.js?v=0.4.3-pre-alpha";
 import { tryStep } from "./game.js?v=0.4.3-pre-alpha";
@@ -21,16 +20,44 @@ import { beginEnvironmentTurn } from "./game.js?v=0.4.3-pre-alpha";
 import { stepEnvironmentTurn } from "./game.js?v=0.4.3-pre-alpha";
 import { buildPathToDiscoveredCell } from "./game.js?v=0.4.3-pre-alpha";
 import { drawRunToCanvas } from "./render.js?v=0.4.3-pre-alpha";
-import { renderApp } from "./ui.js?v=0.4.3-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.3-pre-alpha";
+import { renderApp, buildInventoryItemDetailHtml } from "./ui.js?v=0.4.3-pre-alpha";
+import { getSkillById, getCoreSkillDefs } from "./skills.js?v=0.4.3-pre-alpha";
 import { APP_VERSION } from "./app-config.js?v=0.4.3-pre-alpha";
 import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.3-pre-alpha";
 import { initAnalytics } from "./analytics.js?v=0.4.3-pre-alpha";
 import { trackEvent } from "./analytics.js?v=0.4.3-pre-alpha";
 import { createRunAnalyticsId } from "./analytics.js?v=0.4.3-pre-alpha";
+import { floorHp } from "./rules.js?v=0.4.3-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.3-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
+
+const inventoryPopover = createInventoryItemPopoverController({
+  root,
+  getScreen: () => state.screen,
+  getItemById,
+  buildInventoryItemDetailHtml,
+});
+
+function hideInventoryItemDetailPopover() {
+  inventoryPopover.hide();
+}
+
+function scheduleHideInventoryItemDetailPopover() {
+  inventoryPopover.scheduleHide();
+}
+
+function updateInventoryItemDetailPopover(event) {
+  inventoryPopover.updateFromEvent(event);
+}
+
+function formatHudStatNumber(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return String(value);
+  }
+  return Number(value.toFixed(2));
+}
 initAnalytics({ measurementId: GA4_MEASUREMENT_ID, version: APP_VERSION });
 let heldMoveDirection = null;
 
@@ -78,6 +105,7 @@ function resolveMoveDirectionFromEvent(event) {
 }
 
 function rerender() {
+  hideInventoryItemDetailPopover();
   syncSkillTargetPreview();
   maybeTrackRunEnd();
   renderApp(root, state);
@@ -93,13 +121,6 @@ function onRootClick(event) {
       state.run.lastLog = "Автодвижение отменено.";
     }
     rerender();
-  }
-
-  const classCard = event.target.closest("[data-class-id]");
-  if (classCard) {
-    state.selectedClassId = classCard.dataset.classId;
-    rerender();
-    return;
   }
 
   const button = event.target.closest("[data-action]");
@@ -125,38 +146,60 @@ function onRootClick(event) {
     rerender();
   }
   if (action === "start-game") {
-    if (!state.selectedClassId) {
+    if (state.preGamePointsRemaining !== 0) {
       return;
     }
 
-    state.starterLoadout = getDefaultStarterLoadout(state.selectedClassId);
-    state.playerSheet = applyLoadoutToSheet(
-      createPlayerSheet(state.selectedClassId),
-      state.starterLoadout
-    );
+    state.playerSheet = applyLoadoutToSheet(createPlayerSheet(state.preGameStats), state.starterLoadout);
     state.playerSheet = initializeInventoryForRun(state.playerSheet);
-    if (state.selectedClassId === "admin") {
-      const adminItems = getAllItemsForClass("admin");
-      const adminBag = adminItems.map((item) => ({ itemId: item.id }));
-      state.playerSheet = recalculateSheetFromInventory(
-        state.playerSheet,
-        state.playerSheet.equippedByType,
-        adminBag
-      );
-    }
-    state.playerSheet.baseStats.HP = state.playerSheet.stats.HP_MAX;
-    state.playerSheet.stats.HP = state.playerSheet.stats.HP_MAX;
-    state.uiHud.hpVisual = state.playerSheet.stats.HP;
+    const startHp = floorHp(state.playerSheet.stats.HP_MAX);
+    state.playerSheet.baseStats.HP = startHp;
+    state.playerSheet.stats.HP = startHp;
+    state.uiHud.hpVisual = startHp;
     state.uiHud.manaVisual = state.playerSheet.mana || 0;
     state.run = createRunState(state.playerSheet, 1);
     state.run.analyticsRunId = createRunAnalyticsId();
     state.run.analyticsRunEndTracked = false;
     state.screen = "game";
     trackEvent("game_start", {
-      class_id: state.playerSheet.classId,
+      class_id: null,
       run_id: state.run.analyticsRunId,
     });
     rerender();
+  }
+
+  if (action === "pregame-stat-plus") {
+    const statKey = button.dataset.stat;
+    const allowed = new Set(["STR", "INT", "AGI", "LUK"]);
+    if (!allowed.has(statKey) || state.preGamePointsRemaining <= 0) {
+      return;
+    }
+    state.preGameStats[statKey] = (state.preGameStats[statKey] || 0) + 1;
+    state.preGamePointsRemaining -= 1;
+    rerender();
+    return;
+  }
+
+  if (action === "pregame-stat-minus") {
+    const statKey = button.dataset.stat;
+    const allowed = new Set(["STR", "INT", "AGI", "LUK"]);
+    if (!allowed.has(statKey) || (state.preGameStats[statKey] || 0) <= 0) {
+      return;
+    }
+    state.preGameStats[statKey] -= 1;
+    state.preGamePointsRemaining += 1;
+    rerender();
+    return;
+  }
+
+  if (action === "toggle-starter-item") {
+    const itemId = button.dataset.itemId;
+    if (!itemId) {
+      return;
+    }
+    state.starterLoadout = chooseStarterLoadoutItem(state.starterLoadout, itemId);
+    rerender();
+    return;
   }
 
   if (action === "bag-item-action") {
@@ -199,7 +242,8 @@ function onRootClick(event) {
   if (action === "end-to-welcome") {
     const reset = createInitialState();
     state.screen = reset.screen;
-    state.selectedClassId = reset.selectedClassId;
+    state.preGameStats = reset.preGameStats;
+    state.preGamePointsRemaining = reset.preGamePointsRemaining;
     state.playerSheet = reset.playerSheet;
     state.starterLoadout = reset.starterLoadout;
     state.run = reset.run;
@@ -250,7 +294,7 @@ function onRootClick(event) {
     if (!skillDef || !skillState?.learned || skillState.level <= 0) {
       return;
     }
-    const manaCost = Math.max(1, skillDef.manaCost - (skillId === "warrior_roll" ? (skillState.level - 1) : 0));
+    const manaCost = Math.max(1, skillDef.manaCost);
     if ((state.playerSheet.mana || 0) < manaCost) {
       state.run.lastLog = "Недостаточно маны.";
       rerender();
@@ -282,7 +326,7 @@ function onRootClick(event) {
     if (!skillDef || !skillState || (state.playerSheet.skillPoints || 0) <= 0) {
       return;
     }
-    if (skillDef.classId !== state.playerSheet.classId || skillState.level >= skillDef.maxLevel) {
+    if (skillState.level >= skillDef.maxLevel) {
       return;
     }
     const wasLearned = Boolean(skillState.learned);
@@ -428,6 +472,7 @@ function performStep(direction) {
 }
 
 function onResize() {
+  hideInventoryItemDetailPopover();
   if (state.screen === "game") {
     drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, performance.now());
   }
@@ -504,7 +549,7 @@ function syncHpHud() {
   const hpMax = Math.max(1, state.playerSheet.stats.HP_MAX);
   const percent = Math.max(0, Math.min(100, (state.uiHud.hpVisual / hpMax) * 100));
   hpFill.style.width = `${percent}%`;
-  hpValue.textContent = `${Math.round(state.uiHud.hpVisual)} / ${hpMax}`;
+  hpValue.textContent = `${formatHudStatNumber(state.uiHud.hpVisual)} / ${formatHudStatNumber(hpMax)}`;
 }
 
 function syncManaHud() {
@@ -523,7 +568,7 @@ function syncManaHud() {
   const manaMax = Math.max(1, state.playerSheet.manaMax || 1);
   const percent = Math.max(0, Math.min(100, (state.uiHud.manaVisual / manaMax) * 100));
   manaFill.style.width = `${percent}%`;
-  manaValue.textContent = `${Math.round(state.uiHud.manaVisual)} / ${manaMax}`;
+  manaValue.textContent = `${formatHudStatNumber(state.uiHud.manaVisual)} / ${formatHudStatNumber(manaMax)}`;
 }
 
 function animateHpHud() {
@@ -620,6 +665,7 @@ function onRootMouseOut(event) {
 }
 
 function onRootDragStart(event) {
+  hideInventoryItemDetailPopover();
   const quickbarSlot = event.target.closest("[data-drag-kind='quick-slot']");
   if (quickbarSlot) {
     const slotIndex = Number(quickbarSlot.dataset.dragSlotIndex);
@@ -1085,7 +1131,9 @@ function pulseQuickbarSlot(slotIndex) {
       return;
     }
     state.uiHud.quickbarPulseSlot = null;
-    rerender();
+    if (!state.uiHud.skillsPanelOpen) {
+      rerender();
+    }
   }, 220);
 }
 
@@ -1173,7 +1221,9 @@ function maybeExpireLevelUpPulse(nowMs) {
     return;
   }
   state.uiHud.levelUpPulseUntil = 0;
-  rerender();
+  if (!state.uiHud.skillsPanelOpen) {
+    rerender();
+  }
 }
 
 function maybeOpenDeferredSkillsPanel() {
@@ -1205,13 +1255,8 @@ function hasAvailableSkillUpgrade(playerSheet) {
   if (!playerSheet || (playerSheet.skillPoints || 0) <= 0) {
     return false;
   }
-  const classId = playerSheet.classId;
-  const skillsState = playerSheet.skills || {};
-  for (const [skillId, skillState] of Object.entries(skillsState)) {
-    const skillDef = getSkillById(skillId);
-    if (!skillDef || skillDef.classId !== classId) {
-      continue;
-    }
+  for (const skillDef of getCoreSkillDefs()) {
+    const skillState = playerSheet.skills?.[skillDef.id];
     const currentLevel = skillState?.level || 0;
     if (currentLevel < skillDef.maxLevel) {
       return true;
@@ -1257,23 +1302,8 @@ function buildPreparedSkillPreview(skillId) {
   const skillDef = getSkillById(skillId);
   const skillState = state.playerSheet?.skills?.[skillId];
   const level = skillState?.level || 0;
-  const atkMagic = state.playerSheet?.derived?.ATK_MAGIC ?? 0;
-  const atkPhys = state.playerSheet?.derived?.ATK_PHYS ?? 0;
-  const agi = state.playerSheet?.stats?.AGI ?? state.playerSheet?.baseStats?.AGI ?? 0;
   if (!skillDef || level <= 0) {
     return null;
-  }
-  if (skillId === "mage_arc_shot") {
-    const value = Math.max(1, Math.floor(atkMagic * (1.1 + level * 0.2)));
-    return { kind: "damage", value };
-  }
-  if (skillId === "warrior_power_hit") {
-    const value = Math.max(1, Math.floor(atkPhys * (1.2 + level * 0.25)));
-    return { kind: "damage", value };
-  }
-  if (skillId === "warrior_roll") {
-    const value = Math.max(1, Math.floor(agi * 0.6 + level));
-    return { kind: "damage", value };
   }
   if (skillId === "mage_heal") {
     const value = 40 + Math.max(0, (level - 1) * 10);
@@ -1377,7 +1407,7 @@ function maybeTrackRunEnd() {
 
   const commonPayload = {
     run_id: state.run.analyticsRunId || null,
-    class_id: state.playerSheet.classId || null,
+    class_id: null,
     result: state.run.status,
   };
   trackEvent("run_end", commonPayload);
@@ -1406,7 +1436,7 @@ function trackSkillUse(skillId) {
   }
   trackEvent("skill_use", {
     run_id: state.run.analyticsRunId || null,
-    class_id: state.playerSheet.classId || null,
+    class_id: null,
     skill_id: skillId,
   });
 }
@@ -1679,6 +1709,7 @@ root.addEventListener("mouseup", (event) => {
   }
 });
 root.addEventListener("mousemove", (event) => {
+  updateInventoryItemDetailPopover(event);
   const canvas = event.target.closest("#gameCanvas");
   if (canvas) {
     onCanvasMouseMove(event, canvas);
@@ -1692,5 +1723,6 @@ root.addEventListener("mouseout", (event) => {
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("keyup", onKeyUp);
 window.addEventListener("resize", onResize);
+window.addEventListener("blur", hideInventoryItemDetailPopover);
 requestAnimationFrame(animationLoop);
 rerender();

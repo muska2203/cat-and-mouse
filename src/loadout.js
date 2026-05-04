@@ -1,10 +1,7 @@
-import { buildDerivedStats } from "./rules.js?v=0.4.3-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.3-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
-export const DEFAULT_STARTER_LOADOUT_BY_CLASS = {
-  warrior: [],
-  mage: [],
-};
+export const STARTER_LOADOUT_MAX = 3;
 
 export const LOOT_COMMON_ITEMS = [
   {
@@ -13,10 +10,13 @@ export const LOOT_COMMON_ITEMS = [
     type: "weapon",
     subtype: "sword",
     icon: "🗡",
-    effectText: "+2 STR",
+    effectText: "Базовый урон и крит — на карточке",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { STR: 2 },
+    statBonuses: {},
+    weaponDamage: 4,
+    weaponCritChance: 10,
+    weaponCritMult: 1.5,
   },
   {
     id: "common_school_wand",
@@ -24,10 +24,13 @@ export const LOOT_COMMON_ITEMS = [
     type: "weapon",
     subtype: "staff",
     icon: "🪄",
-    effectText: "+2 INT",
+    effectText: "Базовый урон и крит — на карточке",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { INT: 2 },
+    statBonuses: {},
+    weaponDamage: 1,
+    weaponCritChance: 1,
+    weaponCritMult: 1.1,
   },
   {
     id: "common_tin_plate",
@@ -35,10 +38,10 @@ export const LOOT_COMMON_ITEMS = [
     type: "armor",
     subtype: "armor",
     icon: "🥋",
-    effectText: "+2 HP_MAX, +1 STR",
+    effectText: "+1 СИЛ",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { HP_MAX: 2, STR: 1 },
+    statBonuses: { STR: 1 },
   },
   {
     id: "common_patch_cloak",
@@ -46,10 +49,10 @@ export const LOOT_COMMON_ITEMS = [
     type: "armor",
     subtype: "cloak",
     icon: "👘",
-    effectText: "+2 HP_MAX, +1 INT",
+    effectText: "+1 ИНТ",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { HP_MAX: 2, INT: 1 },
+    statBonuses: { INT: 1 },
   },
   {
     id: "common_knotted_fang",
@@ -152,10 +155,13 @@ export const LOOT_RARE_ITEMS = [
     type: "weapon",
     subtype: "sword",
     icon: "🗡",
-    effectText: "+4 STR, +1 AGI",
+    effectText: "Базовый урон и крит — на карточке",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { STR: 4, AGI: 1 },
+    statBonuses: {},
+    weaponDamage: 8,
+    weaponCritChance: 10,
+    weaponCritMult: 1.5,
   },
   {
     id: "rare_ember_orb",
@@ -163,10 +169,13 @@ export const LOOT_RARE_ITEMS = [
     type: "weapon",
     subtype: "staff",
     icon: "🪄",
-    effectText: "+4 INT, +1 LUK",
+    effectText: "Базовый урон и крит — на карточке",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { INT: 4, LUK: 1 },
+    statBonuses: {},
+    weaponDamage: 1,
+    weaponCritChance: 1,
+    weaponCritMult: 1.1,
   },
   {
     id: "rare_bastion_shell",
@@ -174,10 +183,10 @@ export const LOOT_RARE_ITEMS = [
     type: "armor",
     subtype: "armor",
     icon: "🥋",
-    effectText: "+5 HP_MAX, +2 STR",
+    effectText: "+2 СИЛ",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { HP_MAX: 5, STR: 2 },
+    statBonuses: { STR: 2 },
   },
   {
     id: "rare_sage_coat",
@@ -185,10 +194,10 @@ export const LOOT_RARE_ITEMS = [
     type: "armor",
     subtype: "cloak",
     icon: "👘",
-    effectText: "+5 HP_MAX, +2 INT",
+    effectText: "+2 ИНТ",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { HP_MAX: 5, INT: 2 },
+    statBonuses: { INT: 2 },
   },
   {
     id: "rare_predator_totem",
@@ -287,10 +296,13 @@ export const LOOT_UNIQUE_ITEMS = [
     type: "weapon",
     subtype: "sword",
     icon: "🗡",
-    effectText: "+6 STR, +2 AGI",
+    effectText: "Базовый урон и крит — на карточке",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { STR: 6, AGI: 2 },
+    statBonuses: {},
+    weaponDamage: 12,
+    weaponCritChance: 10,
+    weaponCritMult: 1.5,
   },
   {
     id: "unique_star_scepter",
@@ -298,10 +310,13 @@ export const LOOT_UNIQUE_ITEMS = [
     type: "weapon",
     subtype: "staff",
     icon: "🪄",
-    effectText: "+6 INT, +2 LUK",
+    effectText: "Базовый урон и крит — на карточке",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { INT: 6, LUK: 2 },
+    statBonuses: {},
+    weaponDamage: 2,
+    weaponCritChance: 1,
+    weaponCritMult: 1.1,
   },
   {
     id: "unique_titan_carapace",
@@ -309,10 +324,10 @@ export const LOOT_UNIQUE_ITEMS = [
     type: "armor",
     subtype: "armor",
     icon: "🥋",
-    effectText: "+8 HP_MAX, +3 STR",
+    effectText: "+3 СИЛ",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { HP_MAX: 8, STR: 3 },
+    statBonuses: { STR: 3 },
   },
   {
     id: "unique_oracle_robe",
@@ -320,10 +335,10 @@ export const LOOT_UNIQUE_ITEMS = [
     type: "armor",
     subtype: "cloak",
     icon: "👘",
-    effectText: "+8 HP_MAX, +3 INT",
+    effectText: "+3 ИНТ",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
-    statBonuses: { HP_MAX: 8, INT: 3 },
+    statBonuses: { INT: 3 },
   },
   {
     id: "unique_war_sigil",
@@ -396,34 +411,22 @@ export const LOOT_UNIQUE_ITEMS = [
 const ALL_ITEMS = [...LOOT_COMMON_ITEMS, ...LOOT_RARE_ITEMS, ...LOOT_UNIQUE_ITEMS];
 let bagInstanceSeq = 0;
 
-export function getStarterItemsForClass(classId) {
-  return LOOT_COMMON_ITEMS.filter((item) => item.classRestriction.includes(classId));
-}
-
-export function getDefaultStarterLoadout(classId) {
-  return [...(DEFAULT_STARTER_LOADOUT_BY_CLASS[classId] || [])];
+export function getStarterCommonItems() {
+  return [...LOOT_COMMON_ITEMS];
 }
 
 export function getItemById(itemId) {
   return ALL_ITEMS.find((item) => item.id === itemId) || null;
 }
 
-export function getAllItemsForClass(classId) {
-  if (classId === "admin") {
-    return [...ALL_ITEMS];
-  }
-  return ALL_ITEMS.filter((item) => {
-    if (!classId) {
-      return true;
-    }
-    return Array.isArray(item.classRestriction) && item.classRestriction.includes(classId);
-  });
+export function getAllLootItems() {
+  return [...ALL_ITEMS];
 }
 
-export function chooseLoadoutItem(currentLoadoutIds, itemToToggleId, classId) {
-  const allowedItems = getStarterItemsForClass(classId);
+export function chooseStarterLoadoutItem(currentLoadoutIds, itemToToggleId) {
+  const allowedItems = getStarterCommonItems();
   const selected = new Set(
-    currentLoadoutIds.filter((id) => allowedItems.some((item) => item.id === id))
+    currentLoadoutIds.filter((id) => allowedItems.some((item) => item.id === id)),
   );
 
   if (selected.has(itemToToggleId)) {
@@ -436,10 +439,17 @@ export function chooseLoadoutItem(currentLoadoutIds, itemToToggleId, classId) {
     return Array.from(selected);
   }
 
-  for (const pickedId of Array.from(selected)) {
-    const picked = allowedItems.find((item) => item.id === pickedId);
-    if (picked && picked.type === nextItem.type) {
-      selected.delete(pickedId);
+  if (selected.size >= STARTER_LOADOUT_MAX) {
+    return Array.from(selected);
+  }
+
+  const equipSlots = new Set(["weapon", "armor", "amulet"]);
+  if (equipSlots.has(nextItem.type)) {
+    for (const pickedId of Array.from(selected)) {
+      const picked = allowedItems.find((item) => item.id === pickedId);
+      if (picked && picked.type === nextItem.type) {
+        selected.delete(pickedId);
+      }
     }
   }
 
@@ -458,8 +468,8 @@ export function applyLoadoutToSheet(playerSheet, selectedItemIds) {
 
 export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) {
   const baseStats = { ...playerSheet.baseStats };
-  const previousHp = playerSheet?.stats?.HP ?? baseStats.HP ?? 0;
-  const previousHpMax = playerSheet?.stats?.HP_MAX ?? baseStats.HP_MAX;
+  const previousHp = baseStats.HP ?? playerSheet?.stats?.HP ?? 0;
+  const previousHpMax = playerSheet?.stats?.HP_MAX ?? baseStats.HP_MAX ?? 1;
   const equippedIds = Object.values(equippedByType).filter(Boolean);
   const equipped = equippedIds.map((id) => getItemById(id)).filter(Boolean);
 
@@ -467,28 +477,48 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) 
     if (item.isConsumable) {
       continue;
     }
+    if (item.type === "weapon") {
+      continue;
+    }
 
-    for (const [statName, bonus] of Object.entries(item.statBonuses)) {
+    for (const [statName, bonus] of Object.entries(item.statBonuses || {})) {
+      if (statName === "HP_MAX") {
+        continue;
+      }
       baseStats[statName] = (baseStats[statName] || 0) + bonus;
     }
   }
+
+  const strTotal = baseStats.STR || 0;
+  const intTotal = baseStats.INT || 0;
+  const bonusHpMaxFromEffects = playerSheet.bonusHpMaxFromEffects || 0;
+  baseStats.HP_MAX = floorHpMax(100 + strTotal * 8 + bonusHpMaxFromEffects);
 
   const hpCap = baseStats.HP_MAX;
   const desiredHpFromBase = baseStats.HP ?? previousHp;
   const hasExplicitHpUpdate = desiredHpFromBase !== previousHp;
   const previousHpRatio = previousHpMax > 0 ? previousHp / previousHpMax : 0;
-  const scaledHp = Math.round(previousHpRatio * hpCap);
-  const nextHp = hasExplicitHpUpdate ? desiredHpFromBase : scaledHp;
-  baseStats.HP = Math.max(0, Math.min(nextHp, hpCap));
+  const scaledHp = floorHp(previousHpRatio * hpCap);
+  const nextHp = hasExplicitHpUpdate ? floorHp(desiredHpFromBase) : scaledHp;
+  baseStats.HP = floorHp(Math.min(nextHp, hpCap));
+
+  const weaponItem = equipped.find((item) => item.type === "weapon") || null;
+  const derived = buildDerivedStats(baseStats, weaponItem);
+
+  const manaMax = roundStat(30 + intTotal * 6);
+  const nextMana = roundStat(Math.min(playerSheet.mana ?? manaMax, manaMax));
 
   return {
     ...playerSheet,
     stats: baseStats,
-    derived: buildDerivedStats(baseStats),
+    derived,
+    manaMax,
+    mana: Math.max(0, nextMana),
     loadout: equipped,
     equippedByType: buildEquippedMap(equipped),
     inventory: equipped.filter((item) => item.isConsumable),
     bag: normalizeBagEntries(bag),
+    skills: { ...(playerSheet.skills || {}) },
   };
 }
 
@@ -537,7 +567,7 @@ export function swapItemFromBag(playerSheet, bagInstanceId, bagIndex = null) {
 
 export function addLootItemToPlayer(playerSheet, itemId) {
   const item = getItemById(itemId);
-  if (!item || !item.classRestriction.includes(playerSheet.classId)) {
+  if (!item) {
     return { playerSheet, addedTo: "none" };
   }
 
@@ -573,7 +603,7 @@ export function spendLevelUpPoint(playerSheet, statKey) {
     return playerSheet;
   }
 
-  const allowedStats = new Set(["STR", "INT", "AGI", "LUK", "HP_MAX"]);
+  const allowedStats = new Set(["STR", "INT", "AGI", "LUK"]);
   if (!allowedStats.has(statKey)) {
     return playerSheet;
   }
@@ -584,28 +614,23 @@ export function spendLevelUpPoint(playerSheet, statKey) {
     unspentPoints: Math.max(0, (playerSheet.unspentPoints || 0) - 1),
   };
 
-  if (statKey === "HP_MAX") {
-    nextSheet.baseStats.HP_MAX = (nextSheet.baseStats.HP_MAX || 0) + 3;
-    nextSheet.baseStats.HP = (nextSheet.baseStats.HP || 0) + 3;
-  } else {
-    nextSheet.baseStats[statKey] = (nextSheet.baseStats[statKey] || 0) + 1;
-  }
+  nextSheet.baseStats[statKey] = (nextSheet.baseStats[statKey] || 0) + 1;
 
   return recalculateSheetFromInventory(
     nextSheet,
     nextSheet.equippedByType || {},
-    nextSheet.bag || []
+    nextSheet.bag || [],
   );
 }
 
-export function getLootPool(poolName, classId) {
+export function getLootPool(poolName) {
   const source =
     poolName === "unique"
       ? LOOT_UNIQUE_ITEMS
       : poolName === "rare"
         ? LOOT_RARE_ITEMS
         : LOOT_COMMON_ITEMS;
-  return source.filter((item) => item.classRestriction.includes(classId));
+  return [...source];
 }
 
 function buildEquippedMap(items) {

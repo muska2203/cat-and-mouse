@@ -1,15 +1,32 @@
-import { CLASS_CONFIG } from "./state.js?v=0.4.3-pre-alpha";
 import { createPlayerSheet } from "./state.js?v=0.4.3-pre-alpha";
+import { PRE_GAME_STAT_POINTS } from "./state.js?v=0.4.3-pre-alpha";
 import { EQUIP_TYPES } from "./loadout.js?v=0.4.3-pre-alpha";
 import { getItemById } from "./loadout.js?v=0.4.3-pre-alpha";
 import { applyLoadoutToSheet } from "./loadout.js?v=0.4.3-pre-alpha";
-import { getDefaultStarterLoadout } from "./loadout.js?v=0.4.3-pre-alpha";
+import { getStarterCommonItems } from "./loadout.js?v=0.4.3-pre-alpha";
+import { STARTER_LOADOUT_MAX } from "./loadout.js?v=0.4.3-pre-alpha";
 import { spendLevelUpPoint } from "./loadout.js?v=0.4.3-pre-alpha";
 import { swapItemFromBag } from "./loadout.js?v=0.4.3-pre-alpha";
 import { APP_TITLE } from "./app-config.js?v=0.4.3-pre-alpha";
 import { APP_VERSION } from "./app-config.js?v=0.4.3-pre-alpha";
-import { getSkillById } from "./skills.js?v=0.4.3-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.4.3-pre-alpha";
+import { getSkillById, getCoreSkillDefs, getSkillHoverText } from "./skills.js?v=0.4.3-pre-alpha";
+import { roundStat } from "./rules.js?v=0.4.3-pre-alpha";
+import {
+  STRINGS_RU,
+  welcomeSubtitleAlloc,
+  welcomeSubtitleCounters,
+  gameSubtitleRun,
+  endingSubtitleTurns,
+  endingSubtitleMaze,
+  endingSubtitleChar,
+  skillsModalSubtitle,
+  quickbarSlotTitle,
+  activeEffectBandageRemaining,
+  activeEffectStacksLine,
+  localizeStatText,
+} from "./strings/ru.js?v=0.4.3-pre-alpha";
+import { getConsumableHoverText } from "./items/itemPresentation.js?v=0.4.3-pre-alpha";
+import { getStatDescriptionRu } from "./player/statCopy.js?v=0.4.3-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -20,10 +37,9 @@ const STAT_LABELS_RU = {
   HP: "HP",
   baseHP: "БАЗ HP",
   HP_MAX_COMPUTED: "HP МАКС (Ф)",
-  ATK_PHYS: "АТК ФИЗ",
-  ATK_MAGIC: "АТК МАГ",
   CRIT_CHANCE: "КРИТ %",
   CRIT_MULT: "КРИТ Х",
+  WEAPON_DM: "УРОН ОРУЖ",
 };
 const STAT_LABELS_COMPACT = {
   STR: "СИЛ",
@@ -39,8 +55,6 @@ const BONUS_SORT_ORDER = [
   "AGI",
   "LUK",
   "HP_MAX",
-  "ATK_PHYS",
-  "ATK_MAGIC",
   "CRIT_CHANCE",
   "CRIT_MULT",
 ];
@@ -50,6 +64,74 @@ const SUBTYPE_SORT_ORDER_BY_TYPE = {
   amulet: ["tooth", "bead"],
   consumable: ["heal_hp", "heal_mana", "heal_hybrid", "buff", "trap"],
 };
+
+function renderPregameItemCardStats(item) {
+  if (!item) {
+    return "";
+  }
+  const chunks = [];
+  const bonuses = formatItemBonuses(item);
+  if (bonuses && bonuses !== "ЭФ") {
+    chunks.push(`<div class="pregame-item-bonuses">${bonuses}</div>`);
+  }
+  if (item.type === "weapon") {
+    const wd = item.weaponDamage != null ? roundStat(item.weaponDamage) : "—";
+    const cc = item.weaponCritChance != null ? roundStat(item.weaponCritChance) : "—";
+    const cm = item.weaponCritMult != null ? roundStat(item.weaponCritMult) : "—";
+    chunks.push(
+      `<div class="pregame-item-weapon-line">Урон ${wd} · крит ${cc}% · ×${cm}</div>`,
+    );
+  }
+  const equipTypes = new Set(["weapon", "armor", "amulet"]);
+  if (item.effectText && !equipTypes.has(item.type)) {
+    chunks.push(`<div class="pregame-item-effect">${localizeStatText(item.effectText)}</div>`);
+  }
+  if (chunks.length === 0) {
+    return "";
+  }
+  return `<div class="pregame-item-stats">${chunks.join("")}</div>`;
+}
+
+function sortStarterCommonItemsLikeBag(items) {
+  const sectionOrder = ["weapon", "armor", "amulet", "consumable"];
+  const buckets = new Map(sectionOrder.map((t) => [t, []]));
+  for (const item of items) {
+    const t = item.type === "consumable" ? "consumable" : item.type;
+    if (!buckets.has(t)) {
+      continue;
+    }
+    buckets.get(t).push(item);
+  }
+  const out = [];
+  for (const t of sectionOrder) {
+    const arr = [...(buckets.get(t) || [])];
+    arr.sort(compareItemsByRarityThenId);
+    out.push(...arr);
+  }
+  return out;
+}
+
+function formatDisplayedNumericStat(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return value;
+  }
+  return Number(value.toFixed(2));
+}
+
+function getDerivedPanelValue(playerSheet, key) {
+  if (!playerSheet) return 0;
+  if (key === "HP_MAX") {
+    return Number(playerSheet.stats?.HP_MAX ?? 0);
+  }
+  if (key === "WEAPON_DM") {
+    return Number(playerSheet.derived?.WEAPON_DAMAGE ?? 0);
+  }
+  return Number(playerSheet.derived?.[key] ?? 0);
+}
+
+function listSkillsForUi(_playerSheet) {
+  return getCoreSkillDefs();
+}
 
 export function renderApp(root, state) {
   if (state.screen === "welcome") {
@@ -69,83 +151,83 @@ export function renderApp(root, state) {
 
   root.innerHTML = `
     <section class="screen">
-      <h1 class="screen-title">Экран в разработке</h1>
-      <p class="screen-subtitle">Этот экран будет добавлен на следующих шагах.</p>
+      <h1 class="screen-title">${STRINGS_RU.fallbackScreen.title}</h1>
+      <p class="screen-subtitle">${STRINGS_RU.fallbackScreen.subtitle}</p>
     </section>
   `;
 }
 
 function renderWelcomeScreen(state) {
-  const visibleClasses = Object.values(CLASS_CONFIG).filter((playerClass) => playerClass.id !== "admin");
-  const fallbackClassId = visibleClasses[0]?.id || Object.keys(CLASS_CONFIG)[0];
-  const selectedClassId = visibleClasses.some((playerClass) => playerClass.id === state.selectedClassId)
-    ? state.selectedClassId
-    : fallbackClassId;
-  const selectedStarterLoadout = getDefaultStarterLoadout(selectedClassId);
-  const selectedSheet = applyLoadoutToSheet(
-    createPlayerSheet(selectedClassId),
-    selectedStarterLoadout
-  );
+  const selectedSheet = applyLoadoutToSheet(createPlayerSheet(state.preGameStats), state.starterLoadout);
 
-  const classesMarkup = visibleClasses.map(
-    (playerClass) => {
+  const statKeys = ["STR", "INT", "AGI", "LUK"];
+  const statAllocationMarkup = statKeys
+    .map((key) => {
+      const value = state.preGameStats[key] || 0;
       return `
-      <article class="class-card ${
-        selectedClassId === playerClass.id ? "class-card-selected" : ""
-      }" data-class-id="${playerClass.id}" role="button" tabindex="0">
-        <h3>${playerClass.label}</h3>
-        <p>${playerClass.description}</p>
-      </article>
-    `
-    }
-  ).join("");
-
-  const starterItemsMarkup = selectedStarterLoadout
-    .map((id) => getItemById(id))
-    .filter(Boolean)
-    .map((item) => `<li><span>${item.icon || getItemIcon(item.type)}</span><strong>${item.name}</strong><small class="item-bonus">${formatItemBonuses(item)}</small></li>`)
+        <li class="pregame-stat-row">
+          <span>${toRuStatName(key)}</span>
+          <div class="pregame-stat-controls">
+            <button type="button" class="btn" data-action="pregame-stat-minus" data-stat="${key}" ${value <= 0 ? "disabled" : ""}>−</button>
+            <strong>${value}</strong>
+            <button type="button" class="btn" data-action="pregame-stat-plus" data-stat="${key}" ${state.preGamePointsRemaining <= 0 ? "disabled" : ""}>+</button>
+          </div>
+        </li>`;
+    })
     .join("");
 
+  const starterItems = sortStarterCommonItemsLikeBag(getStarterCommonItems());
+  const starterPickCount = state.starterLoadout.length;
+  const starterGridMarkup = starterItems
+    .map((item) => {
+      const selected = state.starterLoadout.includes(item.id);
+      const atCap = starterPickCount >= STARTER_LOADOUT_MAX && !selected;
+      const cls = ["pregame-item-btn", selected ? "pregame-item-selected" : "", atCap ? "pregame-item-locked" : ""]
+        .filter(Boolean)
+        .join(" ");
+      return `
+        <button type="button" class="${cls}" data-action="toggle-starter-item" data-item-id="${item.id}" ${atCap ? "disabled" : ""} title="${getItemHoverText(item)}">
+          <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
+          <span class="pregame-item-name">${item.name}</span>
+          ${renderPregameItemCardStats(item)}
+        </button>`;
+    })
+    .join("");
+
+  const canStart = state.preGamePointsRemaining === 0;
+
   return `
-    <section class="screen" aria-label="Приветственный экран">
-      <h1 class="screen-title screen-title-centered">Доберись до норы... если сможешь</h1>
-      <div class="class-list" aria-label="Доступные классы персонажа">
-        ${classesMarkup}
-      </div>
+    <section class="screen" aria-label="${STRINGS_RU.welcome.ariaScreen}">
+      <h1 class="screen-title screen-title-centered">${STRINGS_RU.welcome.title}</h1>
+      <p class="screen-subtitle screen-title-centered">${welcomeSubtitleAlloc(PRE_GAME_STAT_POINTS, STARTER_LOADOUT_MAX)}</p>
+      <p class="screen-subtitle screen-title-centered">${welcomeSubtitleCounters(state.preGamePointsRemaining, starterPickCount, STARTER_LOADOUT_MAX)}</p>
       <div class="sheet-grid">
         <article class="class-card">
-          <h3>Характеристики: ${selectedSheet.classLabel}</h3>
+          <h3>${STRINGS_RU.welcome.cardStats}</h3>
+          <ul class="stats-list">
+            ${statAllocationMarkup}
+          </ul>
           <section class="stats-group">
-            <ul class="stats-list">
-              ${renderBaseAndTotalStats(selectedSheet)}
-            </ul>
-          </section>
-          <section class="stats-group">
-            <h4>Остальные</h4>
+            <h4>${STRINGS_RU.welcome.cardDerived}</h4>
             <ul class="stats-list">
               ${renderStatsList({
-                ATK_PHYS: selectedSheet?.derived?.ATK_PHYS ?? 0,
-                ATK_MAGIC: selectedSheet?.derived?.ATK_MAGIC ?? 0,
+                HP_MAX: selectedSheet?.stats?.HP_MAX ?? 0,
                 CRIT_CHANCE: selectedSheet?.derived?.CRIT_CHANCE ?? 0,
-                CRIT_MULT: selectedSheet?.derived?.CRIT_MULT ?? 0,
+                CRIT_MULT: selectedSheet?.derived?.CRIT_MULT ?? 1,
+                WEAPON_DM: selectedSheet?.derived?.WEAPON_DAMAGE ?? 0,
               }, selectedSheet)}
             </ul>
           </section>
         </article>
-        <article class="class-card">
-          <h3>Начальное снаряжение</h3>
-          <ul class="stats-list">
-            ${starterItemsMarkup}
-          </ul>
+        <article class="class-card pregame-items-card">
+          <h3>${STRINGS_RU.welcome.cardStarters}</h3>
+          <div class="pregame-item-grid">
+            ${starterGridMarkup}
+          </div>
         </article>
       </div>
-      <button
-        class="btn btn-primary"
-        type="button"
-        data-action="start-game"
-        ${selectedClassId ? "" : "disabled"}
-      >
-        Начать игру
+      <button class="btn btn-primary" type="button" data-action="start-game" ${canStart ? "" : "disabled"}>
+        ${STRINGS_RU.welcome.startGame}
       </button>
       ${renderBuildBadge()}
       ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
@@ -157,17 +239,17 @@ function renderGameScreen(state) {
   if (!state.run) {
     return `
       <section class="screen">
-        <h1 class="screen-title">Забег не создан</h1>
-        <p class="screen-subtitle">Сначала начни игру на экране снаряжения.</p>
+        <h1 class="screen-title">${STRINGS_RU.game.noRunTitle}</h1>
+        <p class="screen-subtitle">${STRINGS_RU.game.noRunSubtitle}</p>
       </section>
     `;
   }
 
   return `
-    <section class="screen screen-game" aria-label="Игровое поле">
-      <h1 class="screen-title">Квартира-лабиринт</h1>
+    <section class="screen screen-game" aria-label="${STRINGS_RU.game.ariaScreen}">
+      <h1 class="screen-title">${STRINGS_RU.game.title}</h1>
       <p class="screen-subtitle">
-        Уровень: ${state.run.level}/${state.run.maxLevel}. WASD: шаг по клетке. Размер карты: ${state.run.width}x${state.run.height}. Ходы: ${state.run.turns}.
+        ${gameSubtitleRun(state.run.level, state.run.maxLevel, state.run.width, state.run.height, state.run.turns)}
       </p>
       <div class="game-layout">
         ${renderInventoryPanel(state)}
@@ -176,7 +258,7 @@ function renderGameScreen(state) {
           <canvas id="gameCanvas" class="game-canvas" width="800" height="500"></canvas>
           ${renderActiveEffects(state)}
           ${renderQuickbar(state)}
-          <div class="mobile-controls" aria-label="Управление с телефона">
+          <div class="mobile-controls" aria-label="${STRINGS_RU.game.mobileControlsAria}">
             <button class="btn mobile-move-btn mobile-up" type="button" data-action="mobile-move" data-direction="up">▲</button>
             <button class="btn mobile-move-btn mobile-left" type="button" data-action="mobile-move" data-direction="left">◀</button>
             <button class="btn mobile-move-btn mobile-down" type="button" data-action="mobile-move" data-direction="down">▼</button>
@@ -184,24 +266,25 @@ function renderGameScreen(state) {
           </div>
         </div>
         <article class="class-card game-side">
-          <h3>Параметры мышонка</h3>
+          <h3>${STRINGS_RU.game.sidePanelTitle}</h3>
           ${renderHpBar(state.playerSheet)}
           ${renderManaBar(state.playerSheet)}
           ${renderXpBar(state.playerSheet)}
-          <p class="progression-line ${state.uiHud?.levelUpPulseUntil ? "progression-line-pulse" : ""}">Уровень: <span data-action="debug-level-up">${state.playerSheet?.level ?? 1}</span></p>
-          <p class="progression-line ${state.uiHud?.levelUpPulseUntil ? "progression-line-pulse" : ""}">Очки прокачки: ${state.playerSheet?.unspentPoints ?? 0}</p>
+          <p class="progression-line ${state.uiHud?.levelUpPulseUntil ? "progression-line-pulse" : ""}">${STRINGS_RU.game.levelLine} <span data-action="debug-level-up">${state.playerSheet?.level ?? 1}</span></p>
+          <p class="progression-line ${state.uiHud?.levelUpPulseUntil ? "progression-line-pulse" : ""}">${STRINGS_RU.game.pointsLine} ${state.playerSheet?.unspentPoints ?? 0}</p>
           <section class="stats-group">
+            <h4>${STRINGS_RU.game.statsGroup}</h4>
             <ul class="stats-list">
               ${renderBaseAndTotalStatsWithUpgrades(state.playerSheet, state.uiHud)}
             </ul>
           </section>
           <section class="stats-group">
-            <h4>Остальные</h4>
+            <h4>${STRINGS_RU.game.derivedGroup}</h4>
             <ul class="stats-list">
               ${renderDerivedStatsWithPreview(state.playerSheet, state.uiHud)}
             </ul>
           </section>
-          <p class="run-log">${state.run.lastLog || "—"}</p>
+          <p class="run-log">${state.run.lastLog || STRINGS_RU.game.runLogEmpty}</p>
         </article>
       </div>
       ${state.uiHud?.skillsPanelOpen ? renderSkillsModal(state) : ""}
@@ -215,7 +298,7 @@ function renderTurnPhaseBadge(run) {
   const isPlayerTurn = run?.turnPhase !== "environment";
   return `
     <div class="turn-phase-badge ${isPlayerTurn ? "turn-phase-player" : "turn-phase-environment"}">
-      ${isPlayerTurn ? "Ход игрока" : "Ход окружения"}
+      ${isPlayerTurn ? STRINGS_RU.turnPhase.player : STRINGS_RU.turnPhase.environment}
     </div>
   `;
 }
@@ -224,22 +307,22 @@ function renderEndingScreen(state) {
   if (!state.run || !state.playerSheet) {
     return `
       <section class="screen">
-        <h1 class="screen-title">Забег завершен</h1>
-        <p class="screen-subtitle">Данные забега отсутствуют.</p>
+        <h1 class="screen-title">${STRINGS_RU.ending.missingTitle}</h1>
+        <p class="screen-subtitle">${STRINGS_RU.ending.missingSubtitle}</p>
       </section>
     `;
   }
 
-  const title = state.run.status === "victory" ? "Победа!" : "Поражение";
+  const title = state.run.status === "victory" ? STRINGS_RU.ending.victoryTitle : STRINGS_RU.ending.defeatTitle;
   const subtitle =
     state.run.status === "victory"
-      ? "Мышонок добрался до норы."
-      : "HP опустилось до нуля, забег завершен.";
+      ? STRINGS_RU.ending.victorySubtitle
+      : STRINGS_RU.ending.defeatSubtitle;
 
   const equipped = EQUIP_TYPES.map((type) => {
     const itemId = state.playerSheet.equippedByType?.[type];
     const item = itemId ? getItemById(itemId) : null;
-    return `<li><span>${toRuType(type)}</span><strong>${item ? item.name : "пусто"}</strong></li>`;
+    return `<li><span>${toRuType(type)}</span><strong>${item ? item.name : STRINGS_RU.ending.bagEmptyLabel}</strong></li>`;
   }).join("");
 
   const bagItems = (state.playerSheet.bag || [])
@@ -249,33 +332,33 @@ function renderEndingScreen(state) {
     .join("");
 
   return `
-    <section class="screen" aria-label="Финальный экран">
+    <section class="screen" aria-label="${STRINGS_RU.ending.ariaScreen}">
       <h1 class="screen-title">${title}</h1>
-      <p class="screen-subtitle">${subtitle} Ходы: ${state.run.turns}.</p>
-      <p class="screen-subtitle">Достигнут уровень лабиринта: ${state.run.level}/${state.run.maxLevel}.</p>
-      <p class="screen-subtitle">Уровень персонажа: ${state.playerSheet.level}. XP: ${state.playerSheet.xp}/${state.playerSheet.xpToNext}.</p>
+      <p class="screen-subtitle">${endingSubtitleTurns(subtitle, state.run.turns)}</p>
+      <p class="screen-subtitle">${endingSubtitleMaze(state.run.level, state.run.maxLevel)}</p>
+      <p class="screen-subtitle">${endingSubtitleChar(state.playerSheet.level, state.playerSheet.xp, state.playerSheet.xpToNext)}</p>
       <div class="sheet-grid">
         <article class="class-card">
-          <h3>Характеристики</h3>
+          <h3>${STRINGS_RU.ending.cardStats}</h3>
           <ul class="stats-list">
             ${renderStatsList(buildFullStats(state.playerSheet), state.playerSheet)}
           </ul>
         </article>
         <article class="class-card">
-          <h3>Экипировка</h3>
+          <h3>${STRINGS_RU.ending.cardEquip}</h3>
           <ul class="stats-list">
             ${equipped}
           </ul>
         </article>
         <article class="class-card">
-          <h3>Сумка</h3>
+          <h3>${STRINGS_RU.ending.cardBag}</h3>
           <ul class="stats-list">
-            ${bagItems || "<li><span>—</span><strong>пусто</strong></li>"}
+            ${bagItems || STRINGS_RU.ending.bagEmptyRow}
           </ul>
         </article>
       </div>
       <div class="controls-row">
-        <button class="btn btn-primary" type="button" data-action="end-to-welcome">В главное меню</button>
+        <button class="btn btn-primary" type="button" data-action="end-to-welcome">${STRINGS_RU.ending.toWelcome}</button>
       </div>
       ${renderBuildBadge()}
       ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
@@ -297,7 +380,12 @@ function renderInventoryPanel(state) {
         <span class="slot-name">${toRuType(type)}</span>
         ${item
           ? `
-            <div class="bag-icon slot-equipped-card${rarityClass}" data-equip-type="${type}" title="${item.name}">
+            <div
+              class="bag-icon slot-equipped-card${rarityClass}"
+              data-equip-type="${type}"
+              data-inventory-detail-item-id="${item.id}"
+              aria-label="${escapeAttr(item.name)}"
+            >
               <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
               <span class="bag-icon-bonus">${equippedBonus}</span>
             </div>
@@ -338,8 +426,10 @@ function renderInventoryPanel(state) {
                 data-consumable-item-id="${item.id}"
                 data-drag-kind="consumable"
                 data-drag-item-id="${item.id}"
+                data-inventory-detail-item-id="${item.id}"
+                data-inventory-detail-stack="${count}"
                 draggable="true"
-                title="${getConsumableHoverText(item, count)}"
+                aria-label="${escapeAttr(item.name)}"
               >
                 <span class="bag-icon-glyph">${item.icon || getItemIcon(item.type)}</span>
                 <span class="bag-icon-bonus">${formatItemBonuses(item)}</span>
@@ -347,7 +437,7 @@ function renderInventoryPanel(state) {
               </button>
             `)
             .join("")
-        : `<p class="empty-bag">Пусто</p>`;
+        : `<p class="empty-bag">${STRINGS_RU.inventory.emptyBag}</p>`;
 
       return `
         <section class="bag-section" data-type="${type}">
@@ -390,8 +480,9 @@ function renderInventoryPanel(state) {
                 data-drag-kind="bag-equip"
                 data-drag-bag-instance-id="${entry.instanceId}"
                 data-drag-item-type="${entry.item.type}"
+                data-inventory-detail-item-id="${entry.item.id}"
                 draggable="true"
-                title="${getItemHoverText(entry.item)}"
+                aria-label="${escapeAttr(entry.item.name)}"
               >
                 <span class="bag-icon-glyph">${entry.item.icon || getItemIcon(entry.item.type)}</span>
                 <span class="bag-icon-bonus">${formatItemBonuses(entry.item, equippedItem)}</span>
@@ -399,7 +490,7 @@ function renderInventoryPanel(state) {
             `;
           })
           .join("")
-      : `<p class="empty-bag">Пусто</p>`;
+      : `<p class="empty-bag">${STRINGS_RU.inventory.emptyBag}</p>`;
 
     return `
       <section class="bag-section" data-type="${type}">
@@ -413,12 +504,12 @@ function renderInventoryPanel(state) {
 
   return `
     <article class="class-card inventory-panel">
-      <h3>Инвентарь</h3>
-      <p class="inventory-tip">Экипировка: обмен слота. Расходники: применяются и исчезают.</p>
+      <h3>${STRINGS_RU.inventory.title}</h3>
+      <p class="inventory-tip">${STRINGS_RU.inventory.tip}</p>
       <ul class="stats-list equip-slots-row">
         ${slots}
       </ul>
-      <h4 class="bag-title">Сумка</h4>
+      <h4 class="bag-title">${STRINGS_RU.inventory.bagHeading}</h4>
       ${bagSections}
       ${renderSkillsMiniPanel(state)}
     </article>
@@ -426,7 +517,7 @@ function renderInventoryPanel(state) {
 }
 
 function renderSkillsMiniPanel(state) {
-  const classSkills = getSkillsForClass(state.playerSheet?.classId || "");
+  const classSkills = listSkillsForUi(state.playerSheet);
   const mana = state.playerSheet?.mana || 0;
   const learnedSkills = classSkills.filter((skill) => {
     const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false };
@@ -435,7 +526,7 @@ function renderSkillsMiniPanel(state) {
   const content = learnedSkills.length
     ? learnedSkills.map((skill) => {
       const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false, level: 0 };
-      const manaCost = Math.max(1, skill.manaCost - (skill.id === "warrior_roll" ? (skillState.level - 1) : 0));
+      const manaCost = Math.max(1, skill.manaCost);
       const notEnoughMana = mana < manaCost;
       const classes = ["bag-icon", notEnoughMana ? "quick-slot-out" : ""].filter(Boolean).join(" ");
       return `
@@ -447,7 +538,7 @@ function renderSkillsMiniPanel(state) {
           data-drag-kind="skill"
           data-drag-skill-id="${skill.id}"
           draggable="true"
-          title="${buildSkillHoverText(skill, skillState, state.playerSheet)}"
+          title="${getSkillHoverText(skill, skillState, state.playerSheet)}"
         >
           <span class="bag-icon-glyph">${skill.icon || "✨"}</span>
           <span class="bag-icon-bonus">Lv${skillState.level}</span>
@@ -455,11 +546,11 @@ function renderSkillsMiniPanel(state) {
         </button>
       `;
     }).join("")
-    : `<p class="empty-bag">Нет скиллов</p>`;
+    : `<p class="empty-bag">${STRINGS_RU.inventory.noSkills}</p>`;
 
   return `
     <section class="bag-section">
-      <h5 class="bag-title">Скиллы</h5>
+      <h5 class="bag-title">${STRINGS_RU.inventory.skillsHeading}</h5>
       <div class="bag-grid">${content}</div>
     </section>
   `;
@@ -469,7 +560,8 @@ function renderStatsList(statsObject, playerSheet = null) {
   return Object.entries(statsObject)
     .map(([name, value]) => {
       const tooltip = getStatDescriptionRu(name, playerSheet);
-      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(name)}</span><strong title="${tooltip}">${value}</strong></li>`;
+      const shown = typeof value === "number" ? formatDisplayedNumericStat(value) : value;
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(name)}</span><strong title="${tooltip}">${shown}</strong></li>`;
     })
     .join("");
 }
@@ -478,13 +570,9 @@ function renderBaseAndTotalStats(playerSheet) {
   const statsOrder = ["STR", "INT", "AGI", "LUK", "HP_MAX"];
   return statsOrder
     .map((key) => {
-      const baseValue = playerSheet?.baseStats?.[key] ?? 0;
-      const totalValue = playerSheet?.stats?.[key] ?? baseValue;
-      const totalMarkup = totalValue !== baseValue
-        ? `<span class="stat-total-value"> (${totalValue})</span>`
-        : "";
+      const baseRaw = Number(playerSheet?.baseStats?.[key] ?? 0);
       const tooltip = getStatDescriptionRu(key, playerSheet);
-      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(key)}</span><strong title="${tooltip}">${baseValue}${totalMarkup}</strong></li>`;
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(key)}</span><strong title="${tooltip}" class="stat-base-value">${formatDisplayedNumericStat(baseRaw)}</strong></li>`;
     })
     .join("");
 }
@@ -498,57 +586,67 @@ function renderStatsListWithUpgrades(statsObject, playerSheet, upgradeByStat) {
       const upgradeButton = hasPoints && upgradeValue
         ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${name}" title="${tooltip}. Потратить 1 очко: +${upgradeValue} ${toRuStatName(name)}.">+${upgradeValue}</button>`
         : "";
-      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(name)}</span><div class="stat-value-with-upgrade"><strong title="${tooltip}">${value}</strong>${upgradeButton}</div></li>`;
+      const shown = typeof value === "number" ? formatDisplayedNumericStat(value) : value;
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(name)}</span><div class="stat-value-with-upgrade"><strong title="${tooltip}">${shown}</strong>${upgradeButton}</div></li>`;
     })
     .join("");
 }
 
 function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
   const hasPoints = (playerSheet?.unspentPoints || 0) > 0;
+  const upgradePreviewStat = previewState?.upgradePreviewStat || null;
+  const equipPreviewId = previewState?.equipPreviewBagInstanceId || null;
   const previewMode = getPreviewMode(previewState);
-  const previewSheet = buildPreviewSheet(playerSheet, {
-    type: "upgrade",
-    stat: previewState?.upgradePreviewStat || null,
-    bagInstanceId: previewState?.equipPreviewBagInstanceId || null,
-  });
+
+  let previewSheet = null;
+  if (previewMode === "upgrade" && upgradePreviewStat && hasPoints) {
+    previewSheet = buildPreviewSheet(playerSheet, {
+      type: "upgrade",
+      stat: upgradePreviewStat,
+      bagInstanceId: null,
+    });
+  } else if (previewMode === "equip" && equipPreviewId) {
+    previewSheet = buildPreviewSheet(playerSheet, {
+      type: "equip",
+      stat: null,
+      bagInstanceId: equipPreviewId,
+    });
+  }
+
   const statsOrder = [
     { key: "STR", upgrade: 1 },
     { key: "INT", upgrade: 1 },
     { key: "AGI", upgrade: 1 },
     { key: "LUK", upgrade: 1 },
-    { key: "HP_MAX", upgrade: 3 },
   ];
 
   return statsOrder
     .map(({ key, upgrade }) => {
       const tooltip = getStatDescriptionRu(key, playerSheet);
-      const baseValue = playerSheet?.baseStats?.[key] ?? 0;
-      const totalValue = playerSheet?.stats?.[key] ?? baseValue;
-      const previewBase = previewSheet?.baseStats?.[key];
-      const previewTotal = previewSheet?.stats?.[key];
-      const shownBase = previewBase != null ? previewBase : baseValue;
-      const shownTotal = previewTotal != null ? previewTotal : totalValue;
-      const isBasePreviewed = shownBase !== baseValue;
-      const isTotalPreviewed = shownTotal !== totalValue;
+      const totalRaw = Number(playerSheet?.stats?.[key] ?? 0);
+      const showPreviewSheet = previewSheet != null;
+      const previewTotalRaw = showPreviewSheet
+        ? Number(previewSheet.stats?.[key] ?? totalRaw)
+        : totalRaw;
+      const displayed = formatDisplayedNumericStat(previewTotalRaw);
+      const valueClasses = ["stat-base-value"];
+      if (showPreviewSheet && roundStat(previewTotalRaw) !== roundStat(totalRaw)) {
+        if (previewMode === "upgrade" && upgradePreviewStat === key) {
+          valueClasses.push("stat-base-value-preview");
+        } else if (previewMode === "equip") {
+          const delta = roundStat(previewTotalRaw) - roundStat(totalRaw);
+          if (delta > 0) valueClasses.push("stat-preview-up");
+          if (delta < 0) valueClasses.push("stat-preview-down");
+        }
+      }
       const upgradeButton = hasPoints
         ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${key}" title="${tooltip}. Потратить 1 очко: +${upgrade} ${toRuStatName(key)}.">+${upgrade}</button>`
-        : "";
-      const totalDelta = shownTotal - totalValue;
-      let previewClass = "";
-      if (previewMode === "upgrade" && isTotalPreviewed) {
-        previewClass = "stat-preview-up";
-      } else if (previewMode === "equip" && isTotalPreviewed) {
-        if (totalDelta > 0) previewClass = "stat-preview-up";
-        if (totalDelta < 0) previewClass = "stat-preview-down";
-      }
-      const totalMarkup = shownTotal !== shownBase
-        ? `<span class="stat-total-neutral ${previewClass}"> (${shownTotal})</span>`
         : "";
       return `
         <li title="${tooltip}">
           <span title="${tooltip}">${toRuStatName(key)}</span>
           <div class="stat-value-with-upgrade">
-            <strong title="${tooltip}">${shownBase}${totalMarkup}</strong>
+            <strong title="${tooltip}" class="${valueClasses.join(" ")}">${displayed}</strong>
             ${upgradeButton}
           </div>
         </li>
@@ -564,19 +662,15 @@ function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
     stat: previewStat?.upgradePreviewStat || null,
     bagInstanceId: previewStat?.equipPreviewBagInstanceId || null,
   });
-  const current = {
-    ATK_PHYS: playerSheet?.derived?.ATK_PHYS ?? 0,
-    ATK_MAGIC: playerSheet?.derived?.ATK_MAGIC ?? 0,
-    CRIT_CHANCE: playerSheet?.derived?.CRIT_CHANCE ?? 0,
-    CRIT_MULT: playerSheet?.derived?.CRIT_MULT ?? 0,
-  };
-  return Object.entries(current)
-    .map(([key, value]) => {
+  const keys = ["HP_MAX", "CRIT_CHANCE", "CRIT_MULT", "WEAPON_DM"];
+  return keys
+    .map((key) => {
       const tooltip = getStatDescriptionRu(key, playerSheet);
-      const previewValue = previewSheet?.derived?.[key];
-      const isPreviewed = previewValue != null && previewValue !== value;
+      const value = getDerivedPanelValue(playerSheet, key);
+      const previewValue = previewSheet ? getDerivedPanelValue(previewSheet, key) : null;
+      const isPreviewed = previewSheet != null && roundStat(previewValue) !== roundStat(value);
       const shown = isPreviewed ? previewValue : value;
-      const delta = shown - value;
+      const delta = roundStat(shown) - roundStat(value);
       let previewClass = "";
       if (previewMode === "upgrade" && isPreviewed) {
         previewClass = "stat-preview-up";
@@ -584,7 +678,8 @@ function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
         if (delta > 0) previewClass = "stat-preview-up";
         if (delta < 0) previewClass = "stat-preview-down";
       }
-      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(key)}</span><strong title="${tooltip}" class="${previewClass}">${shown}</strong></li>`;
+      const display = formatDisplayedNumericStat(shown);
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(key)}</span><strong title="${tooltip}" class="${previewClass}">${display}</strong></li>`;
     })
     .join("");
 }
@@ -637,15 +732,6 @@ function toRuSectionType(itemType) {
 
 function toRuStatName(statName) {
   return STAT_LABELS_RU[statName] || statName;
-}
-
-function localizeStatText(effectText) {
-  return effectText
-    .replaceAll("STR", "СИЛ")
-    .replaceAll("INT", "ИНТ")
-    .replaceAll("AGI", "ЛВК")
-    .replaceAll("LUK", "УДЧ")
-    .replaceAll("HP_MAX", "HP МАКС");
 }
 
 function getItemIcon(type) {
@@ -723,34 +809,6 @@ function toRunStatusRu(status) {
   return "В ПУТИ";
 }
 
-function getStatDescriptionRu(statName, playerSheet) {
-  const stats = playerSheet?.stats || {};
-  const derived = playerSheet?.derived || {};
-  if (statName === "STR") return "СИЛ: влияет на физический урон. Основная часть формулы ATK_PHYS.";
-  if (statName === "INT") return "ИНТ: влияет на магический урон. Основная часть формулы ATK_MAGIC.";
-  if (statName === "AGI") return "ЛВК: влияет на физический урон и ряд эффектов мобильности.";
-  if (statName === "LUK") return "УДЧ: влияет на шанс и силу критов, а также часть магического урона.";
-  if (statName === "HP_MAX") return "HP МАКС: верхний предел здоровья персонажа.";
-  if (statName === "HP") return "HP: текущее здоровье. При 0 персонаж проигрывает забег.";
-  if (statName === "ATK_PHYS") {
-    const str = stats.STR ?? playerSheet?.baseStats?.STR ?? 0;
-    const agi = stats.AGI ?? playerSheet?.baseStats?.AGI ?? 0;
-    return `АТК ФИЗ: STR*1.5 + AGI*0.4. Сейчас: ${derived.ATK_PHYS ?? 0} (STR=${str}, AGI=${agi}).`;
-  }
-  if (statName === "ATK_MAGIC") {
-    const intValue = stats.INT ?? playerSheet?.baseStats?.INT ?? 0;
-    const luk = stats.LUK ?? playerSheet?.baseStats?.LUK ?? 0;
-    return `АТК МАГ: INT*1.5 + LUK*0.4. Сейчас: ${derived.ATK_MAGIC ?? 0} (INT=${intValue}, LUK=${luk}).`;
-  }
-  if (statName === "CRIT_CHANCE") {
-    return `КРИТ %: шанс критического удара. Сейчас: ${derived.CRIT_CHANCE ?? 0}%.`;
-  }
-  if (statName === "CRIT_MULT") {
-    return `КРИТ Х: множитель урона крита. Сейчас: x${derived.CRIT_MULT ?? 1}.`;
-  }
-  return "Характеристика персонажа.";
-}
-
 function getItemHoverText(item) {
   if (!item) return "";
   if (item.isConsumable) {
@@ -759,107 +817,135 @@ function getItemHoverText(item) {
   return `${item.name} (${toRuType(item.type)}): ${localizeStatText(item.effectText)}`;
 }
 
-function getConsumableHoverText(item, count) {
-  const stacksText = count > 1 ? `\nСтак: ${count}` : "";
-  if (item.id === "cheese_ration") {
-    return `${item.name}: лечит 10 HP (не выше HP МАКС), дополнительно +4 маны.${stacksText}`;
+function escapeHtml(text) {
+  if (text == null) {
+    return "";
   }
-  if (item.id === "common_crumb_ration") {
-    return `${item.name}: лечит 10 HP (не выше HP МАКС).${stacksText}`;
-  }
-  if (item.id === "common_mint_drop") {
-    return `${item.name}: восстанавливает 10 маны (не выше максимума).${stacksText}`;
-  }
-  if (item.id === "common_warm_milk") {
-    return `${item.name}: лечит 6 HP и восстанавливает 6 маны.${stacksText}`;
-  }
-  if (item.id === "common_sharp_pepper") {
-    return `${item.name}: следующая атака персонажа получает множитель x1.5.${stacksText}`;
-  }
-  if (item.id === "common_mousetrap") {
-    return `${item.name}: установка в соседнюю свободную клетку. При срабатывании наносит 8 урона и оглушает на 1 ход.${stacksText}`;
-  }
-  if (item.id === "common_glue_trap") {
-    return `${item.name}: установка в соседнюю свободную клетку. При срабатывании оглушает на 2 хода.${stacksText}`;
-  }
-  if (item.id === "rare_hearty_stew") {
-    return `${item.name}: лечит 18 HP (не выше HP МАКС).${stacksText}`;
-  }
-  if (item.id === "rare_focus_tonic") {
-    return `${item.name}: восстанавливает 16 маны (не выше максимума).${stacksText}`;
-  }
-  if (item.id === "rare_dual_elixir") {
-    return `${item.name}: лечит 12 HP и восстанавливает 12 маны.${stacksText}`;
-  }
-  if (item.id === "rare_battle_pepper") {
-    return `${item.name}: следующая атака персонажа получает множитель x2.${stacksText}`;
-  }
-  if (item.id === "rare_venom_trap") {
-    return `${item.name}: установка в соседнюю свободную клетку. При срабатывании: 4 урона и ядовитый туман на клетке и вокруг (3x3).${stacksText}`;
-  }
-  if (item.id === "unique_phoenix_broth") {
-    return `${item.name}: лечит 28 HP (не выше HP МАКС).${stacksText}`;
-  }
-  if (item.id === "unique_aether_draught") {
-    return `${item.name}: восстанавливает 24 маны (не выше максимума).${stacksText}`;
-  }
-  if (item.id === "unique_twilight_mix") {
-    return `${item.name}: лечит 20 HP и восстанавливает 20 маны.${stacksText}`;
-  }
-  if (item.id === "unique_storm_pepper") {
-    return `${item.name}: следующая атака персонажа получает множитель x2.5.${stacksText}`;
-  }
-  if (item.id === "hard_cheese") {
-    return `${item.name}: +5 HP МАКС до конца забега (эффект стакается).${stacksText}`;
-  }
-  if (item.id === "common_cracker") {
-    return `${item.name}: +4 HP МАКС до конца забега (эффект стакается).${stacksText}`;
-  }
-  if (item.id === "rare_royal_cheese") {
-    return `${item.name}: лечит 20 HP, +1 HP МАКС до конца забега и +8 маны.${stacksText}`;
-  }
-  if (item.id === "rare_spice_vial") {
-    return `${item.name}: следующий удар персонажа получает множитель x2.${stacksText}`;
-  }
-  if (item.id === "pepper_bomb") {
-    return `${item.name}: наносит 8 урона ближайшему коту.${stacksText}`;
-  }
-  return `${item.name}: ${localizeStatText(item.effectText)}.${stacksText}`;
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
-function buildSkillHoverText(skill, skillState, playerSheet) {
-  const level = skillState?.level || 0;
-  const manaCost = Math.max(1, skill.manaCost - (skill.id === "warrior_roll" ? (level - 1) : 0));
-  const atkMagic = playerSheet?.derived?.ATK_MAGIC ?? 0;
-  const atkPhys = playerSheet?.derived?.ATK_PHYS ?? 0;
-  const agi = playerSheet?.stats?.AGI ?? playerSheet?.baseStats?.AGI ?? 0;
-  if (skill.id === "mage_arc_shot") {
-    const dmg = Math.max(1, Math.floor(atkMagic * (1.1 + level * 0.2)));
-    return `${skill.name}\nМана: ${manaCost}\nФормула: ATK_MAGIC * (1.1 + 0.2 * уровень_скилла)\nЗависит от: ATK_MAGIC=${atkMagic}\nТекущий урон: ${dmg}\nЦель: видимая открытая клетка с котом, не за стеной.`;
+function escapeAttr(text) {
+  if (text == null) {
+    return "";
   }
-  if (skill.id === "mage_mirror_veil") {
-    const charges = 1 + level;
-    const reduction = 1 + level;
-    return `${skill.name}\nМана: ${manaCost}\nТекущее действие: ${charges} срабатываний, -${reduction} входящего урона.\nЦель: клетка персонажа.`;
+  return String(text).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+function formatItemStatBonusesDetailSection(item) {
+  const entries = Object.entries(item.statBonuses || {}).sort(([a], [b]) => {
+    const aIndex = BONUS_SORT_ORDER.indexOf(a);
+    const bIndex = BONUS_SORT_ORDER.indexOf(b);
+    const ai = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+    const bi = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+    if (ai !== bi) return ai - bi;
+    return a.localeCompare(b);
+  });
+  if (entries.length === 0) {
+    return "";
   }
-  if (skill.id === "warrior_power_hit") {
-    const dmg = Math.max(1, Math.floor(atkPhys * (1.2 + level * 0.25)));
-    return `${skill.name}\nМана: ${manaCost}\nФормула: ATK_PHYS * (1.2 + 0.25 * уровень_скилла)\nЗависит от: ATK_PHYS=${atkPhys}\nТекущий урон: ${dmg}\nЦель: соседняя клетка с котом (радиус 1).`;
+  const lis = entries
+    .map(([statName, value]) => {
+      const label = toRuStatName(statName);
+      const sign = value > 0 ? "+" : "";
+      return `<li>${sign}${escapeHtml(String(value))} ${escapeHtml(label)}</li>`;
+    })
+    .join("");
+  const id = STRINGS_RU.itemDetail;
+  return `
+    <div class="item-detail-section">
+      <h4 class="item-detail-section-title">${id.bonusesTitle}</h4>
+      <ul class="item-detail-list">${lis}</ul>
+    </div>`;
+}
+
+function formatWeaponCombatDetailSection(item) {
+  if (item.type !== "weapon") {
+    return "";
   }
-  if (skill.id === "warrior_roll") {
-    const throughDamage = Math.max(1, Math.floor(agi * 0.6 + level));
-    return `${skill.name}\nМана: ${manaCost}\nФормула урона по пути: AGI * 0.6 + уровень_скилла\nЗависит от: AGI=${agi}\nУрон по коту в промежуточной клетке: ${throughDamage}\nЦель: клетка через 1 по прямой, нельзя через стену и на клетку с котом.`;
+  const wd = item.weaponDamage != null ? roundStat(item.weaponDamage) : "—";
+  const cc = item.weaponCritChance != null ? roundStat(item.weaponCritChance) : "—";
+  const cm = item.weaponCritMult != null ? roundStat(item.weaponCritMult) : "—";
+  const id = STRINGS_RU.itemDetail;
+  return `
+    <div class="item-detail-section">
+      <h4 class="item-detail-section-title">${id.combatTitle}</h4>
+      <ul class="item-detail-list item-detail-list-plain">
+        <li>${id.baseDamage} <strong>${escapeHtml(String(wd))}</strong></li>
+        <li>${id.critChanceBase} <strong>${escapeHtml(String(cc))}%</strong></li>
+        <li>${id.critMultBase} <strong>×${escapeHtml(String(cm))}</strong></li>
+      </ul>
+    </div>`;
+}
+
+function formatItemDetailDescriptionSection(item, stackCount) {
+  const id = STRINGS_RU.itemDetail;
+  if (item.isConsumable) {
+    const raw = getConsumableHoverText(item, stackCount ?? 1);
+    const body = escapeHtml(raw).replace(/\n/g, "<br>");
+    return `
+      <div class="item-detail-section">
+        <h4 class="item-detail-section-title">${id.effectTitle}</h4>
+        <p class="item-detail-desc">${body}</p>
+      </div>`;
   }
-  if (skill.id === "warrior_bandage") {
-    const healPerTurn = 5 + level;
-    const totalHeal = healPerTurn * 3;
-    return `${skill.name}\nМана: ${manaCost}\nФормула: 5 + уровень_скилла (за ход)\nТекущее восстановление: ${healPerTurn} HP/ход, всего ${totalHeal} HP за 3 хода\nЦель: клетка персонажа. Повторно нельзя, пока эффект активен.`;
+  if (item.effectText) {
+    return `
+      <div class="item-detail-section">
+        <h4 class="item-detail-section-title">${id.descriptionTitle}</h4>
+        <p class="item-detail-desc">${escapeHtml(localizeStatText(item.effectText))}</p>
+      </div>`;
   }
-  if (skill.id === "mage_heal") {
-    const heal = 40 + Math.max(0, (level - 1) * 10);
-    return `${skill.name}\nМана: ${manaCost}\nФормула: 40 + 10 * (уровень_скилла - 1)\nТекущее восстановление: ${heal} HP\nЦель: клетка персонажа.`;
+  return "";
+}
+
+/** HTML содержимое всплывающей карточки предмета (инвентарь). */
+export function buildInventoryItemDetailHtml(item, options = {}) {
+  if (!item) {
+    return "";
   }
-  return `${skill.name}\nМана: ${manaCost}\n${skill.description}`;
+  const stackCount = options.stackCount;
+  const rarity = getItemRarity(item);
+  const id = STRINGS_RU.itemDetail;
+  const rarityRu =
+    rarity === "unique" ? id.rarityUnique : rarity === "rare" ? id.rarityRare : id.rarityCommon;
+  const typeRu = toRuType(item.type);
+  const icon = item.icon || getItemIcon(item.type);
+  const stackPill =
+    item.isConsumable && stackCount != null && stackCount > 1
+      ? `<span class="item-detail-stack-pill" aria-hidden="true">×${stackCount}</span>`
+      : "";
+
+  const sections = [
+    formatItemStatBonusesDetailSection(item),
+    formatWeaponCombatDetailSection(item),
+    formatItemDetailDescriptionSection(item, stackCount),
+  ]
+    .filter(Boolean)
+    .join("");
+
+  const emptyHint =
+    sections === ""
+      ? `<p class="item-detail-muted item-detail-empty">${STRINGS_RU.itemDetail.emptyHint}</p>`
+      : "";
+
+  return `
+    <div class="item-detail-card item-detail-rarity-${escapeHtml(rarity)}">
+      <header class="item-detail-head">
+        <span class="item-detail-rarity">${escapeHtml(rarityRu)}</span>
+        <span class="item-detail-type">${escapeHtml(typeRu)}</span>
+        ${stackPill}
+      </header>
+      <div class="item-detail-title-row">
+        <span class="item-detail-icon" aria-hidden="true">${escapeHtml(icon)}</span>
+        <span class="item-detail-name">${escapeHtml(item.name)}</span>
+      </div>
+      ${sections}
+      ${emptyHint}
+    </div>`;
 }
 
 function renderHpBar(playerSheet) {
@@ -911,38 +997,39 @@ function buildFullStats(playerSheet) {
     AGI: playerSheet?.stats?.AGI ?? 0,
     LUK: playerSheet?.stats?.LUK ?? 0,
     HP: playerSheet?.stats?.HP ?? 0,
-    ATK_PHYS: playerSheet?.derived?.ATK_PHYS ?? 0,
-    ATK_MAGIC: playerSheet?.derived?.ATK_MAGIC ?? 0,
+    HP_MAX: playerSheet?.stats?.HP_MAX ?? 0,
     CRIT_CHANCE: playerSheet?.derived?.CRIT_CHANCE ?? 0,
-    CRIT_MULT: playerSheet?.derived?.CRIT_MULT ?? 0,
+    CRIT_MULT: Number((playerSheet?.derived?.CRIT_MULT ?? 1).toFixed(2)),
+    WEAPON_DM: playerSheet?.derived?.WEAPON_DAMAGE ?? 0,
   };
 }
 
 function renderBuildBadge() {
   return `
     <div class="build-badge-wrap">
-      <p class="build-badge-note">Используется анонимная аналитика: запуски, класс, исход забега, причины поражения и применение скиллов.</p>
+      <p class="build-badge-note">${STRINGS_RU.buildBadge.analyticsNote}</p>
       <p class="build-badge">
         ${APP_TITLE} · v${APP_VERSION}
-        <button class="build-help-btn" type="button" data-action="open-help" title="Справка по управлению">?</button>
+        <button class="build-help-btn" type="button" data-action="open-help" title="${STRINGS_RU.buildBadge.helpTitle}">?</button>
       </p>
     </div>
   `;
 }
 
 function renderHelpModal() {
+  const h = STRINGS_RU.helpModal;
   return `
     <div class="help-modal-backdrop">
       <section class="help-modal">
-        <h3>Справка</h3>
-        <p><strong>Как ходить:</strong> используй WASD или стрелки. По диагонали — Q, E, Z, C.</p>
-        <p><strong>Мышка:</strong> наведи курсор на клетку, чтобы увидеть путь. Клик по соседней клетке — шаг (или удар, если там кот). Клик по дальней клетке — герой запомнит маршрут и пойдет по нему сам.</p>
-        <p><strong>Автоход:</strong> герой идет по запомненному пути между ходами. Автодвижение остановится, если герой получил урон, путь перекрыт или цель уже достигнута.</p>
-        <p><strong>Скиллы и предметы:</strong> кнопки 1-9 — быстрые слоты. Можно положить туда скиллы и расходники. Нажми на скилл, затем на клетку цели. Пробел — использовать подготовленный скилл на себя (если это разрешено).</p>
-        <p><strong>Как идут ходы:</strong> сначала ходишь ты, потом ходят коты. Коты могут обходить стены и двигаться одновременно.</p>
-        <p><strong>Подсказки в бою:</strong> активные эффекты показаны в левом верхнем углу, подробности — по наведению.</p>
+        <h3>${h.title}</h3>
+        <p><strong>${h.move}</strong> ${h.moveBody}</p>
+        <p><strong>${h.mouse}</strong> ${h.mouseBody}</p>
+        <p><strong>${h.auto}</strong> ${h.autoBody}</p>
+        <p><strong>${h.skills}</strong> ${h.skillsBody}</p>
+        <p><strong>${h.turns}</strong> ${h.turnsBody}</p>
+        <p><strong>${h.hints}</strong> ${h.hintsBody}</p>
         <div class="controls-row">
-          <button class="btn btn-primary" type="button" data-action="close-help">Закрыть</button>
+          <button class="btn btn-primary" type="button" data-action="close-help">${h.close}</button>
         </div>
       </section>
     </div>
@@ -950,21 +1037,21 @@ function renderHelpModal() {
 }
 
 function renderSkillsModal(state) {
-  const classSkills = getSkillsForClass(state.playerSheet?.classId || "");
+  const classSkills = listSkillsForUi(state.playerSheet);
   const cards = classSkills.map((skill) => {
     const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false, level: 0 };
     const canSpend = (state.playerSheet?.skillPoints || 0) > 0;
     const maxed = skillState.level >= skill.maxLevel;
     const action = !skillState.learned ? "learn-skill" : "upgrade-skill";
-    const actionLabel = !skillState.learned ? "Изучить" : "Улучшить";
+    const actionLabel = !skillState.learned ? STRINGS_RU.skillsModal.learn : STRINGS_RU.skillsModal.upgrade;
     const enabled = canSpend && !maxed;
     return `
       <article class="class-card">
-        <h3 title="${buildSkillHoverText(skill, skillState, state.playerSheet)}">${skill.icon || "✨"} ${skill.name}</h3>
+        <h3 title="${getSkillHoverText(skill, skillState, state.playerSheet)}">${skill.icon || "✨"} ${skill.name}</h3>
         <p>${skill.description}</p>
-        <p class="progression-line">Мана: ${skill.manaCost}</p>
-        <p class="progression-line">Свойство: ${skill.property}</p>
-        <p class="progression-line">Уровень: ${skillState.level}/${skill.maxLevel}</p>
+        <p class="progression-line">${STRINGS_RU.skillsModal.manaLine} ${skill.manaCost}</p>
+        <p class="progression-line">${STRINGS_RU.skillsModal.propertyLine} ${skill.property}</p>
+        <p class="progression-line">${STRINGS_RU.skillsModal.levelLine} ${skillState.level}/${skill.maxLevel}</p>
         <button class="btn btn-primary" type="button" data-action="${action}" data-skill-id="${skill.id}" ${enabled ? "" : "disabled"}>
           ${actionLabel}
         </button>
@@ -975,10 +1062,10 @@ function renderSkillsModal(state) {
   return `
     <div class="skills-modal-backdrop">
       <section class="screen skills-screen-enter skills-modal-panel">
-        <h1 class="screen-title">Скиллы</h1>
-        <p class="screen-subtitle">Каждые 2 уровня дается 1 очко скилла. Доступно: ${state.playerSheet?.skillPoints || 0}</p>
+        <h1 class="screen-title">${STRINGS_RU.skillsModal.title}</h1>
+        <p class="screen-subtitle">${skillsModalSubtitle(state.playerSheet?.skillPoints || 0)}</p>
         <div class="controls-row">
-          <button class="btn" type="button" data-action="close-skills">Закрыть</button>
+          <button class="btn" type="button" data-action="close-skills">${STRINGS_RU.skillsModal.close}</button>
         </div>
         <div class="sheet-grid">${cards}</div>
       </section>
@@ -1008,9 +1095,7 @@ function renderQuickbar(state) {
     const count = item ? (counts.get(item.id) || 0) : 0;
     const isDraggable = Boolean(slotPayload);
     const isOutOfStock = Boolean(item) && count <= 0;
-    const manaCost = skill
-      ? Math.max(1, skill.manaCost - (skill.id === "warrior_roll" ? ((skillState?.level || 0) - 1) : 0))
-      : 0;
+    const manaCost = skill ? Math.max(1, skill.manaCost) : 0;
     const isNotEnoughMana = Boolean(skill) && mana < manaCost;
     const glyph = item
       ? (item.icon || getItemIcon(item.type))
@@ -1020,8 +1105,8 @@ function renderQuickbar(state) {
     const title = item
       ? getConsumableHoverText(item, count)
       : skill
-        ? buildSkillHoverText(skill, skillState, state.playerSheet)
-        : `Слот ${slotIndex}`;
+        ? getSkillHoverText(skill, skillState, state.playerSheet)
+        : quickbarSlotTitle(slotIndex);
     const classes = [
       "quick-slot-btn",
       item ? `item-rarity-${getItemRarity(item)}` : "",
@@ -1049,7 +1134,7 @@ function renderQuickbar(state) {
   }).join("");
 
   return `
-    <div class="quickbar" aria-label="Панель быстрого доступа">
+    <div class="quickbar" aria-label="${STRINGS_RU.quickbar.aria}">
       ${slotButtons}
     </div>
   `;
@@ -1060,10 +1145,11 @@ function renderActiveEffects(state) {
   const content = effects.length
     ? effects.map((effect) => {
       const centerBadge = effect.badge || "";
+      const ae = STRINGS_RU.activeEffects;
       const detailRows = [
-        effect.remainingText ? `<p><strong>Осталось:</strong> ${effect.remainingText}</p>` : "",
-        effect.description ? `<p><strong>Эффект:</strong> ${effect.description}</p>` : "",
-        effect.stacksText ? `<p><strong>Стаки:</strong> ${effect.stacksText}</p>` : "",
+        effect.remainingText ? `<p><strong>${ae.labelRemaining}</strong> ${effect.remainingText}</p>` : "",
+        effect.description ? `<p><strong>${ae.labelEffect}</strong> ${effect.description}</p>` : "",
+        effect.stacksText ? `<p><strong>${ae.labelStacks}</strong> ${effect.stacksText}</p>` : "",
       ].filter(Boolean).join("");
       return `
         <div class="active-effect-icon-wrap" title="${effect.name}">
@@ -1076,10 +1162,10 @@ function renderActiveEffects(state) {
         </div>
       `;
     }).join("")
-    : `<span class="active-effects-empty">—</span>`;
+    : `<span class="active-effects-empty">${STRINGS_RU.activeEffects.empty}</span>`;
   return `
-    <aside class="active-effects-panel" aria-label="Активные эффекты">
-      <h4>Эффекты</h4>
+    <aside class="active-effects-panel" aria-label="${STRINGS_RU.activeEffects.aria}">
+      <h4>${STRINGS_RU.activeEffects.heading}</h4>
       <div class="active-effects-icons">${content}</div>
     </aside>
   `;
@@ -1088,66 +1174,57 @@ function renderActiveEffects(state) {
 function collectActiveEffects(state) {
   const run = state.run || {};
   const stacks = state.playerSheet?.effectStacks || {};
+  const ae = STRINGS_RU.activeEffects;
   const effects = [];
   if ((run.nextHitMultiplier || 1) > 1) {
     effects.push({
-      name: "Колба специй",
+      name: ae.nextHitName,
       icon: "🧪",
       badge: "1",
-      remainingText: "1 применение",
+      remainingText: ae.nextHitRemaining,
       description: `Следующий удар x${run.nextHitMultiplier}.`,
-      stacksText: "1",
-    });
-  }
-  if (run.mirrorVeil?.charges > 0) {
-    effects.push({
-      name: "Зеркальная вуаль",
-      icon: "🪞",
-      badge: String(run.mirrorVeil.charges),
-      remainingText: `${run.mirrorVeil.charges} применений`,
-      description: `Снижает входящий урон на ${run.mirrorVeil.reduction}.`,
-      stacksText: "1",
+      stacksText: ae.nextHitStacks,
     });
   }
   const bandage = (run.overTimeEffects || []).find((effect) => effect.type === "bandage_regen");
   if (bandage?.turnsLeft > 0) {
     effects.push({
-      name: "Перевязать раны",
+      name: ae.bandageName,
       icon: "🩹",
       badge: `${bandage.turnsLeft}t`,
-      remainingText: `${bandage.turnsLeft} ходов`,
+      remainingText: activeEffectBandageRemaining(bandage.turnsLeft),
       description: `Восстанавливает ${bandage.healPerTurn} HP каждый ход.`,
       stacksText: "1",
     });
   }
   if ((stacks.hard_cheese || 0) > 0) {
     effects.push({
-      name: "Твердый сыр",
+      name: ae.hardCheeseName,
       icon: "🧀",
       badge: "∞",
-      remainingText: "До конца забега",
-      description: "Постоянно увеличивает HP_MAX на 5.",
-      stacksText: `${stacks.hard_cheese} (суммарно +${stacks.hard_cheese * 5} HP_MAX)`,
+      remainingText: ae.hardCheeseRemaining,
+      description: ae.hardCheeseDesc,
+      stacksText: activeEffectStacksLine(stacks.hard_cheese, stacks.hard_cheese * 5),
     });
   }
   if ((stacks.common_cracker || 0) > 0) {
     effects.push({
-      name: "Сухарик",
+      name: ae.crackerName,
       icon: "🥨",
       badge: "∞",
-      remainingText: "До конца забега",
-      description: "Постоянно увеличивает HP_MAX на 4.",
-      stacksText: `${stacks.common_cracker} (суммарно +${stacks.common_cracker * 4} HP_MAX)`,
+      remainingText: ae.hardCheeseRemaining,
+      description: ae.crackerDesc,
+      stacksText: activeEffectStacksLine(stacks.common_cracker, stacks.common_cracker * 4),
     });
   }
   if ((stacks.rare_royal_cheese || 0) > 0) {
     effects.push({
-      name: "Королевский сыр",
+      name: ae.royalCheeseName,
       icon: "👑",
       badge: "∞",
-      remainingText: "До конца забега",
-      description: "Постоянно увеличивает HP_MAX на 1.",
-      stacksText: `${stacks.rare_royal_cheese} (суммарно +${stacks.rare_royal_cheese} HP_MAX)`,
+      remainingText: ae.hardCheeseRemaining,
+      description: ae.royalCheeseDesc,
+      stacksText: activeEffectStacksLine(stacks.rare_royal_cheese, stacks.rare_royal_cheese),
     });
   }
   return effects;

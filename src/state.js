@@ -1,6 +1,5 @@
-import { buildDerivedStats } from "./rules.js?v=0.4.3-pre-alpha";
-import { CLASS_START_MANA } from "./skills.js?v=0.4.3-pre-alpha";
-import { getSkillsForClass } from "./skills.js?v=0.4.3-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.3-pre-alpha";
+import { getCoreSkillDefs } from "./skills.js?v=0.4.3-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -8,59 +7,17 @@ export const PROGRESSION_CONFIG = {
   pointsPerLevel: 1,
 };
 
-export const CLASS_CONFIG = {
-  mage: {
-    id: "mage",
-    label: "Маг",
-    description: "Хитрый тактик с акцентом на эффекты и контроль.",
-    baseStats: {
-      STR: 2,
-      INT: 7,
-      AGI: 4,
-      LUK: 3,
-      VISION: 6,
-      baseHP: 56,
-      HP_MAX: 56,
-      HP: 56,
-    },
-  },
-  warrior: {
-    id: "warrior",
-    label: "Воин",
-    description: "Надежный боец для прямых столкновений.",
-    baseStats: {
-      STR: 7,
-      INT: 2,
-      AGI: 4,
-      LUK: 3,
-      VISION: 6,
-      baseHP: 56,
-      HP_MAX: 56,
-      HP: 56,
-    },
-  },
-  admin: {
-    id: "admin",
-    label: "Админ",
-    description: "Тестовый персонаж с полным набором предметов.",
-    baseStats: {
-      STR: 8,
-      INT: 8,
-      AGI: 8,
-      LUK: 8,
-      VISION: 8,
-      baseHP: 72,
-      HP_MAX: 72,
-      HP: 72,
-    },
-  },
-};
+export const PRE_GAME_STAT_POINTS = 10;
+
+export function createInitialPreGameStats() {
+  return { STR: 0, INT: 0, AGI: 0, LUK: 0 };
+}
 
 export function createInitialState() {
-  const defaultClassId = Object.keys(CLASS_CONFIG)[0] || null;
   return {
     screen: "welcome",
-    selectedClassId: defaultClassId,
+    preGameStats: createInitialPreGameStats(),
+    preGamePointsRemaining: PRE_GAME_STAT_POINTS,
     playerSheet: null,
     starterLoadout: [],
     run: null,
@@ -89,35 +46,39 @@ export function createInitialState() {
   };
 }
 
-export function createPlayerSheet(classId) {
-  const classData = CLASS_CONFIG[classId];
-  if (!classData) {
-    return null;
-  }
+export function createPlayerSheet(preGameStats) {
+  const alloc = preGameStats || createInitialPreGameStats();
+  const stats = {
+    STR: alloc.STR,
+    INT: alloc.INT,
+    AGI: alloc.AGI,
+    LUK: alloc.LUK,
+    VISION: 6,
+    HP: 1,
+  };
 
-  const stats = { ...classData.baseStats };
-  const derived = buildDerivedStats(stats);
-  const startMana = CLASS_START_MANA[classData.id] || 0;
-  const classSkills = getSkillsForClass(classData.id);
+  const derived = buildDerivedStats(stats, null);
+  const coreSkills = getCoreSkillDefs();
   const skills = {};
-  for (const skill of classSkills) {
+  for (const skill of coreSkills) {
     skills[skill.id] = { learned: false, level: 0 };
   }
 
+  const manaMax = roundStat(30 + (stats.INT || 0) * 6);
+
   return {
-    classId: classData.id,
-    classLabel: classData.label,
-    baseStats: { ...classData.baseStats },
-    stats,
+    baseStats: { ...stats },
+    stats: { ...stats },
     derived,
+    bonusHpMaxFromEffects: 0,
     loadout: [],
     inventory: [],
     level: 1,
     xp: 0,
     xpToNext: PROGRESSION_CONFIG.baseXpToNext,
     unspentPoints: 0,
-    mana: startMana,
-    manaMax: startMana,
+    mana: manaMax,
+    manaMax,
     skillPoints: 0,
     skills,
     effectStacks: {

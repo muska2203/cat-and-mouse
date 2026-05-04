@@ -1,3 +1,5 @@
+import { roundStat } from "./rules.js?v=0.4.3-pre-alpha";
+
 export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now()) {
   if (!canvas || !run) {
     return;
@@ -57,15 +59,17 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
 
   if (Array.isArray(run.objects)) {
     const visibleObjects = run.objects.filter((object) => run.discovered?.[object.y]?.[object.x]);
-    const regularObjects = visibleObjects.filter((object) => object.type !== "enemy" && object.type !== "trap_cloud");
-    const cloudObjects = visibleObjects.filter((object) => object.type === "trap_cloud");
+    const regularObjects = visibleObjects.filter(
+      (object) => object.type !== "enemy" && object.type !== "poison_cloud",
+    );
+    const poisonCloudObjects = visibleObjects.filter((object) => object.type === "poison_cloud");
     const enemies = visibleObjects.filter((object) => object.type === "enemy");
 
     for (const object of regularObjects) {
       drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, nowMs);
     }
 
-    for (const cloud of cloudObjects) {
+    for (const cloud of poisonCloudObjects) {
       const cloudVisual = getObjectVisualPosition(run, cloud, nowMs);
       drawPoisonCloud(ctx, cameraOffsetX, cameraOffsetY, tile, cloudVisual, nowMs, cloud.icon || "☠");
     }
@@ -125,29 +129,15 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   const mouseScreenX = cameraOffsetX + playerVisual.x * tile + tile / 2;
   const mouseScreenY = cameraOffsetY + playerVisual.y * tile + tile / 2;
 
-  if (run.mirrorVeil?.charges > 0) {
-    const pulse = (Math.sin(nowMs * 0.012) + 1) / 2;
-    const radius = Math.floor(tile * (0.36 + pulse * 0.1));
-    const aura = ctx.createRadialGradient(mouseScreenX, mouseScreenY, 4, mouseScreenX, mouseScreenY, radius);
-    aura.addColorStop(0, "rgba(147, 197, 253, 0.22)");
-    aura.addColorStop(0.75, "rgba(125, 211, 252, 0.14)");
-    aura.addColorStop(1, "rgba(56, 189, 248, 0)");
-    ctx.fillStyle = aura;
-    ctx.beginPath();
-    ctx.arc(mouseScreenX, mouseScreenY, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
   ctx.fillText(
     "🐭",
     mouseScreenX,
     mouseScreenY
   );
 
-  const mouseBaseDamage = Math.max(
-    playerSheet?.derived?.ATK_PHYS || 1,
-    playerSheet?.derived?.ATK_MAGIC || 1
-  );
+  const str = playerSheet?.stats?.STR ?? 0;
+  const wd = playerSheet?.derived?.WEAPON_DAMAGE ?? 4;
+  const mouseBaseDamage = Math.max(1, Math.floor(roundStat(wd + str * 1)));
   const mouseDamageMultiplier = Math.max(1, run?.nextHitMultiplier || 1);
   const mouseShownDamage = Math.max(1, Math.floor(mouseBaseDamage * mouseDamageMultiplier));
   // Урон мышки — подпись как у котов, рядом с иконкой мышки.
