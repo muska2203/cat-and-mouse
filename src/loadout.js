@@ -1,4 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.3-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.4-pre-alpha";
+import { attachConsumableApplyToItems } from "./items/consumableApply.js?v=0.4.4-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
@@ -77,7 +78,7 @@ export const LOOT_COMMON_ITEMS = [
     statBonuses: { INT: 1, LUK: 1 },
   },
   {
-    id: "common_crumb_ration",
+    id: "common_hp_recover_10",
     name: "Ломтик сыра",
     type: "consumable",
     subtype: "heal_hp",
@@ -88,7 +89,7 @@ export const LOOT_COMMON_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "common_mint_drop",
+    id: "common_mana_recover_10",
     name: "Капля мяты",
     type: "consumable",
     subtype: "heal_mana",
@@ -99,7 +100,7 @@ export const LOOT_COMMON_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "common_warm_milk",
+    id: "common_hp_mana_recover_6",
     name: "Капля молока",
     type: "consumable",
     subtype: "heal_hybrid",
@@ -110,7 +111,7 @@ export const LOOT_COMMON_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "common_sharp_pepper",
+    id: "common_next_hit_mult_1_5",
     name: "Острая перчинка",
     type: "consumable",
     subtype: "buff",
@@ -121,7 +122,7 @@ export const LOOT_COMMON_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "common_mousetrap",
+    id: "common_trap_damage_8_stun_1",
     name: "Мышеловка",
     type: "consumable",
     subtype: "trap",
@@ -134,7 +135,7 @@ export const LOOT_COMMON_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "common_glue_trap",
+    id: "common_trap_stun_2",
     name: "Клейкая растяжка",
     type: "consumable",
     subtype: "trap",
@@ -222,7 +223,7 @@ export const LOOT_RARE_ITEMS = [
     statBonuses: { INT: 2, LUK: 2 },
   },
   {
-    id: "rare_hearty_stew",
+    id: "rare_hp_recover_18",
     name: "Кусок сыра",
     type: "consumable",
     subtype: "heal_hp",
@@ -233,7 +234,7 @@ export const LOOT_RARE_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "rare_focus_tonic",
+    id: "rare_mana_recover_16",
     name: "Настойка мяты",
     type: "consumable",
     subtype: "heal_mana",
@@ -244,7 +245,7 @@ export const LOOT_RARE_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "rare_dual_elixir",
+    id: "rare_hp_mana_recover_12",
     name: "Крышка молока",
     type: "consumable",
     subtype: "heal_hybrid",
@@ -255,7 +256,7 @@ export const LOOT_RARE_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "rare_battle_pepper",
+    id: "rare_next_hit_mult_2",
     name: "Боевой перец",
     type: "consumable",
     subtype: "buff",
@@ -266,7 +267,7 @@ export const LOOT_RARE_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "rare_venom_trap",
+    id: "rare_trap_poison_cloud",
     name: "Ядовитая мина",
     type: "consumable",
     subtype: "trap",
@@ -363,7 +364,7 @@ export const LOOT_UNIQUE_ITEMS = [
     statBonuses: { INT: 3, LUK: 2 },
   },
   {
-    id: "unique_phoenix_broth",
+    id: "unique_hp_recover_28",
     name: "Головка сыра",
     type: "consumable",
     subtype: "heal_hp",
@@ -374,7 +375,7 @@ export const LOOT_UNIQUE_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "unique_aether_draught",
+    id: "unique_mana_recover_24",
     name: "Эликсир мяты",
     type: "consumable",
     subtype: "heal_mana",
@@ -385,7 +386,7 @@ export const LOOT_UNIQUE_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "unique_twilight_mix",
+    id: "unique_hp_mana_recover_20",
     name: "Бурдюк молока",
     type: "consumable",
     subtype: "heal_hybrid",
@@ -396,7 +397,7 @@ export const LOOT_UNIQUE_ITEMS = [
     statBonuses: {},
   },
   {
-    id: "unique_storm_pepper",
+    id: "unique_next_hit_mult_2_5",
     name: "Грозовой перец",
     type: "consumable",
     subtype: "buff",
@@ -409,14 +410,40 @@ export const LOOT_UNIQUE_ITEMS = [
 ];
 
 const ALL_ITEMS = [...LOOT_COMMON_ITEMS, ...LOOT_RARE_ITEMS, ...LOOT_UNIQUE_ITEMS];
+attachConsumableApplyToItems(ALL_ITEMS);
 let bagInstanceSeq = 0;
+
+const LEGACY_ITEM_ID_ALIASES = {
+  cheese_ration: "common_hp_recover_10_mana_4",
+  common_crumb_ration: "common_hp_recover_10",
+  common_mint_drop: "common_mana_recover_10",
+  common_warm_milk: "common_hp_mana_recover_6",
+  common_sharp_pepper: "common_next_hit_mult_1_5",
+  common_mousetrap: "common_trap_damage_8_stun_1",
+  common_glue_trap: "common_trap_stun_2",
+  rare_hearty_stew: "rare_hp_recover_18",
+  rare_focus_tonic: "rare_mana_recover_16",
+  rare_dual_elixir: "rare_hp_mana_recover_12",
+  rare_battle_pepper: "rare_next_hit_mult_2",
+  rare_venom_trap: "rare_trap_poison_cloud",
+  unique_phoenix_broth: "unique_hp_recover_28",
+  unique_aether_draught: "unique_mana_recover_24",
+  unique_twilight_mix: "unique_hp_mana_recover_20",
+  unique_storm_pepper: "unique_next_hit_mult_2_5",
+  hard_cheese: "stack_hp_max_plus_5",
+  common_cracker: "stack_hp_max_plus_4",
+  rare_royal_cheese: "stack_hp_max_plus_1_heal_20_mana_8",
+  rare_spice_vial: "rare_next_hit_mult_2_alt",
+  pepper_bomb: "common_trap_damage_8_stun_1",
+};
 
 export function getStarterCommonItems() {
   return [...LOOT_COMMON_ITEMS];
 }
 
 export function getItemById(itemId) {
-  return ALL_ITEMS.find((item) => item.id === itemId) || null;
+  const normalizedId = LEGACY_ITEM_ID_ALIASES[itemId] || itemId;
+  return ALL_ITEMS.find((item) => item.id === normalizedId) || null;
 }
 
 export function getAllLootItems() {

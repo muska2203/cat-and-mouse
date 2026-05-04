@@ -1,5 +1,5 @@
-import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.3-pre-alpha";
-import { getCoreSkillDefs } from "./skills.js?v=0.4.3-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.4-pre-alpha";
+import { getCoreSkillDefs } from "./skills.js?v=0.4.4-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -82,9 +82,9 @@ export function createPlayerSheet(preGameStats) {
     skillPoints: 0,
     skills,
     effectStacks: {
-      hard_cheese: 0,
-      common_cracker: 0,
-      rare_royal_cheese: 0,
+      hp_max_plus_5: 0,
+      hp_max_plus_4: 0,
+      hp_max_plus_1: 0,
     },
   };
 }

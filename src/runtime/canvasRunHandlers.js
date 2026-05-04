@@ -1,0 +1,303 @@
+/**
+ * Клик / hover по игровому canvas и автопоход по залоченному пути.
+ * Зависимости передаются снаружи (состояние живёт в main.js).
+ */
+export function createCanvasRunHandlers(deps) {
+  const {
+    getState,
+    rerender,
+    clearPathingState,
+    performStep,
+    tryStep,
+    buildPathToDiscoveredCell,
+    isValidPathTargetCell,
+    screenPointToGrid,
+    isPlayerInputBlocked,
+    getItemById,
+    placeTrap,
+    recalculateSheetFromInventory,
+    consumePlayerActionAndStartEnvironment,
+    clearSkillTargeting,
+    useSkillAtCell,
+    snapshotProgress,
+    maybeOpenSkillsOnNewPoint,
+    maybeTriggerLevelUpPulse,
+    pulseQuickbarSlot,
+    trackSkillUse,
+    normalizeFinishedAnimationsForRun,
+    isBlockingMotionActive,
+  } = deps;
+
+  function onCanvasClick(event, canvas) {
+    const state = getState();
+    if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
+      return;
+    }
+    const nowMs = performance.now();
+    if (isPlayerInputBlocked(nowMs)) {
+      return;
+    }
+
+    const targeting = state.uiHud.skillTargeting;
+    const trapTargeting = state.uiHud.trapTargeting;
+    const rect = canvas.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+    const cell = screenPointToGrid(state.run, localX, localY, rect.width, rect.height);
+    if (!cell) {
+      return;
+    }
+    if (trapTargeting?.itemId) {
+      const canPlace = (trapTargeting.targets || []).some((target) => target.x === cell.x && target.y === cell.y);
+      if (!canPlace) {
+        state.run.lastLog = "Выбери соседнюю свободную клетку для ловушки.";
+        rerender();
+        return;
+      }
+      const item = getItemById(trapTargeting.itemId);
+      const placeResult = placeTrap(state.run, state.playerSheet, item, cell.x, cell.y);
+      state.run = placeResult.run;
+      state.playerSheet = placeResult.playerSheet;
+      if (!placeResult.ok) {
+        state.run.lastLog = placeResult.log || "Не удалось поставить ловушку.";
+        rerender();
+        return;
+      }
+      const nextBag = [...(state.playerSheet.bag || [])];
+      const removeIndex = trapTargeting.bagRemoveIndex;
+      if (Number.isInteger(removeIndex) && removeIndex >= 0 && removeIndex < nextBag.length) {
+        nextBag.splice(removeIndex, 1);
+        state.playerSheet = recalculateSheetFromInventory(
+          state.playerSheet,
+          state.playerSheet.equippedByType,
+          nextBag
+        );
+      }
+      clearSkillTargeting();
+      consumePlayerActionAndStartEnvironment();
+      rerender();
+      return;
+    }
+    if (!targeting?.skillId) {
+      const dx = cell.x - state.run.player.x;
+      const dy = cell.y - state.run.player.y;
+      const directionMap = {
+        "0:-1": "up",
+        "0:1": "down",
+        "-1:0": "left",
+        "1:0": "right",
+        "-1:-1": "up_left",
+        "1:-1": "up_right",
+        "-1:1": "down_left",
+        "1:1": "down_right",
+      };
+      const adjacentDirection = directionMap[`${dx}:${dy}`];
+      if (adjacentDirection) {
+        const consumed = performStep(adjacentDirection);
+        if (consumed) {
+          return;
+        }
+      }
+      lockAutoPathToCell(cell);
+      maybeRunAutoMoveStep();
+      rerender();
+      return;
+    }
+    const progressBefore = snapshotProgress();
+    const result = useSkillAtCell(state.run, state.playerSheet, targeting.skillId, cell.x, cell.y);
+    state.run = result.run;
+    state.playerSheet = result.playerSheet;
+    if (!result.ok) {
+      rerender();
+      return;
+    }
+    if (Number.isInteger(targeting.slotIndex)) {
+      pulseQuickbarSlot(targeting.slotIndex);
+    }
+    clearSkillTargeting();
+    maybeOpenSkillsOnNewPoint(progressBefore.skillPoints);
+    maybeTriggerLevelUpPulse(progressBefore);
+    if (result.actionConsumed) {
+      trackSkillUse(targeting.skillId);
+      consumePlayerActionAndStartEnvironment();
+    }
+    rerender();
+  }
+
+  function onCanvasMouseMove(event, canvas) {
+    const state = getState();
+    if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
+      return;
+    }
+    if (state.uiHud.autoMoveActive || state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
+      return;
+    }
+    const nowMs = performance.now();
+    if (isPlayerInputBlocked(nowMs)) {
+      if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
+        state.uiHud.pathHoverCell = null;
+        state.uiHud.pathPreviewCells = [];
+        rerender();
+      }
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+    const cell = screenPointToGrid(state.run, localX, localY, rect.width, rect.height);
+    if (!cell) {
+      if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
+        state.uiHud.pathHoverCell = null;
+        state.uiHud.pathPreviewCells = [];
+        rerender();
+      }
+      return;
+    }
+    if (!isValidPathTargetCell(state.run, cell)) {
+      if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
+        state.uiHud.pathHoverCell = null;
+        state.uiHud.pathPreviewCells = [];
+        rerender();
+      }
+      return;
+    }
+    const path = buildPathToDiscoveredCell(
+      state.run,
+      { x: state.run.player.x, y: state.run.player.y },
+      { x: cell.x, y: cell.y },
+      {
+        allowPlayer: true,
+        allowGoal: true,
+        blockObjects: true,
+      }
+    );
+    state.uiHud.pathHoverCell = { x: cell.x, y: cell.y };
+    state.uiHud.pathPreviewCells = path.length > 1 ? path.slice(1) : [];
+    rerender();
+  }
+
+  function onCanvasMouseLeave() {
+    const state = getState();
+    if (state.uiHud.autoMoveActive) {
+      return;
+    }
+    if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
+      state.uiHud.pathHoverCell = null;
+      state.uiHud.pathPreviewCells = [];
+      rerender();
+    }
+  }
+
+  function lockAutoPathToCell(targetCell) {
+    const state = getState();
+    if (!state.run || !state.playerSheet) {
+      return;
+    }
+    if (!isValidPathTargetCell(state.run, targetCell)) {
+      state.run.lastLog = "Маршрут можно строить только по открытым проходимым клеткам.";
+      clearPathingState();
+      return;
+    }
+    const path = buildPathToDiscoveredCell(
+      state.run,
+      { x: state.run.player.x, y: state.run.player.y },
+      { x: targetCell.x, y: targetCell.y },
+      {
+        allowPlayer: true,
+        allowGoal: true,
+        blockObjects: true,
+      }
+    );
+    if (path.length < 2) {
+      state.run.lastLog = "Нет доступного пути к выбранной клетке.";
+      clearPathingState();
+      return;
+    }
+    state.uiHud.pathLockedTarget = { x: targetCell.x, y: targetCell.y };
+    state.uiHud.pathLockedCells = path.slice(1).map((cell) => ({ x: cell.x, y: cell.y }));
+    state.uiHud.autoMoveActive = true;
+    state.uiHud.autoMoveLastHp = state.playerSheet?.stats?.HP ?? 0;
+  }
+
+  function advanceLockedPathAfterStep() {
+    const state = getState();
+    if (!state.uiHud.autoMoveActive) {
+      return;
+    }
+    if (!Array.isArray(state.uiHud.pathLockedCells) || state.uiHud.pathLockedCells.length === 0) {
+      clearPathingState();
+      return;
+    }
+    state.uiHud.pathLockedCells = state.uiHud.pathLockedCells.slice(1);
+    if (state.uiHud.pathLockedCells.length === 0) {
+      clearPathingState();
+    }
+  }
+
+  function maybeRunAutoMoveStep() {
+    const state = getState();
+    if (!state.run || !state.playerSheet || !state.uiHud.autoMoveActive) {
+      return;
+    }
+    if (state.screen !== "game" || state.run.status !== "running" || state.run.turnPhase !== "player") {
+      return;
+    }
+    const nowMs = performance.now();
+    normalizeFinishedAnimationsForRun(state.run, nowMs);
+    if (isBlockingMotionActive(state.run.motion, nowMs) || isBlockingMotionActive(state.run.environmentMotion, nowMs)) {
+      return;
+    }
+    const next = state.uiHud.pathLockedCells?.[0];
+    if (!next) {
+      clearPathingState();
+      rerender();
+      return;
+    }
+    const dx = next.x - state.run.player.x;
+    const dy = next.y - state.run.player.y;
+    const directionMap = {
+      "0:-1": "up",
+      "0:1": "down",
+      "-1:0": "left",
+      "1:0": "right",
+      "-1:-1": "up_left",
+      "1:-1": "up_right",
+      "-1:1": "down_left",
+      "1:1": "down_right",
+    };
+    const direction = directionMap[`${dx}:${dy}`];
+    if (!direction) {
+      state.run.lastLog = "Автодвижение остановлено: маршрут устарел.";
+      clearPathingState();
+      rerender();
+      return;
+    }
+    const stepResult = tryStep(state.run, state.playerSheet, direction);
+    if (!stepResult.actionConsumed) {
+      state.run.lastLog = "Автодвижение остановлено: путь заблокирован.";
+      clearPathingState();
+      rerender();
+      return;
+    }
+    state.run = stepResult.run;
+    state.playerSheet = stepResult.playerSheet;
+    if (state.run && stepResult.motion) {
+      state.run.motion = stepResult.motion;
+    }
+    const movedToNextCell = state.run.player.x === next.x && state.run.player.y === next.y;
+    if (movedToNextCell) {
+      advanceLockedPathAfterStep();
+    }
+    consumePlayerActionAndStartEnvironment();
+    rerender();
+  }
+
+  return {
+    onCanvasClick,
+    onCanvasMouseMove,
+    onCanvasMouseLeave,
+    lockAutoPathToCell,
+    advanceLockedPathAfterStep,
+    maybeRunAutoMoveStep,
+  };
+}

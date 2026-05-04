@@ -1,0 +1,149 @@
+import { floorHp } from "../rules.js?v=0.4.4-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.4-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.4-pre-alpha";
+
+export function ensureEnemyStatus(enemy) {
+  if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0 };
+  if (!enemy.data.status) {
+    enemy.data.status = { stunTurns: 0, poisonTurns: 0, poisonDamage: 0 };
+  }
+  return enemy.data.status;
+}
+
+export function ensurePlayerStatus(run) {
+  if (!run.playerStatus) {
+    run.playerStatus = {
+      stunTurns: 0,
+    };
+  }
+  return run.playerStatus;
+}
+
+export function applyTrapEffectToEnemy(run, enemy, trapConfig) {
+  if (!enemy) return "";
+  const status = ensureEnemyStatus(enemy);
+  const parts = [];
+  const damage = Math.max(0, trapConfig?.damage || 0);
+  if (damage > 0) {
+    enemy.data.hp = Math.max(0, (enemy.data?.hp || 0) - damage);
+    run.floatingTexts.push({
+      x: enemy.x,
+      y: enemy.y,
+      value: `-${damage}`,
+      color: "#fca5a5",
+      durationMs: 620,
+      scale: 1.05,
+      startMs: null,
+    });
+    parts.push(`получает ${damage} урона`);
+  }
+  const stunTurns = Math.max(0, trapConfig?.stunTurns || 0);
+  if (stunTurns > 0) {
+    status.stunTurns = Math.max(status.stunTurns || 0, stunTurns);
+    parts.push(`оглушен на ${stunTurns} ход`);
+  }
+  const poisonTurns = Math.max(0, trapConfig?.poisonTurns || 0);
+  const poisonDamage = Math.max(0, trapConfig?.poisonDamage || 0);
+  if (poisonTurns > 0 && poisonDamage > 0) {
+    status.poisonTurns = Math.max(status.poisonTurns || 0, poisonTurns);
+    status.poisonDamage = Math.max(status.poisonDamage || 0, poisonDamage);
+    parts.push(`отравлен (${poisonDamage} x ${poisonTurns})`);
+  }
+  return parts.join(", ");
+}
+
+export function applyTrapEffectToPlayer(run, playerSheet, trapConfig) {
+  const parts = [];
+  const damage = Math.max(0, trapConfig?.damage || 0);
+  if (damage > 0) {
+    const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+    const nextHp = floorHp(hpNow - damage);
+    syncPlayerHp(playerSheet, nextHp);
+    run.floatingTexts.push({
+      x: run.player.x,
+      y: run.player.y,
+      value: `-${damage}`,
+      color: "#fda4af",
+      durationMs: 620,
+      scale: 1.05,
+      startMs: null,
+    });
+    parts.push(`получает ${damage} урона`);
+  }
+  const poisonTurns = Math.max(0, trapConfig?.poisonTurns || 0);
+  const poisonDamage = Math.max(0, trapConfig?.poisonDamage || 0);
+  if (poisonTurns > 0 && poisonDamage > 0) {
+    run.overTimeEffects = [...(run.overTimeEffects || []), {
+      type: "poison_player",
+      turnsLeft: poisonTurns,
+      poisonDamage,
+    }];
+    parts.push(`отравлен (${poisonDamage} x ${poisonTurns})`);
+  }
+  const stunTurns = Math.max(0, trapConfig?.stunTurns || 0);
+  if (stunTurns > 0) {
+    const playerStatus = ensurePlayerStatus(run);
+    playerStatus.stunTurns = Math.max(playerStatus.stunTurns || 0, stunTurns);
+    parts.push(`оглушен на ${stunTurns} ход`);
+  }
+  return parts.join(", ");
+}
+
+export function spawnPoisonCloudObjects(run, centerX, centerY, sourceName, trapConfig) {
+  const durationTurns = Math.max(1, trapConfig?.cloudDurationTurns || 2);
+  const cloudDamage = Math.max(0, trapConfig?.cloudDamage || 0);
+  const cloudPoisonTurns = Math.max(0, trapConfig?.cloudPoisonTurns || 0);
+  const cloudPoisonDamage = Math.max(0, trapConfig?.cloudPoisonDamage || 0);
+  const cells = [];
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      const x = centerX + dx;
+      const y = centerY + dy;
+      if (!inBounds(x, y, run) || isWall(x, y, run)) {
+        continue;
+      }
+      cells.push({ x, y });
+    }
+  }
+  for (const cell of cells) {
+    run.objects.push({
+      id: `poison_cloud_${Date.now()}_${cell.x}_${cell.y}_${Math.floor(Math.random() * 10000)}`,
+      name: "Ядовитый туман",
+      type: "poison_cloud",
+      purpose: "poison_cloud",
+      icon: "☠",
+      oneTime: false,
+      blocksMovement: false,
+      blocksEnemyMovement: false,
+      activation: { by: ["player", "enemy"], effect: "trigger_poison_cloud" },
+      x: cell.x,
+      y: cell.y,
+      data: {
+        sourceName,
+        durationTurns,
+        trapConfig: {
+          damage: cloudDamage,
+          poisonTurns: cloudPoisonTurns,
+          poisonDamage: cloudPoisonDamage,
+        },
+      },
+    });
+  }
+}
+
+export function tickTemporaryObjects(run) {
+  const objects = run.objects || [];
+  const alive = [];
+  for (const object of objects) {
+    if (object.type !== "poison_cloud") {
+      alive.push(object);
+      continue;
+    }
+    const turnsLeft = Math.max(0, (object.data?.durationTurns || 0) - 1);
+    if (turnsLeft > 0) {
+      object.data.durationTurns = turnsLeft;
+      alive.push(object);
+    }
+  }
+  run.objects = alive;
+}

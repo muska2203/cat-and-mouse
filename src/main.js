@@ -1,34 +1,44 @@
-import { createInitialState } from "./state.js?v=0.4.3-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.4.3-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.4.3-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.3-pre-alpha";
-import { chooseStarterLoadoutItem } from "./loadout.js?v=0.4.3-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.4.3-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.3-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.3-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.3-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.3-pre-alpha";
-import { createRunState } from "./game.js?v=0.4.3-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.4.3-pre-alpha";
-import { tryStep } from "./game.js?v=0.4.3-pre-alpha";
-import { useConsumable } from "./game.js?v=0.4.3-pre-alpha";
-import { useSkillAtCell } from "./game.js?v=0.4.3-pre-alpha";
-import { getSkillTargetCells } from "./game.js?v=0.4.3-pre-alpha";
-import { getTrapPlacementCells } from "./game.js?v=0.4.3-pre-alpha";
-import { placeTrap } from "./game.js?v=0.4.3-pre-alpha";
-import { beginEnvironmentTurn } from "./game.js?v=0.4.3-pre-alpha";
-import { stepEnvironmentTurn } from "./game.js?v=0.4.3-pre-alpha";
-import { buildPathToDiscoveredCell } from "./game.js?v=0.4.3-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.3-pre-alpha";
-import { renderApp, buildInventoryItemDetailHtml } from "./ui.js?v=0.4.3-pre-alpha";
-import { getSkillById, getCoreSkillDefs } from "./skills.js?v=0.4.3-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.3-pre-alpha";
-import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.3-pre-alpha";
-import { initAnalytics } from "./analytics.js?v=0.4.3-pre-alpha";
-import { trackEvent } from "./analytics.js?v=0.4.3-pre-alpha";
-import { createRunAnalyticsId } from "./analytics.js?v=0.4.3-pre-alpha";
-import { floorHp } from "./rules.js?v=0.4.3-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.3-pre-alpha";
+import { createInitialState } from "./state.js?v=0.4.4-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.4-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.4.4-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.4-pre-alpha";
+import { chooseStarterLoadoutItem } from "./loadout.js?v=0.4.4-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.4.4-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.4-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.4-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.4-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.4-pre-alpha";
+import { createRunState } from "./game.js?v=0.4.4-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.4.4-pre-alpha";
+import { tryStep } from "./game.js?v=0.4.4-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.4.4-pre-alpha";
+import { useSkillAtCell, getSkillTargetCells } from "./game/runSkills.js?v=0.4.4-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.4-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.4.4-pre-alpha";
+import { beginEnvironmentTurn } from "./game.js?v=0.4.4-pre-alpha";
+import { stepEnvironmentTurn } from "./game.js?v=0.4.4-pre-alpha";
+import { buildPathToDiscoveredCell } from "./game.js?v=0.4.4-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.4-pre-alpha";
+import { renderApp, buildInventoryItemDetailHtml } from "./ui.js?v=0.4.4-pre-alpha";
+import { getSkillById, getCoreSkillDefs } from "./skills.js?v=0.4.4-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.4-pre-alpha";
+import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.4-pre-alpha";
+import { initAnalytics } from "./analytics.js?v=0.4.4-pre-alpha";
+import { trackEvent } from "./analytics.js?v=0.4.4-pre-alpha";
+import { createRunAnalyticsId } from "./analytics.js?v=0.4.4-pre-alpha";
+import { floorHp } from "./rules.js?v=0.4.4-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.4-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.4-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.4-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.4-pre-alpha";
+import {
+  isBlockingMotionActive,
+  normalizeFinishedAnimationsForRun,
+  isLevelTransitionActive as isRunLevelTransitionActive,
+} from "./runtime/motionTiming.js?v=0.4.4-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.4-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.4-pre-alpha";
+import { formatHudStatNumber } from "./ui/hudFormat.js?v=0.4.4-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
@@ -52,57 +62,8 @@ function updateInventoryItemDetailPopover(event) {
   inventoryPopover.updateFromEvent(event);
 }
 
-function formatHudStatNumber(value) {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return String(value);
-  }
-  return Number(value.toFixed(2));
-}
 initAnalytics({ measurementId: GA4_MEASUREMENT_ID, version: APP_VERSION });
 let heldMoveDirection = null;
-
-const MOVE_KEY_MAP = {
-  ArrowUp: "up",
-  ArrowLeft: "left",
-  ArrowDown: "down",
-  ArrowRight: "right",
-  KeyW: "up",
-  KeyA: "left",
-  KeyS: "down",
-  KeyD: "right",
-  w: "up",
-  W: "up",
-  a: "left",
-  A: "left",
-  s: "down",
-  S: "down",
-  d: "right",
-  D: "right",
-  ц: "up",
-  Ц: "up",
-  ф: "left",
-  Ф: "left",
-  ы: "down",
-  Ы: "down",
-  в: "right",
-  В: "right",
-  KeyQ: "up_left",
-  KeyE: "up_right",
-  KeyZ: "down_left",
-  KeyC: "down_right",
-  q: "up_left",
-  Q: "up_left",
-  e: "up_right",
-  E: "up_right",
-  z: "down_left",
-  Z: "down_left",
-  c: "down_right",
-  C: "down_right",
-};
-
-function resolveMoveDirectionFromEvent(event) {
-  return MOVE_KEY_MAP[event.code] || MOVE_KEY_MAP[event.key] || null;
-}
 
 function rerender() {
   hideInventoryItemDetailPopover();
@@ -405,27 +366,7 @@ function onKeyDown(event) {
     return;
   }
 
-  const quickSlotByCode = {
-    Digit1: 0,
-    Digit2: 1,
-    Digit3: 2,
-    Digit4: 3,
-    Digit5: 4,
-    Digit6: 5,
-    Digit7: 6,
-    Digit8: 7,
-    Digit9: 8,
-    Numpad1: 0,
-    Numpad2: 1,
-    Numpad3: 2,
-    Numpad4: 3,
-    Numpad5: 4,
-    Numpad6: 5,
-    Numpad7: 6,
-    Numpad8: 7,
-    Numpad9: 8,
-  };
-  const quickSlot = quickSlotByCode[event.code];
+  const quickSlot = resolveQuickbarSlotIndexFromKeyboardEvent(event);
   if (quickSlot == null) {
     return;
   }
@@ -483,14 +424,13 @@ function animationLoop(nowMs) {
     handleLevelTransition(nowMs);
     maybeStartDeferredEnvironmentTurn(nowMs);
     runEnvironmentPhase(nowMs);
-    maybeRunAutoMoveStep();
+    canvasHandlers.maybeRunAutoMoveStep();
     maybeRunHeldMoveStep(nowMs);
     drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, nowMs);
     animateHpHud();
     animateManaHud();
     maybeExpireLevelUpPulse(nowMs);
   }
-  requestAnimationFrame(animationLoop);
 }
 
 function maybeRunHeldMoveStep(nowMs) {
@@ -811,163 +751,6 @@ function onRootDragEnd(event) {
   state.uiHud.dragPayload = null;
 }
 
-function onCanvasClick(event, canvas) {
-  if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
-    return;
-  }
-  const nowMs = performance.now();
-  if (isPlayerInputBlocked(nowMs)) {
-    return;
-  }
-
-  const targeting = state.uiHud.skillTargeting;
-  const trapTargeting = state.uiHud.trapTargeting;
-  const rect = canvas.getBoundingClientRect();
-  const localX = event.clientX - rect.left;
-  const localY = event.clientY - rect.top;
-  const cell = screenPointToGrid(localX, localY, rect.width, rect.height);
-  if (!cell) {
-    return;
-  }
-  if (trapTargeting?.itemId) {
-    const canPlace = (trapTargeting.targets || []).some((target) => target.x === cell.x && target.y === cell.y);
-    if (!canPlace) {
-      state.run.lastLog = "Выбери соседнюю свободную клетку для ловушки.";
-      rerender();
-      return;
-    }
-    const item = getItemById(trapTargeting.itemId);
-    const placeResult = placeTrap(state.run, state.playerSheet, item, cell.x, cell.y);
-    state.run = placeResult.run;
-    state.playerSheet = placeResult.playerSheet;
-    if (!placeResult.ok) {
-      state.run.lastLog = placeResult.log || "Не удалось поставить ловушку.";
-      rerender();
-      return;
-    }
-    const nextBag = [...(state.playerSheet.bag || [])];
-    const removeIndex = trapTargeting.bagRemoveIndex;
-    if (Number.isInteger(removeIndex) && removeIndex >= 0 && removeIndex < nextBag.length) {
-      nextBag.splice(removeIndex, 1);
-      state.playerSheet = recalculateSheetFromInventory(
-        state.playerSheet,
-        state.playerSheet.equippedByType,
-        nextBag
-      );
-    }
-    clearSkillTargeting();
-    consumePlayerActionAndStartEnvironment();
-    rerender();
-    return;
-  }
-  if (!targeting?.skillId) {
-    const dx = cell.x - state.run.player.x;
-    const dy = cell.y - state.run.player.y;
-    const directionMap = {
-      "0:-1": "up",
-      "0:1": "down",
-      "-1:0": "left",
-      "1:0": "right",
-      "-1:-1": "up_left",
-      "1:-1": "up_right",
-      "-1:1": "down_left",
-      "1:1": "down_right",
-    };
-    const adjacentDirection = directionMap[`${dx}:${dy}`];
-    if (adjacentDirection) {
-      const consumed = performStep(adjacentDirection);
-      if (consumed) {
-        return;
-      }
-    }
-    lockAutoPathToCell(cell);
-    maybeRunAutoMoveStep();
-    rerender();
-    return;
-  }
-  const progressBefore = snapshotProgress();
-  const result = useSkillAtCell(state.run, state.playerSheet, targeting.skillId, cell.x, cell.y);
-  state.run = result.run;
-  state.playerSheet = result.playerSheet;
-  if (!result.ok) {
-    rerender();
-    return;
-  }
-  if (Number.isInteger(targeting.slotIndex)) {
-    pulseQuickbarSlot(targeting.slotIndex);
-  }
-  clearSkillTargeting();
-  maybeOpenSkillsOnNewPoint(progressBefore.skillPoints);
-  maybeTriggerLevelUpPulse(progressBefore);
-  if (result.actionConsumed) {
-    trackSkillUse(targeting.skillId);
-    consumePlayerActionAndStartEnvironment();
-  }
-  rerender();
-}
-
-function onCanvasMouseMove(event, canvas) {
-  if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
-    return;
-  }
-  if (state.uiHud.autoMoveActive || state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
-    return;
-  }
-  const nowMs = performance.now();
-  if (isPlayerInputBlocked(nowMs)) {
-    if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
-      state.uiHud.pathHoverCell = null;
-      state.uiHud.pathPreviewCells = [];
-      rerender();
-    }
-    return;
-  }
-  const rect = canvas.getBoundingClientRect();
-  const localX = event.clientX - rect.left;
-  const localY = event.clientY - rect.top;
-  const cell = screenPointToGrid(localX, localY, rect.width, rect.height);
-  if (!cell) {
-    if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
-      state.uiHud.pathHoverCell = null;
-      state.uiHud.pathPreviewCells = [];
-      rerender();
-    }
-    return;
-  }
-  if (!isValidPathTargetCell(cell)) {
-    if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
-      state.uiHud.pathHoverCell = null;
-      state.uiHud.pathPreviewCells = [];
-      rerender();
-    }
-    return;
-  }
-  const path = buildPathToDiscoveredCell(
-    state.run,
-    { x: state.run.player.x, y: state.run.player.y },
-    { x: cell.x, y: cell.y },
-    {
-      allowPlayer: true,
-      allowGoal: true,
-      blockObjects: true,
-    }
-  );
-  state.uiHud.pathHoverCell = { x: cell.x, y: cell.y };
-  state.uiHud.pathPreviewCells = path.length > 1 ? path.slice(1) : [];
-  rerender();
-}
-
-function onCanvasMouseLeave() {
-  if (state.uiHud.autoMoveActive) {
-    return;
-  }
-  if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
-    state.uiHud.pathHoverCell = null;
-    state.uiHud.pathPreviewCells = [];
-    rerender();
-  }
-}
-
 function useQuickbarSlot(slotIndex) {
   if (!state.playerSheet || !state.run || state.run.turnPhase !== "player") {
     return;
@@ -1265,51 +1048,19 @@ function hasAvailableSkillUpgrade(playerSheet) {
   return false;
 }
 
-function screenPointToGrid(localX, localY, width, height) {
-  if (!state.run) {
-    return null;
-  }
-  const tile = Math.max(24, Math.floor(Math.min(width, height) / 11));
-  const cameraX = state.run.player.x + 0.5;
-  const cameraY = state.run.player.y + 0.5;
-  const offsetX = width / 2 - cameraX * tile;
-  const offsetY = height / 2 - cameraY * tile;
-  const gx = Math.floor((localX - offsetX) / tile);
-  const gy = Math.floor((localY - offsetY) / tile);
-  if (gx < 0 || gy < 0 || gx >= state.run.width || gy >= state.run.height) {
-    return null;
-  }
-  return { x: gx, y: gy };
-}
-
-function isValidPathTargetCell(cell) {
-  if (!state.run || !cell) {
-    return false;
-  }
-  if (cell.x < 0 || cell.y < 0 || cell.x >= state.run.width || cell.y >= state.run.height) {
-    return false;
-  }
-  if (!state.run.discovered?.[cell.y]?.[cell.x]) {
-    return false;
-  }
-  if (state.run.grid?.[cell.y]?.[cell.x] === 1) {
-    return false;
-  }
-  return true;
-}
-
 function buildPreparedSkillPreview(skillId) {
   const skillDef = getSkillById(skillId);
-  const skillState = state.playerSheet?.skills?.[skillId];
+  const normalizedSkillId = skillDef?.id || skillId;
+  const skillState = state.playerSheet?.skills?.[normalizedSkillId] || state.playerSheet?.skills?.[skillId];
   const level = skillState?.level || 0;
   if (!skillDef || level <= 0) {
     return null;
   }
-  if (skillId === "mage_heal") {
+  if (normalizedSkillId === "skill_support_heal") {
     const value = 40 + Math.max(0, (level - 1) * 10);
     return { kind: "heal", value };
   }
-  if (skillId === "warrior_bandage") {
+  if (normalizedSkillId === "skill_support_regen") {
     const value = 5 + level;
     return { kind: "heal", value };
   }
@@ -1447,7 +1198,7 @@ function consumePlayerActionAndStartEnvironment() {
   }
   clearSkillTargeting();
   const nowMs = performance.now();
-  normalizeFinishedAnimations(nowMs);
+  normalizeFinishedAnimationsForRun(state.run, nowMs);
   if (isBlockingMotionActive(state.run.motion, nowMs) || isBlockingMotionActive(state.run.environmentMotion, nowMs)) {
     state.run.deferEnvironmentTurn = true;
     return;
@@ -1460,11 +1211,11 @@ function maybeStartDeferredEnvironmentTurn(nowMs) {
   if (!state.run || state.run.status !== "running" || state.run.turnPhase !== "player" || !state.run.deferEnvironmentTurn) {
     return;
   }
-  normalizeFinishedAnimations(nowMs);
+  normalizeFinishedAnimationsForRun(state.run, nowMs);
   if (isBlockingMotionActive(state.run.motion, nowMs) || isBlockingMotionActive(state.run.environmentMotion, nowMs)) {
     return;
   }
-  if (isLevelTransitionActive(nowMs)) {
+  if (isRunLevelTransitionActive(state.run, nowMs)) {
     return;
   }
   state.run.deferEnvironmentTurn = false;
@@ -1472,57 +1223,15 @@ function maybeStartDeferredEnvironmentTurn(nowMs) {
   rerender();
 }
 
-function isMotionActive(motion, nowMs) {
-  if (!motion) {
-    return false;
-  }
-  if (motion.startMs == null) {
-    return true;
-  }
-  const duration = Math.max(1, motion.durationMs || 0);
-  return nowMs - motion.startMs < duration;
-}
-
-function isBlockingMotionActive(motion, nowMs) {
-  if (!motion) {
-    return false;
-  }
-  return isMotionActive(motion, nowMs);
-}
-
-function normalizeFinishedAnimations(nowMs) {
-  if (!state.run) {
-    return;
-  }
-  if (state.run.motion && !isMotionActive(state.run.motion, nowMs)) {
-    state.run.motion = null;
-  }
-  if (state.run.environmentMotion && !isMotionActive(state.run.environmentMotion, nowMs)) {
-    state.run.environmentMotion = null;
-  }
-}
-
-function isLevelTransitionActive(nowMs) {
-  if (!state.run || state.run.status !== "level_complete" || !state.run.levelTransition) {
-    return false;
-  }
-  const transition = state.run.levelTransition;
-  if (transition.startedMs == null) {
-    return true;
-  }
-  const duration = Math.max(1, transition.durationMs || 0);
-  return nowMs - transition.startedMs < duration;
-}
-
 function isPlayerInputBlocked(nowMs) {
   if (!state.run) {
     return true;
   }
-  normalizeFinishedAnimations(nowMs);
+  normalizeFinishedAnimationsForRun(state.run, nowMs);
   return Boolean(
     isBlockingMotionActive(state.run.motion, nowMs) ||
     isBlockingMotionActive(state.run.environmentMotion, nowMs) ||
-    isLevelTransitionActive(nowMs)
+    isRunLevelTransitionActive(state.run, nowMs)
   );
 }
 
@@ -1583,106 +1292,30 @@ function runEnvironmentPhase(nowMs) {
   }
 }
 
-function lockAutoPathToCell(targetCell) {
-  if (!state.run || !state.playerSheet) {
-    return;
-  }
-  if (!isValidPathTargetCell(targetCell)) {
-    state.run.lastLog = "Маршрут можно строить только по открытым проходимым клеткам.";
-    clearPathingState();
-    return;
-  }
-  const path = buildPathToDiscoveredCell(
-    state.run,
-    { x: state.run.player.x, y: state.run.player.y },
-    { x: targetCell.x, y: targetCell.y },
-    {
-      allowPlayer: true,
-      allowGoal: true,
-      blockObjects: true,
-    }
-  );
-  if (path.length < 2) {
-    state.run.lastLog = "Нет доступного пути к выбранной клетке.";
-    clearPathingState();
-    return;
-  }
-  state.uiHud.pathLockedTarget = { x: targetCell.x, y: targetCell.y };
-  state.uiHud.pathLockedCells = path.slice(1).map((cell) => ({ x: cell.x, y: cell.y }));
-  state.uiHud.autoMoveActive = true;
-  state.uiHud.autoMoveLastHp = state.playerSheet?.stats?.HP ?? 0;
-}
-
-function advanceLockedPathAfterStep() {
-  if (!state.uiHud.autoMoveActive) {
-    return;
-  }
-  if (!Array.isArray(state.uiHud.pathLockedCells) || state.uiHud.pathLockedCells.length === 0) {
-    clearPathingState();
-    return;
-  }
-  state.uiHud.pathLockedCells = state.uiHud.pathLockedCells.slice(1);
-  if (state.uiHud.pathLockedCells.length === 0) {
-    clearPathingState();
-  }
-}
-
-function maybeRunAutoMoveStep() {
-  if (!state.run || !state.playerSheet || !state.uiHud.autoMoveActive) {
-    return;
-  }
-  if (state.screen !== "game" || state.run.status !== "running" || state.run.turnPhase !== "player") {
-    return;
-  }
-  const nowMs = performance.now();
-  normalizeFinishedAnimations(nowMs);
-  if (isBlockingMotionActive(state.run.motion, nowMs) || isBlockingMotionActive(state.run.environmentMotion, nowMs)) {
-    return;
-  }
-  const next = state.uiHud.pathLockedCells?.[0];
-  if (!next) {
-    clearPathingState();
-    rerender();
-    return;
-  }
-  const dx = next.x - state.run.player.x;
-  const dy = next.y - state.run.player.y;
-  const directionMap = {
-    "0:-1": "up",
-    "0:1": "down",
-    "-1:0": "left",
-    "1:0": "right",
-    "-1:-1": "up_left",
-    "1:-1": "up_right",
-    "-1:1": "down_left",
-    "1:1": "down_right",
-  };
-  const direction = directionMap[`${dx}:${dy}`];
-  if (!direction) {
-    state.run.lastLog = "Автодвижение остановлено: маршрут устарел.";
-    clearPathingState();
-    rerender();
-    return;
-  }
-  const stepResult = tryStep(state.run, state.playerSheet, direction);
-  if (!stepResult.actionConsumed) {
-    state.run.lastLog = "Автодвижение остановлено: путь заблокирован.";
-    clearPathingState();
-    rerender();
-    return;
-  }
-  state.run = stepResult.run;
-  state.playerSheet = stepResult.playerSheet;
-  if (state.run && stepResult.motion) {
-    state.run.motion = stepResult.motion;
-  }
-  const movedToNextCell = state.run.player.x === next.x && state.run.player.y === next.y;
-  if (movedToNextCell) {
-    advanceLockedPathAfterStep();
-  }
-  consumePlayerActionAndStartEnvironment();
-  rerender();
-}
+const canvasHandlers = createCanvasRunHandlers({
+  getState: () => state,
+  rerender,
+  clearPathingState,
+  performStep,
+  tryStep,
+  buildPathToDiscoveredCell,
+  isValidPathTargetCell,
+  screenPointToGrid,
+  isPlayerInputBlocked,
+  getItemById,
+  placeTrap,
+  recalculateSheetFromInventory,
+  consumePlayerActionAndStartEnvironment,
+  clearSkillTargeting,
+  useSkillAtCell,
+  snapshotProgress,
+  maybeOpenSkillsOnNewPoint,
+  maybeTriggerLevelUpPulse,
+  pulseQuickbarSlot,
+  trackSkillUse,
+  normalizeFinishedAnimationsForRun,
+  isBlockingMotionActive,
+});
 
 root.addEventListener("click", onRootClick);
 root.addEventListener("wheel", onRootWheel, { passive: false });
@@ -1705,24 +1338,24 @@ root.addEventListener("mouseup", (event) => {
         return;
       }
     }
-    onCanvasClick(event, canvas);
+    canvasHandlers.onCanvasClick(event, canvas);
   }
 });
 root.addEventListener("mousemove", (event) => {
   updateInventoryItemDetailPopover(event);
   const canvas = event.target.closest("#gameCanvas");
   if (canvas) {
-    onCanvasMouseMove(event, canvas);
+    canvasHandlers.onCanvasMouseMove(event, canvas);
   }
 });
 root.addEventListener("mouseout", (event) => {
   if (event.target.closest("#gameCanvas") && !event.relatedTarget?.closest?.("#gameCanvas")) {
-    onCanvasMouseLeave();
+    canvasHandlers.onCanvasMouseLeave();
   }
 });
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("keyup", onKeyUp);
 window.addEventListener("resize", onResize);
 window.addEventListener("blur", hideInventoryItemDetailPopover);
-requestAnimationFrame(animationLoop);
+startAnimationLoop(animationLoop);
 rerender();

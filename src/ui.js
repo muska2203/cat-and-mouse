@@ -1,16 +1,16 @@
-import { createPlayerSheet } from "./state.js?v=0.4.3-pre-alpha";
-import { PRE_GAME_STAT_POINTS } from "./state.js?v=0.4.3-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.4.3-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.3-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.3-pre-alpha";
-import { getStarterCommonItems } from "./loadout.js?v=0.4.3-pre-alpha";
-import { STARTER_LOADOUT_MAX } from "./loadout.js?v=0.4.3-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.3-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.3-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.4.3-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.3-pre-alpha";
-import { getSkillById, getCoreSkillDefs, getSkillHoverText } from "./skills.js?v=0.4.3-pre-alpha";
-import { roundStat } from "./rules.js?v=0.4.3-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.4-pre-alpha";
+import { PRE_GAME_STAT_POINTS } from "./state.js?v=0.4.4-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.4.4-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.4-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.4-pre-alpha";
+import { getStarterCommonItems } from "./loadout.js?v=0.4.4-pre-alpha";
+import { STARTER_LOADOUT_MAX } from "./loadout.js?v=0.4.4-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.4-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.4-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.4.4-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.4-pre-alpha";
+import { getSkillById, getCoreSkillDefs, getSkillHoverText } from "./skills.js?v=0.4.4-pre-alpha";
+import { roundStat } from "./rules.js?v=0.4.4-pre-alpha";
 import {
   STRINGS_RU,
   welcomeSubtitleAlloc,
@@ -24,9 +24,9 @@ import {
   activeEffectBandageRemaining,
   activeEffectStacksLine,
   localizeStatText,
-} from "./strings/ru.js?v=0.4.3-pre-alpha";
-import { getConsumableHoverText } from "./items/itemPresentation.js?v=0.4.3-pre-alpha";
-import { getStatDescriptionRu } from "./player/statCopy.js?v=0.4.3-pre-alpha";
+} from "./strings/ru.js?v=0.4.4-pre-alpha";
+import { getConsumableHoverText } from "./items/itemPresentation.js?v=0.4.4-pre-alpha";
+import { getStatDescriptionRu } from "./player/statCopy.js?v=0.4.4-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -1197,34 +1197,34 @@ function collectActiveEffects(state) {
       stacksText: "1",
     });
   }
-  if ((stacks.hard_cheese || 0) > 0) {
+  if ((stacks.hp_max_plus_5 || 0) > 0) {
     effects.push({
       name: ae.hardCheeseName,
       icon: "🧀",
       badge: "∞",
       remainingText: ae.hardCheeseRemaining,
       description: ae.hardCheeseDesc,
-      stacksText: activeEffectStacksLine(stacks.hard_cheese, stacks.hard_cheese * 5),
+      stacksText: activeEffectStacksLine(stacks.hp_max_plus_5, stacks.hp_max_plus_5 * 5),
     });
   }
-  if ((stacks.common_cracker || 0) > 0) {
+  if ((stacks.hp_max_plus_4 || 0) > 0) {
     effects.push({
       name: ae.crackerName,
       icon: "🥨",
       badge: "∞",
       remainingText: ae.hardCheeseRemaining,
       description: ae.crackerDesc,
-      stacksText: activeEffectStacksLine(stacks.common_cracker, stacks.common_cracker * 4),
+      stacksText: activeEffectStacksLine(stacks.hp_max_plus_4, stacks.hp_max_plus_4 * 4),
     });
   }
-  if ((stacks.rare_royal_cheese || 0) > 0) {
+  if ((stacks.hp_max_plus_1 || 0) > 0) {
     effects.push({
       name: ae.royalCheeseName,
       icon: "👑",
       badge: "∞",
       remainingText: ae.hardCheeseRemaining,
       description: ae.royalCheeseDesc,
-      stacksText: activeEffectStacksLine(stacks.rare_royal_cheese, stacks.rare_royal_cheese),
+      stacksText: activeEffectStacksLine(stacks.hp_max_plus_1, stacks.hp_max_plus_1),
     });
   }
   return effects;
