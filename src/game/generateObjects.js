@@ -1,6 +1,6 @@
-import { ACTOR_KIND } from "./cellObjects.js?v=0.4.4-pre-alpha";
-import { getChestCountsForLevel } from "./chestLoot.js?v=0.4.4-pre-alpha";
-import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.4.4-pre-alpha";
+import { ACTOR_KIND } from "./cellObjects.js?v=0.4.5-pre-alpha";
+import { getChestCountsForLevel } from "./chestLoot.js?v=0.4.5-pre-alpha";
+import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.4.5-pre-alpha";
 
 export function generateObjects(maze, level = 1, options = {}) {
   const freeCells = [];

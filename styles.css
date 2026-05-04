@@ -363,6 +363,20 @@ body {
   text-align: right;
 }
 
+.hud-preview-value {
+  color: #86efac;
+  font-weight: 700;
+}
+
+.stat-preview-base {
+  color: inherit;
+}
+
+.stat-preview-arrow {
+  color: #86efac;
+  font-weight: 700;
+}
+
 .stats-group {
   margin-top: 12px;
 }
@@ -371,6 +385,14 @@ body {
   margin-bottom: 8px;
   color: #cbd5e1;
   font-size: 13px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stats-points-badge {
+  color: #86efac;
+  font-weight: 700;
 }
 
 .progression-line {
@@ -400,12 +422,12 @@ body {
 
 .xp-fill {
   height: 100%;
-  background: linear-gradient(90deg, #60a5fa 0%, #2563eb 100%);
+  background: linear-gradient(90deg, #facc15 0%, #f59e0b 100%);
 }
 
 .xp-value {
   margin-top: 6px;
-  color: #bfdbfe;
+  color: #fde68a;
   font-size: 13px;
   text-align: right;
 }
@@ -847,10 +869,57 @@ body {
   margin: 0 0 10px;
 }
 
+.help-modal-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.help-modal-tab-btn {
+  padding: 6px 10px;
+  font-size: 13px;
+  background: #1f2937;
+  color: #cbd5e1;
+}
+
+.help-modal-tab-active {
+  background: #0b1220;
+  border: 1px solid #475569;
+  color: #f8fafc;
+}
+
+.help-modal-content {
+  margin-bottom: 10px;
+}
+
 .help-modal p {
   margin: 8px 0;
   color: #cbd5e1;
   line-height: 1.35;
+}
+
+.devlog-entry + .devlog-entry {
+  margin-top: 12px;
+}
+
+.devlog-version {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #f8fafc;
+}
+
+.devlog-changes {
+  margin: 0;
+  padding-left: 18px;
+  color: #cbd5e1;
+}
+
+.devlog-changes li + li {
+  margin-top: 4px;
+}
+
+.devlog-empty {
+  color: #94a3b8;
 }
 
 @keyframes skills-screen-fade-in {

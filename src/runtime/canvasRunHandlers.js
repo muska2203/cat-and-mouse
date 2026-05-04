@@ -14,6 +14,7 @@ export function createCanvasRunHandlers(deps) {
     screenPointToGrid,
     isPlayerInputBlocked,
     getItemById,
+    getEnemyById,
     placeTrap,
     recalculateSheetFromInventory,
     consumePlayerActionAndStartEnvironment,
@@ -27,6 +28,13 @@ export function createCanvasRunHandlers(deps) {
     normalizeFinishedAnimationsForRun,
     isBlockingMotionActive,
   } = deps;
+
+  function getEnemyAtCell(run, cell) {
+    if (!run || !cell) {
+      return null;
+    }
+    return run.objects.find((object) => object.type === "enemy" && object.x === cell.x && object.y === cell.y) || null;
+  }
 
   function onCanvasClick(event, canvas) {
     const state = getState();
@@ -43,7 +51,14 @@ export function createCanvasRunHandlers(deps) {
     const rect = canvas.getBoundingClientRect();
     const localX = event.clientX - rect.left;
     const localY = event.clientY - rect.top;
-    const cell = screenPointToGrid(state.run, localX, localY, rect.width, rect.height);
+    const cell = screenPointToGrid(
+      state.run,
+      localX,
+      localY,
+      rect.width,
+      rect.height,
+      state.uiHud?.canvasZoom ?? 1,
+    );
     if (!cell) {
       return;
     }
@@ -79,6 +94,7 @@ export function createCanvasRunHandlers(deps) {
       return;
     }
     if (!targeting?.skillId) {
+      const enemyAtCell = getEnemyAtCell(state.run, cell);
       const dx = cell.x - state.run.player.x;
       const dy = cell.y - state.run.player.y;
       const directionMap = {
@@ -98,7 +114,11 @@ export function createCanvasRunHandlers(deps) {
           return;
         }
       }
-      lockAutoPathToCell(cell);
+      if (enemyAtCell) {
+        lockAutoPathToEnemy(enemyAtCell.id);
+      } else {
+        lockAutoPathToCell(cell);
+      }
       maybeRunAutoMoveStep();
       rerender();
       return;
@@ -144,18 +164,27 @@ export function createCanvasRunHandlers(deps) {
     const rect = canvas.getBoundingClientRect();
     const localX = event.clientX - rect.left;
     const localY = event.clientY - rect.top;
-    const cell = screenPointToGrid(state.run, localX, localY, rect.width, rect.height);
+    const cell = screenPointToGrid(
+      state.run,
+      localX,
+      localY,
+      rect.width,
+      rect.height,
+      state.uiHud?.canvasZoom ?? 1,
+    );
     if (!cell) {
-      if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
+      if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0 || state.uiHud.pathHoverEnemy) {
         state.uiHud.pathHoverCell = null;
+        state.uiHud.pathHoverEnemy = false;
         state.uiHud.pathPreviewCells = [];
         rerender();
       }
       return;
     }
     if (!isValidPathTargetCell(state.run, cell)) {
-      if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
+      if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0 || state.uiHud.pathHoverEnemy) {
         state.uiHud.pathHoverCell = null;
+        state.uiHud.pathHoverEnemy = false;
         state.uiHud.pathPreviewCells = [];
         rerender();
       }
@@ -172,6 +201,7 @@ export function createCanvasRunHandlers(deps) {
       }
     );
     state.uiHud.pathHoverCell = { x: cell.x, y: cell.y };
+    state.uiHud.pathHoverEnemy = Boolean(getEnemyAtCell(state.run, cell));
     state.uiHud.pathPreviewCells = path.length > 1 ? path.slice(1) : [];
     rerender();
   }
@@ -181,8 +211,9 @@ export function createCanvasRunHandlers(deps) {
     if (state.uiHud.autoMoveActive) {
       return;
     }
-    if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
+    if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0 || state.uiHud.pathHoverEnemy) {
       state.uiHud.pathHoverCell = null;
+      state.uiHud.pathHoverEnemy = false;
       state.uiHud.pathPreviewCells = [];
       rerender();
     }
@@ -214,6 +245,41 @@ export function createCanvasRunHandlers(deps) {
       return;
     }
     state.uiHud.pathLockedTarget = { x: targetCell.x, y: targetCell.y };
+    state.uiHud.pathLockedEnemyId = null;
+    state.uiHud.pathLockedCells = path.slice(1).map((cell) => ({ x: cell.x, y: cell.y }));
+    state.uiHud.autoMoveActive = true;
+    state.uiHud.autoMoveLastHp = state.playerSheet?.stats?.HP ?? 0;
+  }
+
+  function lockAutoPathToEnemy(enemyId) {
+    const state = getState();
+    if (!state.run || !state.playerSheet || !enemyId) {
+      return;
+    }
+    const enemy = getEnemyById(state.run, enemyId);
+    if (!enemy) {
+      state.run.lastLog = "Автодвижение к противнику не запущено: цель не найдена.";
+      clearPathingState();
+      return;
+    }
+    const targetCell = { x: enemy.x, y: enemy.y };
+    const path = buildPathToDiscoveredCell(
+      state.run,
+      { x: state.run.player.x, y: state.run.player.y },
+      targetCell,
+      {
+        allowPlayer: true,
+        allowGoal: true,
+        blockObjects: true,
+      }
+    );
+    if (path.length < 2) {
+      state.run.lastLog = "Нет доступного пути к выбранному противнику.";
+      clearPathingState();
+      return;
+    }
+    state.uiHud.pathLockedTarget = targetCell;
+    state.uiHud.pathLockedEnemyId = enemyId;
     state.uiHud.pathLockedCells = path.slice(1).map((cell) => ({ x: cell.x, y: cell.y }));
     state.uiHud.autoMoveActive = true;
     state.uiHud.autoMoveLastHp = state.playerSheet?.stats?.HP ?? 0;
@@ -246,6 +312,34 @@ export function createCanvasRunHandlers(deps) {
     normalizeFinishedAnimationsForRun(state.run, nowMs);
     if (isBlockingMotionActive(state.run.motion, nowMs) || isBlockingMotionActive(state.run.environmentMotion, nowMs)) {
       return;
+    }
+    if (state.uiHud.pathLockedEnemyId) {
+      const targetEnemy = getEnemyById(state.run, state.uiHud.pathLockedEnemyId);
+      if (!targetEnemy) {
+        state.run.lastLog = "Автодвижение остановлено: противник больше не найден.";
+        clearPathingState();
+        rerender();
+        return;
+      }
+      const targetCell = { x: targetEnemy.x, y: targetEnemy.y };
+      const path = buildPathToDiscoveredCell(
+        state.run,
+        { x: state.run.player.x, y: state.run.player.y },
+        targetCell,
+        {
+          allowPlayer: true,
+          allowGoal: true,
+          blockObjects: true,
+        }
+      );
+      if (path.length < 2) {
+        state.run.lastLog = "Автодвижение остановлено: путь к противнику недоступен.";
+        clearPathingState();
+        rerender();
+        return;
+      }
+      state.uiHud.pathLockedTarget = targetCell;
+      state.uiHud.pathLockedCells = path.slice(1).map((cell) => ({ x: cell.x, y: cell.y }));
     }
     const next = state.uiHud.pathLockedCells?.[0];
     if (!next) {
@@ -297,6 +391,7 @@ export function createCanvasRunHandlers(deps) {
     onCanvasMouseMove,
     onCanvasMouseLeave,
     lockAutoPathToCell,
+    lockAutoPathToEnemy,
     advanceLockedPathAfterStep,
     maybeRunAutoMoveStep,
   };

@@ -1,4 +1,4 @@
-import { PROGRESSION_CONFIG } from "../state.js?v=0.4.4-pre-alpha";
+import { PROGRESSION_CONFIG } from "../state.js?v=0.4.5-pre-alpha";
 
 export function getXpForEnemy(enemyId) {
   if (enemyId?.startsWith("cat_big")) return 15;

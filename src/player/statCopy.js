@@ -32,5 +32,8 @@ export function getStatDescriptionRu(statName, playerSheet) {
   if (statName === "CRIT_MULT") {
     return `КРИТ Х: для рукопашной — база оружия + ЛВК×0.02 + СИЛ×0.03. Сейчас: x${derived.CRIT_MULT ?? 1}.`;
   }
+  if (statName === "TOTAL_DAMAGE") {
+    return "Итоговый урон обычной атаки: база оружия + вклад СИЛ (без учета критов и временных множителей).";
+  }
   return "Характеристика персонажа.";
 }

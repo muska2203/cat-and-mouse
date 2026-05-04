@@ -1,6 +1,6 @@
-import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.4-pre-alpha";
-import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.4-pre-alpha";
-import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.4-pre-alpha";
+import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.5-pre-alpha";
+import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.5-pre-alpha";
+import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.5-pre-alpha";
 
 export function useConsumable(run, playerSheet, item) {
   if (!run || !playerSheet || !item?.isConsumable) {

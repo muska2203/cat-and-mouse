@@ -1,4 +1,4 @@
-import { randomInt } from "./rng.js?v=0.4.4-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.5-pre-alpha";
 
 function weightedEnemyType(level) {
   const t = Math.max(0, Math.min(1, (level - 1) / 9));

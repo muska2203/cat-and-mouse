@@ -1,6 +1,6 @@
-import { roundStat } from "./rules.js?v=0.4.4-pre-alpha";
+import { roundStat } from "./rules.js?v=0.4.5-pre-alpha";
 
-export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now()) {
+export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1) {
   if (!canvas || !run) {
     return;
   }
@@ -22,7 +22,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   ctx.fillRect(0, 0, width, height);
 
   const playerVisual = getPlayerVisual(run, nowMs);
-  const tile = Math.max(24, Math.floor(Math.min(width, height) / 11));
+  const tile = Math.max(16, Math.floor((Math.min(width, height) / 11) * normalizeCanvasZoom(zoomScale)));
   const cameraX = playerVisual.x + 0.5;
   const cameraY = playerVisual.y + 0.5;
   const shake = getScreenShakeOffset(run, nowMs);
@@ -55,7 +55,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   ctx.textBaseline = "middle";
   ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
 
-  drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile);
+  drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs);
 
   if (Array.isArray(run.objects)) {
     const visibleObjects = run.objects.filter((object) => run.discovered?.[object.y]?.[object.x]);
@@ -162,16 +162,21 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   drawLevelTransitionOverlay(ctx, run, width, height, nowMs);
 }
 
-function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile) {
+function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) {
   const hoverCell = run.hoverCell;
+  const hoverCellEnemy = Boolean(run.hoverCellEnemy);
   const previewCells = Array.isArray(run.previewPathCells) ? run.previewPathCells : [];
   const lockedCells = Array.isArray(run.lockedPathCells) ? run.lockedPathCells : [];
   const lockedTarget = run.lockedPathTarget;
+  const lockedEnemyTarget = Boolean(run.lockedPathEnemyId);
+  const lockedEnemy = lockedEnemyTarget
+    ? run.objects?.find((object) => object.type === "enemy" && object.id === run.lockedPathEnemyId) || null
+    : null;
 
   if (hoverCell && run.discovered?.[hoverCell.y]?.[hoverCell.x] && !lockedTarget) {
     const px = Math.floor(cameraOffsetX + hoverCell.x * tile);
     const py = Math.floor(cameraOffsetY + hoverCell.y * tile);
-    ctx.strokeStyle = "rgba(203, 213, 225, 0.8)";
+    ctx.strokeStyle = hoverCellEnemy ? "rgba(248, 113, 113, 0.9)" : "rgba(203, 213, 225, 0.8)";
     ctx.lineWidth = 1.5;
     ctx.strokeRect(px + 2, py + 2, tile - 4, tile - 4);
   }
@@ -181,21 +186,40 @@ function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile) {
     ctx.save();
     ctx.setLineDash([6, 5]);
     ctx.lineWidth = 2;
-    ctx.strokeStyle = lockedCells.length > 0 ? "rgba(34, 197, 94, 0.95)" : "rgba(148, 163, 184, 0.9)";
+    ctx.strokeStyle = lockedCells.length > 0
+      ? (lockedEnemyTarget ? "rgba(239, 68, 68, 0.95)" : "rgba(34, 197, 94, 0.95)")
+      : "rgba(148, 163, 184, 0.9)";
     ctx.beginPath();
     ctx.moveTo(cameraOffsetX + run.player.x * tile + tile / 2, cameraOffsetY + run.player.y * tile + tile / 2);
     for (let i = 0; i < pathForDraw.length; i += 1) {
       const cell = pathForDraw[i];
+      if (lockedEnemyTarget && lockedCells.length > 0 && i === pathForDraw.length - 1) {
+        continue;
+      }
       ctx.lineTo(cameraOffsetX + cell.x * tile + tile / 2, cameraOffsetY + cell.y * tile + tile / 2);
+    }
+    if (lockedEnemyTarget && lockedEnemy) {
+      const enemyVisual = getObjectVisualPosition(run, lockedEnemy, nowMs);
+      ctx.lineTo(
+        cameraOffsetX + enemyVisual.x * tile + tile / 2,
+        cameraOffsetY + enemyVisual.y * tile + tile / 2,
+      );
     }
     ctx.stroke();
     ctx.restore();
   }
 
   if (lockedTarget && run.discovered?.[lockedTarget.y]?.[lockedTarget.x]) {
-    const px = Math.floor(cameraOffsetX + lockedTarget.x * tile);
-    const py = Math.floor(cameraOffsetY + lockedTarget.y * tile);
-    ctx.strokeStyle = "rgba(74, 222, 128, 0.95)";
+    let targetVisual = { x: lockedTarget.x, y: lockedTarget.y };
+    if (lockedEnemyTarget) {
+      if (lockedEnemy && run.discovered?.[lockedEnemy.y]?.[lockedEnemy.x]) {
+        // Для автопути на врага привязываем рамку к визуальной позиции объекта (с анимацией).
+        targetVisual = getObjectVisualPosition(run, lockedEnemy, nowMs);
+      }
+    }
+    const px = Math.floor(cameraOffsetX + targetVisual.x * tile);
+    const py = Math.floor(cameraOffsetY + targetVisual.y * tile);
+    ctx.strokeStyle = lockedEnemyTarget ? "rgba(248, 113, 113, 0.98)" : "rgba(74, 222, 128, 0.95)";
     ctx.lineWidth = 2;
     ctx.strokeRect(px + 2, py + 2, tile - 4, tile - 4);
   }
@@ -250,28 +274,74 @@ function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, no
   const cy = cameraOffsetY + objectVisual.y * tile + tile / 2;
   if (object.type === "ground_loot") {
     const icon = object?.data?.itemIcon || "?";
-    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.62)";
+    const rarity = getItemRarityById(object?.data?.itemId);
+    const rarityColors = getGroundLootRarityColors(rarity);
+    ctx.save();
+    if (rarityColors.glowBlur > 0) {
+      ctx.shadowColor = rarityColors.glowColor;
+      ctx.shadowBlur = rarityColors.glowBlur;
+    }
+    ctx.fillStyle = rarityColors.panelFill;
+    ctx.strokeStyle = rarityColors.panelStroke;
     ctx.lineWidth = Math.max(1, Math.floor(tile * 0.04));
     const boxPad = Math.max(2, Math.floor(tile * 0.1));
     const boxSize = tile - boxPad * 2;
     ctx.fillRect(px + boxPad, py + boxPad, boxSize, boxSize);
     ctx.strokeRect(px + boxPad, py + boxPad, boxSize, boxSize);
 
-    ctx.fillStyle = "rgba(2, 6, 23, 0.72)";
+    ctx.fillStyle = rarityColors.badgeFill;
     const badgeSize = Math.max(12, Math.floor(tile * 0.52));
     ctx.fillRect(cx - badgeSize / 2, cy - badgeSize / 2, badgeSize, badgeSize);
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.55)";
+    ctx.strokeStyle = rarityColors.badgeStroke;
     ctx.strokeRect(cx - badgeSize / 2, cy - badgeSize / 2, badgeSize, badgeSize);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = `${Math.max(11, Math.floor(tile * 0.42))}px Arial`;
     ctx.fillText(icon, cx, cy);
+    ctx.restore();
     return;
   }
   ctx.fillStyle = "#ffffff";
   ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
   ctx.fillText(object.icon || "?", cx, cy);
+}
+
+function getItemRarityById(itemId) {
+  const id = String(itemId || "");
+  if (id.startsWith("unique_")) return "unique";
+  if (id.startsWith("rare_")) return "rare";
+  return "common";
+}
+
+function getGroundLootRarityColors(rarity) {
+  if (rarity === "unique") {
+    return {
+      panelFill: "#2a1742",
+      panelStroke: "#6f42c1",
+      badgeFill: "rgba(30, 18, 46, 0.88)",
+      badgeStroke: "rgba(196, 181, 253, 0.42)",
+      glowColor: "rgba(168, 85, 247, 0.5)",
+      glowBlur: 14,
+    };
+  }
+  if (rarity === "rare") {
+    return {
+      panelFill: "#10233f",
+      panelStroke: "#2f5f9f",
+      badgeFill: "rgba(10, 28, 54, 0.84)",
+      badgeStroke: "rgba(96, 165, 250, 0.44)",
+      glowColor: "rgba(59, 130, 246, 0.35)",
+      glowBlur: 10,
+    };
+  }
+  return {
+    panelFill: "#12261b",
+    panelStroke: "#2f6f4f",
+    badgeFill: "rgba(10, 33, 23, 0.84)",
+    badgeStroke: "rgba(74, 222, 128, 0.38)",
+    glowColor: "rgba(34, 197, 94, 0.24)",
+    glowBlur: 6,
+  };
 }
 
 function drawPoisonCloud(ctx, cameraOffsetX, cameraOffsetY, tile, cloudVisual, nowMs, icon) {
@@ -428,4 +498,12 @@ function drawLevelTransitionOverlay(ctx, run, width, height, nowMs) {
   ctx.fillText(`Уровень ${run.level + 1}`, width / 2, height / 2 - 8);
   ctx.font = "400 16px Arial";
   ctx.fillText("Подземный ход перестраивается...", width / 2, height / 2 + 24);
+}
+
+function normalizeCanvasZoom(value) {
+  const zoom = Number(value);
+  if (!Number.isFinite(zoom)) {
+    return 1;
+  }
+  return Math.max(0.35, Math.min(1.5, zoom));
 }

@@ -1,16 +1,16 @@
-import { createPlayerSheet } from "./state.js?v=0.4.4-pre-alpha";
-import { PRE_GAME_STAT_POINTS } from "./state.js?v=0.4.4-pre-alpha";
-import { EQUIP_TYPES } from "./loadout.js?v=0.4.4-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.4-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.4-pre-alpha";
-import { getStarterCommonItems } from "./loadout.js?v=0.4.4-pre-alpha";
-import { STARTER_LOADOUT_MAX } from "./loadout.js?v=0.4.4-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.4-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.4-pre-alpha";
-import { APP_TITLE } from "./app-config.js?v=0.4.4-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.4-pre-alpha";
-import { getSkillById, getCoreSkillDefs, getSkillHoverText } from "./skills.js?v=0.4.4-pre-alpha";
-import { roundStat } from "./rules.js?v=0.4.4-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.5-pre-alpha";
+import { PRE_GAME_STAT_POINTS } from "./state.js?v=0.4.5-pre-alpha";
+import { EQUIP_TYPES } from "./loadout.js?v=0.4.5-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.5-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.5-pre-alpha";
+import { getStarterCommonItems } from "./loadout.js?v=0.4.5-pre-alpha";
+import { STARTER_LOADOUT_MAX } from "./loadout.js?v=0.4.5-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.5-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.5-pre-alpha";
+import { APP_TITLE } from "./app-config.js?v=0.4.5-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.5-pre-alpha";
+import { getSkillById, getCoreSkillDefs, getSkillHoverText } from "./skills.js?v=0.4.5-pre-alpha";
+import { roundStat } from "./rules.js?v=0.4.5-pre-alpha";
 import {
   STRINGS_RU,
   welcomeSubtitleAlloc,
@@ -24,9 +24,10 @@ import {
   activeEffectBandageRemaining,
   activeEffectStacksLine,
   localizeStatText,
-} from "./strings/ru.js?v=0.4.4-pre-alpha";
-import { getConsumableHoverText } from "./items/itemPresentation.js?v=0.4.4-pre-alpha";
-import { getStatDescriptionRu } from "./player/statCopy.js?v=0.4.4-pre-alpha";
+} from "./strings/ru.js?v=0.4.5-pre-alpha";
+import { getConsumableHoverText } from "./items/itemPresentation.js?v=0.4.5-pre-alpha";
+import { getStatDescriptionRu } from "./player/statCopy.js?v=0.4.5-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.5-pre-alpha";
 
 const STAT_LABELS_RU = {
   STR: "СИЛ",
@@ -39,6 +40,7 @@ const STAT_LABELS_RU = {
   HP_MAX_COMPUTED: "HP МАКС (Ф)",
   CRIT_CHANCE: "КРИТ %",
   CRIT_MULT: "КРИТ Х",
+  TOTAL_DAMAGE: "УРОН",
   WEAPON_DM: "УРОН ОРУЖ",
 };
 const STAT_LABELS_COMPACT = {
@@ -120,11 +122,8 @@ function formatDisplayedNumericStat(value) {
 
 function getDerivedPanelValue(playerSheet, key) {
   if (!playerSheet) return 0;
-  if (key === "HP_MAX") {
-    return Number(playerSheet.stats?.HP_MAX ?? 0);
-  }
-  if (key === "WEAPON_DM") {
-    return Number(playerSheet.derived?.WEAPON_DAMAGE ?? 0);
+  if (key === "TOTAL_DAMAGE") {
+    return Number(getDisplayedTotalDamage(playerSheet));
   }
   return Number(playerSheet.derived?.[key] ?? 0);
 }
@@ -230,7 +229,7 @@ function renderWelcomeScreen(state) {
         ${STRINGS_RU.welcome.startGame}
       </button>
       ${renderBuildBadge()}
-      ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
+      ${state.uiHud?.helpOpen ? renderHelpModal(state) : ""}
     </section>
   `;
 }
@@ -266,14 +265,15 @@ function renderGameScreen(state) {
           </div>
         </div>
         <article class="class-card game-side">
-          <h3>${STRINGS_RU.game.sidePanelTitle}</h3>
+          <h3>Уровень ${state.playerSheet?.level ?? 1}</h3>
+          ${renderXpBar(state.playerSheet)}
           ${renderHpBar(state.playerSheet)}
           ${renderManaBar(state.playerSheet)}
-          ${renderXpBar(state.playerSheet)}
-          <p class="progression-line ${state.uiHud?.levelUpPulseUntil ? "progression-line-pulse" : ""}">${STRINGS_RU.game.levelLine} <span data-action="debug-level-up">${state.playerSheet?.level ?? 1}</span></p>
-          <p class="progression-line ${state.uiHud?.levelUpPulseUntil ? "progression-line-pulse" : ""}">${STRINGS_RU.game.pointsLine} ${state.playerSheet?.unspentPoints ?? 0}</p>
           <section class="stats-group">
-            <h4>${STRINGS_RU.game.statsGroup}</h4>
+            <h4>
+              ${STRINGS_RU.game.statsGroup}
+              ${renderUnspentPointsBadge(state.playerSheet)}
+            </h4>
             <ul class="stats-list">
               ${renderBaseAndTotalStatsWithUpgrades(state.playerSheet, state.uiHud)}
             </ul>
@@ -289,7 +289,7 @@ function renderGameScreen(state) {
       </div>
       ${state.uiHud?.skillsPanelOpen ? renderSkillsModal(state) : ""}
       ${renderBuildBadge()}
-      ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
+      ${state.uiHud?.helpOpen ? renderHelpModal(state) : ""}
     </section>
   `;
 }
@@ -361,7 +361,7 @@ function renderEndingScreen(state) {
         <button class="btn btn-primary" type="button" data-action="end-to-welcome">${STRINGS_RU.ending.toWelcome}</button>
       </div>
       ${renderBuildBadge()}
-      ${state.uiHud?.helpOpen ? renderHelpModal() : ""}
+      ${state.uiHud?.helpOpen ? renderHelpModal(state) : ""}
     </section>
   `;
 }
@@ -628,25 +628,21 @@ function renderBaseAndTotalStatsWithUpgrades(playerSheet, previewState = null) {
       const previewTotalRaw = showPreviewSheet
         ? Number(previewSheet.stats?.[key] ?? totalRaw)
         : totalRaw;
-      const displayed = formatDisplayedNumericStat(previewTotalRaw);
+      const baseDisplayed = formatDisplayedNumericStat(totalRaw);
+      const previewDisplayed = formatDisplayedNumericStat(previewTotalRaw);
       const valueClasses = ["stat-base-value"];
-      if (showPreviewSheet && roundStat(previewTotalRaw) !== roundStat(totalRaw)) {
-        if (previewMode === "upgrade" && upgradePreviewStat === key) {
-          valueClasses.push("stat-base-value-preview");
-        } else if (previewMode === "equip") {
-          const delta = roundStat(previewTotalRaw) - roundStat(totalRaw);
-          if (delta > 0) valueClasses.push("stat-preview-up");
-          if (delta < 0) valueClasses.push("stat-preview-down");
-        }
-      }
+      const hasDelta = showPreviewSheet && roundStat(previewTotalRaw) !== roundStat(totalRaw);
       const upgradeButton = hasPoints
         ? `<button class="btn upgrade-inline-btn" type="button" data-action="upgrade-stat" data-stat="${key}" title="${tooltip}. Потратить 1 очко: +${upgrade} ${toRuStatName(key)}.">+${upgrade}</button>`
         : "";
+      const valueHtml = hasDelta
+        ? `<strong title="${tooltip}" class="${valueClasses.join(" ")}">${baseDisplayed}</strong><span class="stat-preview-arrow">-> ${previewDisplayed}</span>`
+        : `<strong title="${tooltip}" class="${valueClasses.join(" ")}">${baseDisplayed}</strong>`;
       return `
         <li title="${tooltip}">
           <span title="${tooltip}">${toRuStatName(key)}</span>
           <div class="stat-value-with-upgrade">
-            <strong title="${tooltip}" class="${valueClasses.join(" ")}">${displayed}</strong>
+            ${valueHtml}
             ${upgradeButton}
           </div>
         </li>
@@ -662,26 +658,35 @@ function renderDerivedStatsWithPreview(playerSheet, previewStat = null) {
     stat: previewStat?.upgradePreviewStat || null,
     bagInstanceId: previewStat?.equipPreviewBagInstanceId || null,
   });
-  const keys = ["HP_MAX", "CRIT_CHANCE", "CRIT_MULT", "WEAPON_DM"];
+  const keys = ["TOTAL_DAMAGE", "CRIT_CHANCE", "CRIT_MULT"];
   return keys
     .map((key) => {
       const tooltip = getStatDescriptionRu(key, playerSheet);
       const value = getDerivedPanelValue(playerSheet, key);
       const previewValue = previewSheet ? getDerivedPanelValue(previewSheet, key) : null;
       const isPreviewed = previewSheet != null && roundStat(previewValue) !== roundStat(value);
-      const shown = isPreviewed ? previewValue : value;
-      const delta = roundStat(shown) - roundStat(value);
-      let previewClass = "";
-      if (previewMode === "upgrade" && isPreviewed) {
-        previewClass = "stat-preview-up";
-      } else if (previewMode === "equip" && isPreviewed) {
-        if (delta > 0) previewClass = "stat-preview-up";
-        if (delta < 0) previewClass = "stat-preview-down";
-      }
-      const display = formatDisplayedNumericStat(shown);
-      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(key)}</span><strong title="${tooltip}" class="${previewClass}">${display}</strong></li>`;
+      const baseDisplay = formatDisplayedNumericStat(value);
+      const previewDisplay = formatDisplayedNumericStat(previewValue);
+      const valueHtml = isPreviewed
+        ? `<span class="stat-preview-base">${baseDisplay}</span><span class="stat-preview-arrow">-> ${previewDisplay}</span>`
+        : `<span class="stat-preview-base">${baseDisplay}</span>`;
+      return `<li title="${tooltip}"><span title="${tooltip}">${toRuStatName(key)}</span><strong title="${tooltip}">${valueHtml}</strong></li>`;
     })
     .join("");
+}
+
+function renderUnspentPointsBadge(playerSheet) {
+  const points = Number(playerSheet?.unspentPoints || 0);
+  if (points <= 0) {
+    return "";
+  }
+  return `<span class="stats-points-badge">(${points})</span>`;
+}
+
+function getDisplayedTotalDamage(playerSheet) {
+  const str = Number(playerSheet?.stats?.STR ?? 0);
+  const weaponDamage = Number(playerSheet?.derived?.WEAPON_DAMAGE ?? 4);
+  return Math.max(1, Math.floor(roundStat(weaponDamage + str * 1)));
 }
 
 function buildPreviewSheet(playerSheet, preview) {
@@ -1016,18 +1021,44 @@ function renderBuildBadge() {
   `;
 }
 
-function renderHelpModal() {
+function renderHelpModal(state) {
   const h = STRINGS_RU.helpModal;
+  const activeTab = state?.uiHud?.helpTab === "devlog" ? "devlog" : "help";
+  const tabs = `
+    <div class="help-modal-tabs" role="tablist" aria-label="Вкладки справки">
+      <button class="btn help-modal-tab-btn ${activeTab === "help" ? "help-modal-tab-active" : ""}" type="button" data-action="set-help-tab" data-help-tab="help">Справка</button>
+      <button class="btn help-modal-tab-btn ${activeTab === "devlog" ? "help-modal-tab-active" : ""}" type="button" data-action="set-help-tab" data-help-tab="devlog">Devlog</button>
+    </div>
+  `;
+  const devlogList = DEVLOG_ENTRIES
+    .slice(0, 5)
+    .map((entry) => {
+      const items = (entry.changes || []).map((row) => `<li>${escapeHtml(row)}</li>`).join("");
+      return `
+        <article class="devlog-entry">
+          <h4 class="devlog-version">v${escapeHtml(entry.version)}</h4>
+          <ul class="devlog-changes">${items}</ul>
+        </article>
+      `;
+    })
+    .join("");
+  const helpContent = `
+    <p><strong>${h.move}</strong> ${h.moveBody}</p>
+    <p><strong>${h.mouse}</strong> ${h.mouseBody}</p>
+    <p><strong>${h.auto}</strong> ${h.autoBody}</p>
+    <p><strong>${h.skills}</strong> ${h.skillsBody}</p>
+    <p><strong>${h.turns}</strong> ${h.turnsBody}</p>
+    <p><strong>${h.hints}</strong> ${h.hintsBody}</p>
+  `;
+  const devlogContent = devlogList || `<p class="devlog-empty">Записей пока нет.</p>`;
   return `
     <div class="help-modal-backdrop">
       <section class="help-modal">
         <h3>${h.title}</h3>
-        <p><strong>${h.move}</strong> ${h.moveBody}</p>
-        <p><strong>${h.mouse}</strong> ${h.mouseBody}</p>
-        <p><strong>${h.auto}</strong> ${h.autoBody}</p>
-        <p><strong>${h.skills}</strong> ${h.skillsBody}</p>
-        <p><strong>${h.turns}</strong> ${h.turnsBody}</p>
-        <p><strong>${h.hints}</strong> ${h.hintsBody}</p>
+        ${tabs}
+        <div class="help-modal-content">
+          ${activeTab === "devlog" ? devlogContent : helpContent}
+        </div>
         <div class="controls-row">
           <button class="btn btn-primary" type="button" data-action="close-help">${h.close}</button>
         </div>

@@ -1,47 +1,51 @@
-import { createInitialState } from "./state.js?v=0.4.4-pre-alpha";
-import { createPlayerSheet } from "./state.js?v=0.4.4-pre-alpha";
-import { PROGRESSION_CONFIG } from "./state.js?v=0.4.4-pre-alpha";
-import { applyLoadoutToSheet } from "./loadout.js?v=0.4.4-pre-alpha";
-import { chooseStarterLoadoutItem } from "./loadout.js?v=0.4.4-pre-alpha";
-import { initializeInventoryForRun } from "./loadout.js?v=0.4.4-pre-alpha";
-import { swapItemFromBag } from "./loadout.js?v=0.4.4-pre-alpha";
-import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.4-pre-alpha";
-import { spendLevelUpPoint } from "./loadout.js?v=0.4.4-pre-alpha";
-import { getItemById } from "./loadout.js?v=0.4.4-pre-alpha";
-import { createRunState } from "./game.js?v=0.4.4-pre-alpha";
-import { createNextLevelRun } from "./game.js?v=0.4.4-pre-alpha";
-import { tryStep } from "./game.js?v=0.4.4-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.4.4-pre-alpha";
-import { useSkillAtCell, getSkillTargetCells } from "./game/runSkills.js?v=0.4.4-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.4-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.4.4-pre-alpha";
-import { beginEnvironmentTurn } from "./game.js?v=0.4.4-pre-alpha";
-import { stepEnvironmentTurn } from "./game.js?v=0.4.4-pre-alpha";
-import { buildPathToDiscoveredCell } from "./game.js?v=0.4.4-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.4-pre-alpha";
-import { renderApp, buildInventoryItemDetailHtml } from "./ui.js?v=0.4.4-pre-alpha";
-import { getSkillById, getCoreSkillDefs } from "./skills.js?v=0.4.4-pre-alpha";
-import { APP_VERSION } from "./app-config.js?v=0.4.4-pre-alpha";
-import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.4-pre-alpha";
-import { initAnalytics } from "./analytics.js?v=0.4.4-pre-alpha";
-import { trackEvent } from "./analytics.js?v=0.4.4-pre-alpha";
-import { createRunAnalyticsId } from "./analytics.js?v=0.4.4-pre-alpha";
-import { floorHp } from "./rules.js?v=0.4.4-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.4-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.4-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.4-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.4-pre-alpha";
+import { createInitialState } from "./state.js?v=0.4.5-pre-alpha";
+import { createPlayerSheet } from "./state.js?v=0.4.5-pre-alpha";
+import { PROGRESSION_CONFIG } from "./state.js?v=0.4.5-pre-alpha";
+import { applyLoadoutToSheet } from "./loadout.js?v=0.4.5-pre-alpha";
+import { chooseStarterLoadoutItem } from "./loadout.js?v=0.4.5-pre-alpha";
+import { initializeInventoryForRun } from "./loadout.js?v=0.4.5-pre-alpha";
+import { swapItemFromBag } from "./loadout.js?v=0.4.5-pre-alpha";
+import { recalculateSheetFromInventory } from "./loadout.js?v=0.4.5-pre-alpha";
+import { spendLevelUpPoint } from "./loadout.js?v=0.4.5-pre-alpha";
+import { getItemById } from "./loadout.js?v=0.4.5-pre-alpha";
+import { createRunState } from "./game.js?v=0.4.5-pre-alpha";
+import { createNextLevelRun } from "./game.js?v=0.4.5-pre-alpha";
+import { tryStep } from "./game.js?v=0.4.5-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.4.5-pre-alpha";
+import { useSkillAtCell, getSkillTargetCells } from "./game/runSkills.js?v=0.4.5-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.5-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.4.5-pre-alpha";
+import { beginEnvironmentTurn } from "./game.js?v=0.4.5-pre-alpha";
+import { stepEnvironmentTurn } from "./game.js?v=0.4.5-pre-alpha";
+import { buildPathToDiscoveredCell } from "./game.js?v=0.4.5-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.5-pre-alpha";
+import { renderApp, buildInventoryItemDetailHtml } from "./ui.js?v=0.4.5-pre-alpha";
+import { getSkillById, getCoreSkillDefs } from "./skills.js?v=0.4.5-pre-alpha";
+import { APP_VERSION } from "./app-config.js?v=0.4.5-pre-alpha";
+import { GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.5-pre-alpha";
+import { initAnalytics } from "./analytics.js?v=0.4.5-pre-alpha";
+import { trackEvent } from "./analytics.js?v=0.4.5-pre-alpha";
+import { createRunAnalyticsId } from "./analytics.js?v=0.4.5-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.4.5-pre-alpha";
+import { floorHp } from "./rules.js?v=0.4.5-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.5-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.5-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.5-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.5-pre-alpha";
 import {
   isBlockingMotionActive,
   normalizeFinishedAnimationsForRun,
   isLevelTransitionActive as isRunLevelTransitionActive,
-} from "./runtime/motionTiming.js?v=0.4.4-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.4-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.4-pre-alpha";
-import { formatHudStatNumber } from "./ui/hudFormat.js?v=0.4.4-pre-alpha";
+} from "./runtime/motionTiming.js?v=0.4.5-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.5-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.5-pre-alpha";
+import { formatHudStatNumber } from "./ui/hudFormat.js?v=0.4.5-pre-alpha";
 
 const root = document.getElementById("app");
 const state = createInitialState();
+const CANVAS_ZOOM_MIN = 0.35;
+const CANVAS_ZOOM_MAX = 1.5;
+const CANVAS_ZOOM_STEP = 0.1;
 
 const inventoryPopover = createInventoryItemPopoverController({
   root,
@@ -70,7 +74,13 @@ function rerender() {
   syncSkillTargetPreview();
   maybeTrackRunEnd();
   renderApp(root, state);
-  drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, performance.now());
+  drawRunToCanvas(
+    document.getElementById("gameCanvas"),
+    state.run,
+    state.playerSheet,
+    performance.now(),
+    getCanvasZoom(),
+  );
   syncHpHud();
   syncManaHud();
 }
@@ -100,10 +110,22 @@ function onRootClick(event) {
   }
   if (action === "open-help") {
     state.uiHud.helpOpen = true;
+    state.uiHud.helpTab = "help";
     rerender();
+  }
+  if (action === "set-help-tab") {
+    const nextTab = button.dataset.helpTab === "devlog" ? "devlog" : "help";
+    if (!state.uiHud.helpOpen) {
+      return;
+    }
+    if (state.uiHud.helpTab !== nextTab) {
+      state.uiHud.helpTab = nextTab;
+      rerender();
+    }
   }
   if (action === "close-help") {
     state.uiHud.helpOpen = false;
+    state.uiHud.helpTab = "help";
     rerender();
   }
   if (action === "start-game") {
@@ -415,7 +437,13 @@ function performStep(direction) {
 function onResize() {
   hideInventoryItemDetailPopover();
   if (state.screen === "game") {
-    drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, performance.now());
+    drawRunToCanvas(
+      document.getElementById("gameCanvas"),
+      state.run,
+      state.playerSheet,
+      performance.now(),
+      getCanvasZoom(),
+    );
   }
 }
 
@@ -426,7 +454,13 @@ function animationLoop(nowMs) {
     runEnvironmentPhase(nowMs);
     canvasHandlers.maybeRunAutoMoveStep();
     maybeRunHeldMoveStep(nowMs);
-    drawRunToCanvas(document.getElementById("gameCanvas"), state.run, state.playerSheet, nowMs);
+    drawRunToCanvas(
+      document.getElementById("gameCanvas"),
+      state.run,
+      state.playerSheet,
+      nowMs,
+      getCanvasZoom(),
+    );
     animateHpHud();
     animateManaHud();
     maybeExpireLevelUpPulse(nowMs);
@@ -477,6 +511,7 @@ function syncHpHud() {
   if (state.screen !== "game" || !state.playerSheet) {
     return;
   }
+  const previewSheet = buildUpgradePreviewSheetForHud();
   const hp = state.playerSheet.stats.HP;
   if (state.uiHud.hpVisual == null) {
     state.uiHud.hpVisual = hp;
@@ -487,15 +522,25 @@ function syncHpHud() {
     return;
   }
   const hpMax = Math.max(1, state.playerSheet.stats.HP_MAX);
+  if (previewSheet) {
+    const previewHp = Math.max(0, previewSheet.stats?.HP ?? hp);
+    const previewHpMax = Math.max(1, previewSheet.stats?.HP_MAX ?? hpMax);
+    const previewPercent = Math.max(0, Math.min(100, (previewHp / previewHpMax) * 100));
+    hpFill.style.width = `${previewPercent}%`;
+    hpValue.innerHTML =
+      `<span>${formatHudStatNumber(hp)} / ${formatHudStatNumber(hpMax)}</span><span class="hud-preview-value"> -> ${formatHudStatNumber(previewHp)} / ${formatHudStatNumber(previewHpMax)}</span>`;
+    return;
+  }
+  hpValue.textContent = `${formatHudStatNumber(state.uiHud.hpVisual)} / ${formatHudStatNumber(hpMax)}`;
   const percent = Math.max(0, Math.min(100, (state.uiHud.hpVisual / hpMax) * 100));
   hpFill.style.width = `${percent}%`;
-  hpValue.textContent = `${formatHudStatNumber(state.uiHud.hpVisual)} / ${formatHudStatNumber(hpMax)}`;
 }
 
 function syncManaHud() {
   if (state.screen !== "game" || !state.playerSheet) {
     return;
   }
+  const previewSheet = buildUpgradePreviewSheetForHud();
   const mana = state.playerSheet.mana || 0;
   if (state.uiHud.manaVisual == null) {
     state.uiHud.manaVisual = mana;
@@ -506,9 +551,37 @@ function syncManaHud() {
     return;
   }
   const manaMax = Math.max(1, state.playerSheet.manaMax || 1);
+  if (previewSheet) {
+    const previewMana = Math.max(0, previewSheet.mana ?? mana);
+    const previewManaMax = Math.max(1, previewSheet.manaMax ?? manaMax);
+    const previewPercent = Math.max(0, Math.min(100, (previewMana / previewManaMax) * 100));
+    manaFill.style.width = `${previewPercent}%`;
+    manaValue.innerHTML =
+      `<span>${formatHudStatNumber(mana)} / ${formatHudStatNumber(manaMax)}</span><span class="hud-preview-value"> -> ${formatHudStatNumber(previewMana)} / ${formatHudStatNumber(previewManaMax)}</span>`;
+    return;
+  }
+  manaValue.textContent = `${formatHudStatNumber(state.uiHud.manaVisual)} / ${formatHudStatNumber(manaMax)}`;
   const percent = Math.max(0, Math.min(100, (state.uiHud.manaVisual / manaMax) * 100));
   manaFill.style.width = `${percent}%`;
-  manaValue.textContent = `${formatHudStatNumber(state.uiHud.manaVisual)} / ${formatHudStatNumber(manaMax)}`;
+}
+
+function buildUpgradePreviewSheetForHud() {
+  if (state.screen !== "game" || !state.playerSheet) {
+    return null;
+  }
+  const stat = state.uiHud?.upgradePreviewStat;
+  if (!stat || (state.playerSheet.unspentPoints || 0) <= 0) {
+    return null;
+  }
+  const temp = {
+    ...state.playerSheet,
+    baseStats: { ...state.playerSheet.baseStats },
+    stats: { ...state.playerSheet.stats },
+    derived: { ...state.playerSheet.derived },
+    bag: [...(state.playerSheet.bag || [])],
+    equippedByType: { ...(state.playerSheet.equippedByType || {}) },
+  };
+  return spendLevelUpPoint(temp, stat);
 }
 
 function animateHpHud() {
@@ -546,6 +619,19 @@ function animateManaHud() {
 }
 
 function onRootWheel(event) {
+  const canvas = event.target.closest("#gameCanvas");
+  if (canvas && state.screen === "game" && state.run && state.playerSheet) {
+    const prevZoom = getCanvasZoom();
+    const direction = event.deltaY < 0 ? 1 : -1;
+    const nextZoom = clampCanvasZoom(prevZoom + direction * CANVAS_ZOOM_STEP);
+    if (Math.abs(nextZoom - prevZoom) > 0.0001) {
+      state.uiHud.canvasZoom = nextZoom;
+      rerender();
+    }
+    event.preventDefault();
+    return;
+  }
+
   const classList = event.target.closest(".class-list");
   if (!classList) {
     return;
@@ -555,6 +641,18 @@ function onRootWheel(event) {
     classList.scrollLeft += event.deltaY;
     event.preventDefault();
   }
+}
+
+function getCanvasZoom() {
+  const zoom = Number(state.uiHud?.canvasZoom ?? 1);
+  if (!Number.isFinite(zoom)) {
+    return 1;
+  }
+  return clampCanvasZoom(zoom);
+}
+
+function clampCanvasZoom(value) {
+  return Math.max(CANVAS_ZOOM_MIN, Math.min(CANVAS_ZOOM_MAX, value));
 }
 
 function onRootMouseOver(event) {
@@ -931,16 +1029,20 @@ function clearSkillTargeting() {
 
 function clearPathingState() {
   state.uiHud.pathHoverCell = null;
+  state.uiHud.pathHoverEnemy = false;
   state.uiHud.pathPreviewCells = [];
   state.uiHud.pathLockedCells = [];
   state.uiHud.pathLockedTarget = null;
+  state.uiHud.pathLockedEnemyId = null;
   state.uiHud.autoMoveActive = false;
   state.uiHud.autoMoveLastHp = null;
   if (state.run) {
     delete state.run.hoverCell;
+    delete state.run.hoverCellEnemy;
     delete state.run.previewPathCells;
     delete state.run.lockedPathCells;
     delete state.run.lockedPathTarget;
+    delete state.run.lockedPathEnemyId;
   }
 }
 
@@ -953,9 +1055,11 @@ function syncSkillTargetPreview() {
   const skillId = state.uiHud.skillTargeting?.skillId;
   state.run.skillTargetingPreview = skillId ? buildPreparedSkillPreview(skillId) : null;
   state.run.hoverCell = state.uiHud.pathHoverCell || null;
+  state.run.hoverCellEnemy = Boolean(state.uiHud.pathHoverEnemy);
   state.run.previewPathCells = state.uiHud.pathPreviewCells || [];
   state.run.lockedPathCells = state.uiHud.pathLockedCells || [];
   state.run.lockedPathTarget = state.uiHud.pathLockedTarget || null;
+  state.run.lockedPathEnemyId = state.uiHud.pathLockedEnemyId || null;
 }
 
 function maybeOpenSkillsOnNewPoint(previousPoints = 0) {
@@ -1303,6 +1407,7 @@ const canvasHandlers = createCanvasRunHandlers({
   screenPointToGrid,
   isPlayerInputBlocked,
   getItemById,
+  getEnemyById,
   placeTrap,
   recalculateSheetFromInventory,
   consumePlayerActionAndStartEnvironment,
