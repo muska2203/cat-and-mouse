@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Создание персонажа — макет UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="game-screen.css" />
+    <link rel="stylesheet" href="welcome.css" />
+  </head>
+  <body>
+    <div class="cm-app">
+      <div class="cm-main">
+        <!-- Левая колонка -->
+        <aside class="cm-col cm-col--left">
+          <section class="cm-panel cm-panel--fill" aria-labelledby="hero-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="hero-title">Герой</h2>
+            <div class="cm-panel__body">
+              <div class="cm-hero-portrait">
+                <div class="cm-portrait-ring">
+                  <div class="cm-portrait-inner">
+                    <!-- Выбранный портрет -->
+                    <img
+                      src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='g' cx='40%25' cy='35%25' r='70%25'%3E%3Cstop offset='0%25' stop-color='%235c4834'/%3E%3Cstop offset='100%25' stop-color='%231a120e'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='48' fill='url(%23g)'/%3E%3Ccircle cx='38' cy='42' r='5' fill='%23e8d4a8'/%3E%3Ccircle cx='62' cy='42' r='5' fill='%23e8d4a8'/%3E%3Cellipse cx='50' cy='58' rx='10' ry='6' fill='%233d2c22'/%3E%3Cpath d='M30 55 Q50 72 70 55' stroke='%23c4a35a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Cpath d='M22 48 L10 40 M78 48 L90 40' stroke='%23a89870' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"
+                      width="112"
+                      height="112"
+                      alt="Выбранный герой"
+                    />
+                  </div>
+                </div>
+                <div class="cm-level-badge" aria-label="Уровень 1" title="Уровень 1">1</div>
+              </div>
+
+              <!-- Итог HP и Маны -->
+              <div class="cm-bar cm-bar--hp">
+                <div class="cm-bar__row">
+                  <span class="cm-bar__icon-wrap" aria-hidden="true">
+                    <img class="cm-bar__icon" src="icons/icon-hp.svg" width="22" height="22" alt="" />
+                  </span>
+                  <div class="cm-bar__content">
+                    <div class="cm-bar__label"><span>HP</span><span>100 / 100</span></div>
+                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width: 100%"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="cm-bar cm-bar--mana">
+                <div class="cm-bar__row">
+                  <span class="cm-bar__icon-wrap" aria-hidden="true">
+                    <img class="cm-bar__icon" src="icons/icon-mana.svg" width="22" height="22" alt="" />
+                  </span>
+                  <div class="cm-bar__content">
+                    <div class="cm-bar__label"><span>Мана</span><span>20 / 20</span></div>
+                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width: 100%"></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cm-welcome-section-title">Распределение очков</div>
+              <div class="cm-welcome-points">Свободно очков: <span class="cm-welcome-points-val">3</span></div>
+              
+              <ul class="cm-stats cm-stats--alloc">
+                <li class="cm-stat-row cm-stat-row--alloc">
+                  <span class="cm-stat-icon" aria-hidden="true">💪</span>
+                  <span class="cm-stat-name">Сила</span>
+                  <button type="button" class="cm-stat-btn" aria-label="Уменьшить силу">-</button>
+                  <span class="cm-stat-value">12</span>
+                  <button type="button" class="cm-stat-btn" aria-label="Увеличить силу">+</button>
+                </li>
+                <li class="cm-stat-row cm-stat-row--alloc">
+                  <span class="cm-stat-icon" aria-hidden="true">✨</span>
+                  <span class="cm-stat-name">Интеллект</span>
+                  <button type="button" class="cm-stat-btn" aria-label="Уменьшить интеллект" disabled>-</button>
+                  <span class="cm-stat-value">8</span>
+                  <button type="button" class="cm-stat-btn" aria-label="Увеличить интеллект">+</button>
+                </li>
+                <li class="cm-stat-row cm-stat-row--alloc">
+                  <span class="cm-stat-icon" aria-hidden="true">🐾</span>
+                  <span class="cm-stat-name">Ловкость</span>
+                  <button type="button" class="cm-stat-btn" aria-label="Уменьшить ловкость">-</button>
+                  <span class="cm-stat-value">16</span>
+                  <button type="button" class="cm-stat-btn" aria-label="Увеличить ловкость">+</button>
+                </li>
+                <li class="cm-stat-row cm-stat-row--alloc">
+                  <span class="cm-stat-icon" aria-hidden="true">🍀</span>
+                  <span class="cm-stat-name">Удача</span>
+                  <button type="button" class="cm-stat-btn" aria-label="Уменьшить удачу">-</button>
+                  <span class="cm-stat-value">10</span>
+                  <button type="button" class="cm-stat-btn" aria-label="Увеличить удачу">+</button>
+                </li>
+                <li class="cm-stat-row cm-stat-row--readonly">
+                  <span class="cm-stat-icon" aria-hidden="true">🎯</span>
+                  <span class="cm-stat-name">Крит шанс</span>
+                  <span class="cm-stat-value">11%</span>
+                </li>
+                <li class="cm-stat-row cm-stat-row--readonly">
+                  <span class="cm-stat-icon" aria-hidden="true">💥</span>
+                  <span class="cm-stat-name">Крит x</span>
+                  <span class="cm-stat-value">1.5x</span>
+                </li>
+              </ul>
+            </div>
+          </section>
+        </aside>
+
+        <!-- Центр -->
+        <main class="cm-col cm-col--center">
+          <section class="cm-panel cm-panel--fill" aria-labelledby="portrait-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="portrait-title">Выбор внешности</h2>
+            <div class="cm-panel__body cm-welcome-center">
+              
+              <div class="cm-welcome-preview">
+                <div class="cm-welcome-preview-img-wrap">
+                  <img
+                    src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='g' cx='40%25' cy='35%25' r='70%25'%3E%3Cstop offset='0%25' stop-color='%235c4834'/%3E%3Cstop offset='100%25' stop-color='%231a120e'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='48' fill='url(%23g)'/%3E%3Ccircle cx='38' cy='42' r='5' fill='%23e8d4a8'/%3E%3Ccircle cx='62' cy='42' r='5' fill='%23e8d4a8'/%3E%3Cellipse cx='50' cy='58' rx='10' ry='6' fill='%233d2c22'/%3E%3Cpath d='M30 55 Q50 72 70 55' stroke='%23c4a35a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Cpath d='M22 48 L10 40 M78 48 L90 40' stroke='%23a89870' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"
+                    alt="Предпросмотр"
+                  />
+                </div>
+                <h3 class="cm-welcome-preview-name">Серый бродяга</h3>
+                <p class="cm-welcome-preview-desc">Обычная полевая мышь. Никаких ярко выраженных преимуществ, но и никаких слабостей. Готов к любым испытаниям.</p>
+              </div>
+
+              <div class="cm-welcome-gallery-wrap cm-scroll-wood">
+                <div class="cm-welcome-gallery">
+                  <!-- 6-10 портретов -->
+                  <button class="cm-welcome-gallery-item active" aria-label="Серый бродяга" title="Серый бродяга">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%235c4834'/%3E%3C/svg%3E" alt=""/>
+                  </button>
+                  <button class="cm-welcome-gallery-item" aria-label="Рыжий пройдоха" title="Рыжий пройдоха">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23a45c30'/%3E%3C/svg%3E" alt=""/>
+                  </button>
+                  <button class="cm-welcome-gallery-item" aria-label="Белый аристократ" title="Белый аристократ">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23e8e8e8'/%3E%3C/svg%3E" alt=""/>
+                  </button>
+                  <button class="cm-welcome-gallery-item" aria-label="Чёрный ниндзя" title="Чёрный ниндзя">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%231a1a1a'/%3E%3C/svg%3E" alt=""/>
+                  </button>
+                  <button class="cm-welcome-gallery-item" aria-label="Мышь-учёный" title="Мышь-учёный">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%234a5c68'/%3E%3C/svg%3E" alt=""/>
+                  </button>
+                  <button class="cm-welcome-gallery-item" aria-label="Толстяк" title="Толстяк">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%238a7c64'/%3E%3C/svg%3E" alt=""/>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </section>
+        </main>
+
+        <!-- Правая колонка -->
+        <aside class="cm-col cm-col--right">
+          <section class="cm-panel cm-panel--welcome-equip" aria-labelledby="equip-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="equip-title">Стартовая экипировка</h2>
+            <div class="cm-panel__body">
+              
+              <div class="cm-welcome-equip-slot">
+                <div class="cm-welcome-equip-header">
+                  <span class="cm-welcome-equip-label">Оружие</span>
+                  <span class="cm-welcome-equip-desc">Зубочистка (+2 урон)</span>
+                </div>
+                <div class="cm-welcome-options">
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item active" aria-label="Зубочистка">📌</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Зубочистка</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Урон: +2</li>
+                        <li class="cm-tooltip__row">Крит шанс: +1%</li>
+                        <li class="cm-tooltip__row">Лёгкое оружие ближнего боя</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item" aria-label="Иголка">🪡</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Иголка</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Урон: +1</li>
+                        <li class="cm-tooltip__row">Ловкость: +1</li>
+                        <li class="cm-tooltip__row">Быстрые точечные атаки</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item" aria-label="Ветка">🪵</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Ветка</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Урон: +1</li>
+                        <li class="cm-tooltip__row">HP max: +6</li>
+                        <li class="cm-tooltip__row">Тяжёлое, но выносливое оружие</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cm-welcome-equip-slot">
+                <div class="cm-welcome-equip-header">
+                  <span class="cm-welcome-equip-label">Броня</span>
+                  <span class="cm-welcome-equip-desc">Напёрсток (+1 броня)</span>
+                </div>
+                <div class="cm-welcome-options">
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item active" aria-label="Напёрсток">🔩</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Напёрсток</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Броня: +1</li>
+                        <li class="cm-tooltip__row">HP max: +10</li>
+                        <li class="cm-tooltip__row">Надёжная базовая защита</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item" aria-label="Скорлупа">🥜</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Скорлупа</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Броня: +2</li>
+                        <li class="cm-tooltip__row">Ловкость: -1</li>
+                        <li class="cm-tooltip__row">Тяжёлая защита с штрафом скорости</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item" aria-label="Кожа">🥾</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Кожаная обмотка</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Броня: +1</li>
+                        <li class="cm-tooltip__row">Удача: +1</li>
+                        <li class="cm-tooltip__row">Гибкая лёгкая броня</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cm-welcome-equip-slot">
+                <div class="cm-welcome-equip-header">
+                  <span class="cm-welcome-equip-label">Амулет</span>
+                  <span class="cm-welcome-equip-desc">Скрепка (+1 удача)</span>
+                </div>
+                <div class="cm-welcome-options">
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item" aria-label="Крышка">💍</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Крышка</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Крит x: +0.1</li>
+                        <li class="cm-tooltip__row">Сила: +1</li>
+                        <li class="cm-tooltip__row">Тяжёлый боевой амулет</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item active" aria-label="Скрепка">📎</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Скрепка</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Удача: +1</li>
+                        <li class="cm-tooltip__row">Крит шанс: +2%</li>
+                        <li class="cm-tooltip__row">Универсальный стартовый амулет</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="cm-tooltip-anchor">
+                    <button class="cm-welcome-item" aria-label="Пуговица">🔘</button>
+                    <div class="cm-tooltip" role="tooltip">
+                      <p class="cm-tooltip__title">Пуговица</p>
+                      <ul class="cm-tooltip__list">
+                        <li class="cm-tooltip__row">Интеллект: +1</li>
+                        <li class="cm-tooltip__row">Мана max: +4</li>
+                        <li class="cm-tooltip__row">Амулет для магического старта</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          <section class="cm-panel" aria-labelledby="info-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="info-title">Информация</h2>
+            <div class="cm-panel__body cm-welcome-info-body">
+              <button class="cm-btn cm-btn--secondary">Подсказки по игре</button>
+              <button class="cm-btn cm-btn--secondary">Devlog</button>
+            </div>
+          </section>
+
+          <div class="cm-welcome-start-wrap">
+            <button class="cm-btn cm-btn--primary cm-welcome-start">Начать забег</button>
+          </div>
+
+        </aside>
+      </div>
+    </div>
+  </body>
+</html>

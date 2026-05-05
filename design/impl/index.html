@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Экран забега — макет UI (design/impl)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="game-screen.css" />
+  </head>
+  <body>
+    <div class="cm-app">
+      <div class="cm-main">
+        <!-- Левая колонка -->
+        <aside class="cm-col cm-col--left">
+          <section class="cm-panel cm-panel--hero" aria-labelledby="hero-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="hero-title">Герой</h2>
+            <div class="cm-panel__body">
+              <div class="cm-hero-portrait">
+                <div class="cm-portrait-ring">
+                  <div class="cm-portrait-inner">
+                    <!-- Плейсхолдер: в игре — выбранный игроком портрет -->
+                    <img
+                      src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='g' cx='40%25' cy='35%25' r='70%25'%3E%3Cstop offset='0%25' stop-color='%235c4834'/%3E%3Cstop offset='100%25' stop-color='%231a120e'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='48' fill='url(%23g)'/%3E%3Ccircle cx='38' cy='42' r='5' fill='%23e8d4a8'/%3E%3Ccircle cx='62' cy='42' r='5' fill='%23e8d4a8'/%3E%3Cellipse cx='50' cy='58' rx='10' ry='6' fill='%233d2c22'/%3E%3Cpath d='M30 55 Q50 72 70 55' stroke='%23c4a35a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Cpath d='M22 48 L10 40 M78 48 L90 40' stroke='%23a89870' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E"
+                      width="112"
+                      height="112"
+                      alt="Портрет героя (макет)"
+                    />
+                  </div>
+                </div>
+                <div class="cm-level-badge" aria-label="Уровень 7" title="Уровень 7">7</div>
+              </div>
+
+              <div class="cm-bar cm-bar--hp">
+                <div class="cm-bar__row">
+                  <span class="cm-bar__icon-wrap" aria-hidden="true">
+                    <img class="cm-bar__icon" src="icons/icon-hp.svg" width="22" height="22" alt="" />
+                  </span>
+                  <div class="cm-bar__content">
+                    <div class="cm-bar__label"><span>HP</span><span>48 / 48</span></div>
+                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width: 100%"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="cm-bar cm-bar--mana">
+                <div class="cm-bar__row">
+                  <span class="cm-bar__icon-wrap" aria-hidden="true">
+                    <img class="cm-bar__icon" src="icons/icon-mana.svg" width="22" height="22" alt="" />
+                  </span>
+                  <div class="cm-bar__content">
+                    <div class="cm-bar__label"><span>Мана</span><span>26 / 32</span></div>
+                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width: 81.25%"></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="cm-bar cm-bar--xp">
+                <div class="cm-bar__row">
+                  <span class="cm-bar__icon-wrap" aria-hidden="true">
+                    <img class="cm-bar__icon" src="icons/icon-xp.svg" width="22" height="22" alt="" />
+                  </span>
+                  <div class="cm-bar__content">
+                    <div class="cm-bar__label"><span>Опыт</span><span>215 / 350</span></div>
+                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width: 61.4%"></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cm-panel" aria-labelledby="stats-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="stats-title">Характеристики</h2>
+            <div class="cm-panel__body">
+              <ul class="cm-stats">
+                <li class="cm-stat-row">
+                  <span class="cm-stat-icon" aria-hidden="true">💪</span>
+                  <span class="cm-stat-name">Сила</span>
+                  <span class="cm-stat-value">12</span>
+                  <button type="button" class="cm-stat-plus" title="Улучшить силу" aria-label="Улучшить силу">+</button>
+                </li>
+                <li class="cm-stat-row">
+                  <span class="cm-stat-icon" aria-hidden="true">✨</span>
+                  <span class="cm-stat-name">Интеллект</span>
+                  <span class="cm-stat-value">9</span>
+                  <button type="button" class="cm-stat-plus" title="Улучшить интеллект" aria-label="Улучшить интеллект">+</button>
+                </li>
+                <li class="cm-stat-row">
+                  <span class="cm-stat-icon" aria-hidden="true">🐾</span>
+                  <span class="cm-stat-name">Ловкость</span>
+                  <span class="cm-stat-value">16</span>
+                  <button type="button" class="cm-stat-plus" title="Улучшить ловкость" aria-label="Улучшить ловкость">+</button>
+                </li>
+                <li class="cm-stat-row">
+                  <span class="cm-stat-icon" aria-hidden="true">🍀</span>
+                  <span class="cm-stat-name">Удача</span>
+                  <span class="cm-stat-value">14</span>
+                  <button type="button" class="cm-stat-plus" title="Улучшить удачу" aria-label="Улучшить удачу">+</button>
+                </li>
+                <li class="cm-stat-row">
+                  <span class="cm-stat-icon" aria-hidden="true">🎯</span>
+                  <span class="cm-stat-name">Крит шанс</span>
+                  <span class="cm-stat-value">11%</span>
+                  <span class="cm-stat-plus-spacer" aria-hidden="true"></span>
+                </li>
+                <li class="cm-stat-row">
+                  <span class="cm-stat-icon" aria-hidden="true">💥</span>
+                  <span class="cm-stat-name">Крит x</span>
+                  <span class="cm-stat-value">1.5x</span>
+                  <span class="cm-stat-plus-spacer" aria-hidden="true"></span>
+                </li>
+              </ul>
+            </div>
+          </section>
+
+          <section class="cm-panel" aria-labelledby="effects-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="effects-title">Активные эффекты</h2>
+            <div class="cm-panel__body">
+              <div class="cm-effects-viewport cm-scroll-wood" tabindex="0" aria-label="Активные эффекты, прокрутка при переполнении">
+                <div class="cm-effects">
+                  <div class="cm-effect">
+                    <div class="cm-effect__icon" aria-hidden="true">☠</div>
+                    <div class="cm-effect__main">
+                      <div class="cm-effect__name">Отравление</div>
+                      <div class="cm-effect__desc">Старый сыр даёт о себе знать.</div>
+                    </div>
+                    <div class="cm-effect__turns" aria-label="Осталось 4 хода" title="Осталось 4 хода">4 х.</div>
+                  </div>
+                  <div class="cm-effect">
+                    <div class="cm-effect__icon" aria-hidden="true">〰</div>
+                    <div class="cm-effect__main">
+                      <div class="cm-effect__name">Ускорение</div>
+                      <div class="cm-effect__desc">Легко на лапах.</div>
+                    </div>
+                    <div class="cm-effect__turns" aria-label="Осталось 3 хода" title="Осталось 3 хода">3 х.</div>
+                  </div>
+                  <div class="cm-effect">
+                    <div class="cm-effect__icon" aria-hidden="true">🩹</div>
+                    <div class="cm-effect__main">
+                      <div class="cm-effect__name">Перевязь</div>
+                      <div class="cm-effect__desc">Медленное восстановление HP.</div>
+                    </div>
+                    <div class="cm-effect__turns" aria-label="Осталось 6 ходов" title="Осталось 6 ходов">6 х.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cm-panel" aria-labelledby="log-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="log-title">Журнал</h2>
+            <div class="cm-panel__body">
+              <div class="cm-log" role="log" aria-live="polite">
+                <p
+                  class="cm-log__line cm-log__line--loot cm-log__line--with-icon"
+                  title="Подобран осколок сыра «Гауда» — очень длинное название для проверки однострочной обрезки и тултипа при наведении."
+                >
+                  <img class="cm-log__mark" src="icons/icon-log.svg" width="16" height="16" alt="" />
+                  <span class="cm-log__text"
+                    >Подобран осколок сыра «Гауда» — очень длинное название для проверки однострочной обрезки и тултипа при наведении.</span
+                  >
+                </p>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <!-- Центр -->
+        <main class="cm-col cm-col--center">
+          <div class="cm-center-stack">
+            <div class="cm-panel cm-panel--fill cm-center-panel">
+              <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+              <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+              <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+              <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+              <h2 class="cm-panel__title">Поле</h2>
+              <div class="cm-panel__body">
+                <div class="cm-field" role="img" aria-label="Область игрового поля (canvas)">
+                  <div class="cm-phase cm-phase--field" role="status">Ход игрока</div>
+                  <div class="cm-field__main">
+                    <p class="cm-field__placeholder">
+                      Игровое поле
+                      <span>Здесь будет canvas уровня (лабиринт). Миникарта не используется.</span>
+                    </p>
+                  </div>
+                  <footer
+                    class="cm-hotbar-wrap cm-panel cm-hotbar-wrap--in-field cm-hotbar-wrap--recessed"
+                    aria-label="Быстрые слоты, клавиши 1–9"
+                  >
+                    <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+                    <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+                    <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+                    <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+                    <div class="cm-hotbar">
+                      <div class="cm-hot-slot"><span class="cm-hot-slot__key">1</span>🪵</div>
+                      <div class="cm-hot-slot"><span class="cm-hot-slot__key">2</span>🧀<span class="cm-hot-slot__qty">3</span></div>
+                      <div class="cm-hot-slot"><span class="cm-hot-slot__key">3</span>📎</div>
+                      <div class="cm-hot-slot"><span class="cm-hot-slot__key">4</span>💨</div>
+                      <div class="cm-hot-slot"><span class="cm-hot-slot__key">5</span>🌑</div>
+                      <div class="cm-hot-slot"><span class="cm-hot-slot__key">6</span>✨</div>
+                      <div class="cm-hot-slot"><span class="cm-hot-slot__key">7</span>🧪</div>
+                      <div class="cm-hot-slot cm-hot-slot--empty"><span class="cm-hot-slot__key">8</span></div>
+                      <div class="cm-hot-slot cm-hot-slot--empty"><span class="cm-hot-slot__key">9</span></div>
+                    </div>
+                  </footer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- Правая колонка -->
+        <aside class="cm-col cm-col--right">
+          <section class="cm-panel" aria-labelledby="equip-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="equip-title">Экипировка</h2>
+            <div class="cm-panel__body">
+              <div class="cm-equip-slots">
+                <div class="cm-equip-slot">
+                  <span class="cm-equip-slot__label">Оружие</span>
+                  <div class="cm-equip-slot__box">
+                    <span class="cm-equip-slot__icon" aria-hidden="true">📌</span>
+                    <span class="cm-equip-slot__bonus">+2</span>
+                  </div>
+                </div>
+                <div class="cm-equip-slot">
+                  <span class="cm-equip-slot__label">Броня</span>
+                  <div class="cm-equip-slot__box">
+                    <span class="cm-equip-slot__icon" aria-hidden="true">🔩</span>
+                    <span class="cm-equip-slot__bonus">+1</span>
+                  </div>
+                </div>
+                <div class="cm-equip-slot">
+                  <span class="cm-equip-slot__label">Амулет</span>
+                  <div class="cm-equip-slot__box">
+                    <span class="cm-equip-slot__icon" aria-hidden="true">💍</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cm-panel cm-panel--inventory" aria-labelledby="inv-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="inv-title">Инвентарь</h2>
+            <div class="cm-panel__body">
+              <div class="cm-inv-wrap cm-scroll-wood" tabindex="0" aria-label="Инвентарь, вертикальная прокрутка">
+                <div class="cm-inv-grid" aria-label="Сумка">
+                  <div class="cm-inv-cell">🗡</div>
+                  <div class="cm-inv-cell">🔴</div>
+                  <div class="cm-inv-cell">📎</div>
+                  <div class="cm-inv-cell">🧵</div>
+                  <div class="cm-inv-cell">📌</div>
+                  <div class="cm-inv-cell">🔵</div>
+                  <div class="cm-inv-cell">🛡</div>
+                  <div class="cm-inv-cell">🔩</div>
+                  <div class="cm-inv-cell">🪙</div>
+                  <div class="cm-inv-cell">📄</div>
+                  <div class="cm-inv-cell">💍</div>
+                  <div class="cm-inv-cell">🪖</div>
+                  <div class="cm-inv-cell">🟢</div>
+                  <div class="cm-inv-cell">🪡</div>
+                  <div class="cm-inv-cell">🏹</div>
+                  <div class="cm-inv-cell"></div>
+                  <div class="cm-inv-cell">🪓</div>
+                  <div class="cm-inv-cell">🥾</div>
+                  <div class="cm-inv-cell">🧿</div>
+                  <div class="cm-inv-cell"></div>
+                  <div class="cm-inv-cell"></div>
+                  <div class="cm-inv-cell"></div>
+                  <div class="cm-inv-cell"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cm-panel" aria-labelledby="cons-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="cons-title">Расходники</h2>
+            <div class="cm-panel__body">
+              <div class="cm-cons-wrap cm-scroll-wood" tabindex="0" aria-label="Расходники">
+                <div class="cm-cons-row">
+                  <div class="cm-inv-cell">🧪<span class="cm-inv-cell__qty">2</span></div>
+                  <div class="cm-inv-cell">🩹</div>
+                  <div class="cm-inv-cell">🧀<span class="cm-inv-cell__qty">5</span></div>
+                  <div class="cm-inv-cell">🍞</div>
+                  <div class="cm-inv-cell">📜</div>
+                  <div class="cm-inv-cell">🧀<span class="cm-inv-cell__qty">1</span></div>
+                  <div class="cm-inv-cell">🧄<span class="cm-inv-cell__qty">4</span></div>
+                  <div class="cm-inv-cell">🍯<span class="cm-inv-cell__qty">2</span></div>
+                  <div class="cm-inv-cell">🧃<span class="cm-inv-cell__qty">3</span></div>
+                  <div class="cm-inv-cell">🫘<span class="cm-inv-cell__qty">7</span></div>
+                  <div class="cm-inv-cell">🥜<span class="cm-inv-cell__qty">6</span></div>
+                  <div class="cm-inv-cell">🍄<span class="cm-inv-cell__qty">2</span></div>
+                  <div class="cm-inv-cell">🫐<span class="cm-inv-cell__qty">9</span></div>
+                  <div class="cm-inv-cell">🥛<span class="cm-inv-cell__qty">1</span></div>
+                  <div class="cm-inv-cell">🍬<span class="cm-inv-cell__qty">8</span></div>
+                  <div class="cm-inv-cell">🧂<span class="cm-inv-cell__qty">5</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cm-panel cm-panel--skills" aria-labelledby="skills-title">
+            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span>
+            <span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
+            <h2 class="cm-panel__title" id="skills-title">Скиллы</h2>
+            <div class="cm-panel__body cm-panel__body--flex-grow">
+              <div class="cm-skills-viewport cm-scroll-wood" tabindex="0" aria-label="Скиллы, прокрутка при переполнении">
+              <ul class="cm-skills">
+                <li class="cm-skill">
+                  <span class="cm-skill__icon" aria-hidden="true">🐭</span>
+                  <span class="cm-skill__name">Быстрый укус</span>
+                  <span class="cm-skill__mana" title="Стоимость маны">
+                    <svg viewBox="0 0 12 16" aria-hidden="true" fill="currentColor">
+                      <path d="M6 0C4 4 0 7 0 10a6 6 0 0 0 12 0c0-3-4-6-6-10zm0 14a4 4 0 0 1-4-4h8a4 4 0 0 1-4 4z" />
+                    </svg>
+                    5
+                  </span>
+                </li>
+                <li class="cm-skill">
+                  <span class="cm-skill__icon" aria-hidden="true">💨</span>
+                  <span class="cm-skill__name">Рывок</span>
+                  <span class="cm-skill__mana">
+                    <svg viewBox="0 0 12 16" aria-hidden="true" fill="currentColor">
+                      <path d="M6 0C4 4 0 7 0 10a6 6 0 0 0 12 0c0-3-4-6-6-10zm0 14a4 4 0 0 1-4-4h8a4 4 0 0 1-4 4z" />
+                    </svg>
+                    8
+                  </span>
+                </li>
+                <li class="cm-skill">
+                  <span class="cm-skill__icon" aria-hidden="true">〰</span>
+                  <span class="cm-skill__name">Писк</span>
+                  <span class="cm-skill__mana">
+                    <svg viewBox="0 0 12 16" aria-hidden="true" fill="currentColor">
+                      <path d="M6 0C4 4 0 7 0 10a6 6 0 0 0 12 0c0-3-4-6-6-10zm0 14a4 4 0 0 1-4-4h8a4 4 0 0 1-4 4z" />
+                    </svg>
+                    6
+                  </span>
+                </li>
+                <li class="cm-skill">
+                  <span class="cm-skill__icon" aria-hidden="true">🌑</span>
+                  <span class="cm-skill__name">Теневой шаг</span>
+                  <span class="cm-skill__mana">
+                    <svg viewBox="0 0 12 16" aria-hidden="true" fill="currentColor">
+                      <path d="M6 0C4 4 0 7 0 10a6 6 0 0 0 12 0c0-3-4-6-6-10zm0 14a4 4 0 0 1-4-4h8a4 4 0 0 1-4 4z" />
+                    </svg>
+                    12
+                  </span>
+                </li>
+                <li class="cm-skill">
+                  <span class="cm-skill__icon" aria-hidden="true">✨</span>
+                  <span class="cm-skill__name">Удачный прорыв</span>
+                  <span class="cm-skill__mana">
+                    <svg viewBox="0 0 12 16" aria-hidden="true" fill="currentColor">
+                      <path d="M6 0C4 4 0 7 0 10a6 6 0 0 0 12 0c0-3-4-6-6-10zm0 14a4 4 0 0 1-4-4h8a4 4 0 0 1-4 4z" />
+                    </svg>
+                    10
+                  </span>
+                </li>
+                <li class="cm-skill">
+                  <span class="cm-skill__icon" aria-hidden="true">🔥</span>
+                  <span class="cm-skill__name">Огненный хвост</span>
+                  <span class="cm-skill__mana">
+                    <svg viewBox="0 0 12 16" aria-hidden="true" fill="currentColor">
+                      <path d="M6 0C4 4 0 7 0 10a6 6 0 0 0 12 0c0-3-4-6-6-10zm0 14a4 4 0 0 1-4-4h8a4 4 0 0 1-4 4z" />
+                    </svg>
+                    14
+                  </span>
+                </li>
+                <li class="cm-skill">
+                  <span class="cm-skill__icon" aria-hidden="true">🛡</span>
+                  <span class="cm-skill__name">Щиток из крышки</span>
+                  <span class="cm-skill__mana">
+                    <svg viewBox="0 0 12 16" aria-hidden="true" fill="currentColor">
+                      <path d="M6 0C4 4 0 7 0 10a6 6 0 0 0 12 0c0-3-4-6-6-10zm0 14a4 4 0 0 1-4-4h8a4 4 0 0 1-4 4z" />
+                    </svg>
+                    9
+                  </span>
+                </li>
+              </ul>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const consumablesWrap = document.querySelector(".cm-cons-wrap");
+        if (consumablesWrap) {
+          let targetScrollLeft = consumablesWrap.scrollLeft;
+          let animationFrameId = 0;
+
+          const clampTarget = (value) => {
+            const max = Math.max(0, consumablesWrap.scrollWidth - consumablesWrap.clientWidth);
+            return Math.min(max, Math.max(0, value));
+          };
+
+          const animateScroll = () => {
+            const current = consumablesWrap.scrollLeft;
+            const distance = targetScrollLeft - current;
+            if (Math.abs(distance) < 0.5) {
+              consumablesWrap.scrollLeft = targetScrollLeft;
+              animationFrameId = 0;
+              return;
+            }
+            consumablesWrap.scrollLeft = current + distance * 0.12;
+            animationFrameId = requestAnimationFrame(animateScroll);
+          };
+
+          consumablesWrap.addEventListener(
+            "wheel",
+            (event) => {
+              const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+              if (delta === 0) return;
+              event.preventDefault();
+              targetScrollLeft = clampTarget(targetScrollLeft + delta);
+              if (!animationFrameId) {
+                animationFrameId = requestAnimationFrame(animateScroll);
+              }
+            },
+            { passive: false }
+          );
+        }
+
+        const collapsiblePanels = document.querySelectorAll(".cm-panel:not(.cm-center-panel)");
+        collapsiblePanels.forEach((panel) => {
+          const title = panel.querySelector(":scope > .cm-panel__title");
+          const body = panel.querySelector(":scope > .cm-panel__body");
+          if (!title || !body) return;
+
+          panel.classList.add("cm-panel--collapsible");
+          title.setAttribute("role", "button");
+          title.setAttribute("tabindex", "0");
+          title.setAttribute("aria-expanded", "true");
+
+          const togglePanel = () => {
+            const isCollapsed = panel.classList.toggle("cm-panel--collapsed");
+            title.setAttribute("aria-expanded", String(!isCollapsed));
+          };
+
+          title.addEventListener("click", togglePanel);
+          title.addEventListener("keydown", (event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            togglePanel();
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
