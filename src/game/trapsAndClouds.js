@@ -1,6 +1,6 @@
-import { floorHp } from "../rules.js?v=0.4.5-pre-alpha";
-import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.5-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.5-pre-alpha";
+import { floorHp } from "../rules.js?v=0.4.6-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.6-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.6-pre-alpha";
 
 export function ensureEnemyStatus(enemy) {
   if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0 };

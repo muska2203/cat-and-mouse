@@ -1,5 +1,5 @@
-import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.5-pre-alpha";
-import { getCoreSkillDefs } from "./skills.js?v=0.4.5-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.6-pre-alpha";
+import { getCoreSkillDefs } from "./skills.js?v=0.4.6-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,

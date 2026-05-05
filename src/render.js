@@ -1,4 +1,4 @@
-import { roundStat } from "./rules.js?v=0.4.5-pre-alpha";
+import { roundStat } from "./rules.js?v=0.4.6-pre-alpha";
 
 export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1) {
   if (!canvas || !run) {

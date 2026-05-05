@@ -8,6 +8,10 @@
  */
 export const DEVLOG_ENTRIES = [
   {
+    version: "0.4.6-pre-alpha",
+    changes: ["Глобальное обновление UI."],
+  },
+  {
     version: "0.4.5-pre-alpha",
     changes: [
       "Добавлена вкладка Devlog в справке с показом последних изменений.",

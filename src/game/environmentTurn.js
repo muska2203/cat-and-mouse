@@ -1,23 +1,23 @@
-import { floorHp } from "../rules.js?v=0.4.5-pre-alpha";
+import { floorHp } from "../rules.js?v=0.4.6-pre-alpha";
 import {
   chebyshevDistance,
   buildPathToNearestEnemyAttackCell as buildPathToNearestEnemyAttackCellNav,
-} from "../nav/pathfinding.js?v=0.4.5-pre-alpha";
-import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.4.5-pre-alpha";
-import { getEnemyById } from "./enemies.js?v=0.4.5-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.5-pre-alpha";
+} from "../nav/pathfinding.js?v=0.4.6-pre-alpha";
+import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.4.6-pre-alpha";
+import { getEnemyById } from "./enemies.js?v=0.4.6-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.6-pre-alpha";
 import {
   ensureEnemyStatus,
   ensurePlayerStatus,
   tickTemporaryObjects,
-} from "./trapsAndClouds.js?v=0.4.5-pre-alpha";
-import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.5-pre-alpha";
+} from "./trapsAndClouds.js?v=0.4.6-pre-alpha";
+import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.6-pre-alpha";
 import {
   isCellBlockedForEnemy,
   isCellBlockedForEnemyWithReservations,
-} from "./cellBlocking.js?v=0.4.5-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.5-pre-alpha";
-import { processTurnEffects } from "./turnEffects.js?v=0.4.5-pre-alpha";
+} from "./cellBlocking.js?v=0.4.6-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.4.6-pre-alpha";
+import { processTurnEffects } from "./turnEffects.js?v=0.4.6-pre-alpha";
 
 export function beginEnvironmentTurn(run) {
   if (!run || run.status !== "running") {

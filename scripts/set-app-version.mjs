@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
  * Синхронизирует версию приложения: APP_VERSION в src/app-config.js,
- * query-параметр ?v= во всех ES-импортах и в index.html (стили + entry).
+ * query-параметр ?v= во всех ES-импортах под src/ и в index.html (стили + entry).
+ *
+ * Записи `version` в src/devlog.js не трогаются: новую версию там добавляют вручную
+ * в начало массива после смены APP_VERSION (см. AGENTS.md).
  *
  * Использование:
  *   node scripts/set-app-version.mjs --current
  *   node scripts/set-app-version.mjs --suggest
+ *   node scripts/set-app-version.mjs --verify
  *   node scripts/set-app-version.mjs 0.4.4-pre-alpha
  *   node scripts/set-app-version.mjs --dry-run 0.4.4-pre-alpha
  */
@@ -54,6 +58,42 @@ function* walkFiles(dir, extensions) {
   }
 }
 
+/** Относительные import/export from в src/*.js должны заканчиваться на ?v=<APP_VERSION> */
+const REL_FROM_RE = /\bfrom\s+["'](\.[^"']+)["']/g;
+
+function verifyVersionConsistency(expectedV) {
+  const expectedSuffix = `?v=${expectedV}`;
+  const problems = [];
+
+  for (const file of walkFiles(path.join(REPO_ROOT, "src"), [".js"])) {
+    const raw = fs.readFileSync(file, "utf8");
+    REL_FROM_RE.lastIndex = 0;
+    let m;
+    while ((m = REL_FROM_RE.exec(raw)) !== null) {
+      const spec = m[1];
+      if (!spec.endsWith(`?v=${expectedV}`)) {
+        problems.push(`${path.relative(REPO_ROOT, file)}: from "${spec}"`);
+      }
+    }
+  }
+
+  const idxRaw = fs.readFileSync(INDEX_HTML, "utf8");
+  for (const m of idxRaw.matchAll(/\b(?:href|src)="(\.\/[^"]+)"/g)) {
+    const url = m[1];
+    if (!url.match(/\.(?:css|js)(?:\?|$)/)) continue;
+    if (!url.endsWith(expectedSuffix)) {
+      problems.push(`${path.relative(REPO_ROOT, INDEX_HTML)}: ${url}`);
+    }
+  }
+
+  if (problems.length > 0) {
+    console.error("Несогласованность версии (?v= или index.html):\n");
+    for (const p of problems) console.error(`  ${p}`);
+    process.exit(2);
+  }
+  console.log(`OK: импорты в src/ и ссылки в index.html согласованы с ${expectedV}`);
+}
+
 function applyReplacements(content, oldV, newV) {
   const needle = `?v=${oldV}`;
   const replacement = `?v=${newV}`;
@@ -86,6 +126,7 @@ function main() {
 
   node scripts/set-app-version.mjs --current     показать текущую версию
   node scripts/set-app-version.mjs --suggest     предложить следующую (эвристика)
+  node scripts/set-app-version.mjs --verify      проверить ?v= в src/ и index.html
   node scripts/set-app-version.mjs <версия>     записать версию везде
   node scripts/set-app-version.mjs --dry-run <версия>   только отчёт, без записи
 `);
@@ -93,6 +134,11 @@ function main() {
   }
 
   const current = readCurrentVersion();
+
+  if (filtered[0] === "--verify") {
+    verifyVersionConsistency(current);
+    return;
+  }
 
   if (filtered[0] === "--current") {
     console.log(current);
