@@ -12,6 +12,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "sword",
     icon: "🗡",
     effectText: "Базовый урон и крит — на карточке",
+    description: "Щепки летят, враг удивляется.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
@@ -26,6 +27,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "staff",
     icon: "🪄",
     effectText: "Базовый урон и крит — на карточке",
+    description: "Колдует на троечку, но старается.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
@@ -40,6 +42,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "armor",
     icon: "🥋",
     effectText: "+1 СИЛ",
+    description: "Солома внутри, уверенность снаружи.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { STR: 1 },
@@ -51,6 +54,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "cloak",
     icon: "👘",
     effectText: "+1 ИНТ",
+    description: "Шуршит как пакет, думает как мудрец.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { INT: 1 },
@@ -62,6 +66,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "tooth",
     icon: "🦷",
     effectText: "+1 STR, +1 AGI",
+    description: "Носи зуб — кусай судьбу первым.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { STR: 1, AGI: 1 },
@@ -73,6 +78,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "bead",
     icon: "🧿",
     effectText: "+1 INT, +1 LUK",
+    description: "Бусина знает, где лежит удача.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { INT: 1, LUK: 1 },
@@ -84,6 +90,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "heal_hp",
     icon: "🧀",
     effectText: "Восстанавливает 10 HP",
+    description: "Маленький сыр, большое утешение.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -95,6 +102,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "heal_mana",
     icon: "💧",
     effectText: "Восстанавливает 10 маны",
+    description: "Глоток мяты и мысли снова бегут.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -106,6 +114,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "heal_hybrid",
     icon: "🧴",
     effectText: "Восстанавливает 6 HP и 6 маны",
+    description: "Молоко: и телу, и магии по чуть-чуть.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -117,6 +126,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "buff",
     icon: "🌶",
     effectText: "Следующая атака x1.5",
+    description: "Щепотка перца, тонна самоуверенности.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -128,6 +138,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "trap",
     icon: "🪤",
     effectText: "Ставит ловушку: 8 урона и оглушение на 1 ход",
+    description: "Классика: щелк — и тишина.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     isTrapItem: true,
@@ -141,6 +152,7 @@ export const LOOT_COMMON_ITEMS = [
     subtype: "trap",
     icon: "🕸",
     effectText: "Ставит ловушку: оглушение на 2 хода",
+    description: "Прилип и задумался о жизни.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     isTrapItem: true,
@@ -157,6 +169,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "sword",
     icon: "🗡",
     effectText: "Базовый урон и крит — на карточке",
+    description: "Клык острый, характер еще острее.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
@@ -171,6 +184,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "staff",
     icon: "🪄",
     effectText: "Базовый урон и крит — на карточке",
+    description: "Посох дымит, враги не возражают.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
@@ -185,6 +199,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "armor",
     icon: "🥋",
     effectText: "+2 СИЛ",
+    description: "Пластилин мягкий, а ты почему-то крепче.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { STR: 2 },
@@ -196,6 +211,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "cloak",
     icon: "👘",
     effectText: "+2 ИНТ",
+    description: "В этом плаще даже ошибки звучат умно.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { INT: 2 },
@@ -207,6 +223,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "tooth",
     icon: "🦷",
     effectText: "+2 STR, +2 AGI",
+    description: "Тотем хомяка: беги быстро, кусай больно.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { STR: 2, AGI: 2 },
@@ -218,6 +235,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "bead",
     icon: "🧿",
     effectText: "+2 INT, +2 LUK",
+    description: "Кристалл блестит, план работает.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { INT: 2, LUK: 2 },
@@ -229,6 +247,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "heal_hp",
     icon: "🧀",
     effectText: "Восстанавливает 18 HP",
+    description: "Кусок посолиднее — герой бодрее.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -240,6 +259,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "heal_mana",
     icon: "💧",
     effectText: "Восстанавливает 16 маны",
+    description: "Мята покрепче, заклинания погромче.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -251,6 +271,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "heal_hybrid",
     icon: "🧴",
     effectText: "Восстанавливает 12 HP и 12 маны",
+    description: "Молочная классика в редком издании.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -262,6 +283,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "buff",
     icon: "🌶",
     effectText: "Следующая атака x2",
+    description: "Остро настолько, что даже крит краснеет.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -273,6 +295,7 @@ export const LOOT_RARE_ITEMS = [
     subtype: "trap",
     icon: "☣",
     effectText: "Ставит мину: 4 урона + ядовитый туман 3x3",
+    description: "Небольшой хлопок и очень плохой воздух.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     isTrapItem: true,
@@ -298,6 +321,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "sword",
     icon: "🗡",
     effectText: "Базовый урон и крит — на карточке",
+    description: "Меч для тех, кто спорит последним.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
@@ -312,6 +336,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "staff",
     icon: "🪄",
     effectText: "Базовый урон и крит — на карточке",
+    description: "Звезды шепчут: бей красиво.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
@@ -326,6 +351,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "armor",
     icon: "🥋",
     effectText: "+3 СИЛ",
+    description: "Кости снаружи, сталь в походке.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { STR: 3 },
@@ -337,6 +363,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "cloak",
     icon: "👘",
     effectText: "+3 ИНТ",
+    description: "Плащ мудреца: плюс к мозгу, минус к сомнениям.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { INT: 3 },
@@ -348,6 +375,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "tooth",
     icon: "🦷",
     effectText: "+3 STR, +2 AGI",
+    description: "Белка одобряет твой боевой оскал.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { STR: 3, AGI: 2 },
@@ -359,6 +387,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "bead",
     icon: "🧿",
     effectText: "+3 INT, +2 LUK",
+    description: "Жемчуг сияет, решения попадают в цель.",
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: { INT: 3, LUK: 2 },
@@ -370,6 +399,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "heal_hp",
     icon: "🧀",
     effectText: "Восстанавливает 28 HP",
+    description: "Сыр, который лечит даже настроение.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -381,6 +411,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "heal_mana",
     icon: "💧",
     effectText: "Восстанавливает 24 маны",
+    description: "Один глоток — и маг снова на максималках.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -392,6 +423,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "heal_hybrid",
     icon: "🧴",
     effectText: "Восстанавливает 20 HP и 20 маны",
+    description: "Тяжелый бурдюк, легкая победа.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -403,6 +435,7 @@ export const LOOT_UNIQUE_ITEMS = [
     subtype: "buff",
     icon: "🌶",
     effectText: "Следующая атака x2.5",
+    description: "Перец уровня 'не повторять дома'.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     statBonuses: {},
@@ -487,16 +520,17 @@ export function chooseStarterLoadoutItem(currentLoadoutIds, itemToToggleId) {
 export function applyLoadoutToSheet(playerSheet, selectedItemIds) {
   const selectedItems = ALL_ITEMS.filter((item) => selectedItemIds.includes(item.id));
   const equippedByType = buildEquippedMap(selectedItems.filter((item) => !item.isConsumable));
+  const equippedInstanceByType = buildEquippedInstanceMap(equippedByType, {});
   const selectedConsumables = selectedItems
     .filter((item) => item.isConsumable)
     .map((item) => createBagEntry(item.id));
-  return recalculateSheetFromInventory(playerSheet, equippedByType, selectedConsumables);
+  return recalculateSheetFromInventory(playerSheet, equippedByType, selectedConsumables, equippedInstanceByType);
 }
 
-export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) {
+export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, equippedInstanceByType = null) {
   const baseStats = { ...playerSheet.baseStats };
-  const previousHp = baseStats.HP ?? playerSheet?.stats?.HP ?? 0;
-  const previousHpMax = playerSheet?.stats?.HP_MAX ?? baseStats.HP_MAX ?? 1;
+  const previousHp = floorHp(playerSheet?.stats?.HP ?? baseStats.HP ?? 0);
+  const previousHpMax = floorHpMax(playerSheet?.stats?.HP_MAX ?? baseStats.HP_MAX ?? 1);
   const equippedIds = Object.values(equippedByType).filter(Boolean);
   const equipped = equippedIds.map((id) => getItemById(id)).filter(Boolean);
 
@@ -522,18 +556,19 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) 
   baseStats.HP_MAX = floorHpMax(100 + strTotal * 8 + bonusHpMaxFromEffects);
 
   const hpCap = baseStats.HP_MAX;
-  const desiredHpFromBase = baseStats.HP ?? previousHp;
-  const hasExplicitHpUpdate = desiredHpFromBase !== previousHp;
   const previousHpRatio = previousHpMax > 0 ? previousHp / previousHpMax : 0;
   const scaledHp = floorHp(previousHpRatio * hpCap);
-  const nextHp = hasExplicitHpUpdate ? floorHp(desiredHpFromBase) : scaledHp;
-  baseStats.HP = floorHp(Math.min(nextHp, hpCap));
+  baseStats.HP = floorHp(Math.min(scaledHp, hpCap));
 
   const weaponItem = equipped.find((item) => item.type === "weapon") || null;
   const derived = buildDerivedStats(baseStats, weaponItem);
 
   const manaMax = roundStat(30 + intTotal * 6);
   const nextMana = roundStat(Math.min(playerSheet.mana ?? manaMax, manaMax));
+  const normalizedEquippedInstances = buildEquippedInstanceMap(
+    equippedByType,
+    equippedInstanceByType || playerSheet.equippedInstanceByType || {},
+  );
 
   return {
     ...playerSheet,
@@ -543,6 +578,7 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag) 
     mana: Math.max(0, nextMana),
     loadout: equipped,
     equippedByType: buildEquippedMap(equipped),
+    equippedInstanceByType: normalizedEquippedInstances,
     inventory: equipped.filter((item) => item.isConsumable),
     bag: normalizeBagEntries(bag),
     skills: { ...(playerSheet.skills || {}) },
@@ -556,6 +592,10 @@ export function initializeInventoryForRun(playerSheet) {
     ...playerSheet,
     bag: normalizeBagEntries(playerSheet.bag || []),
     equippedByType: equippedMap,
+    equippedInstanceByType: buildEquippedInstanceMap(
+      equippedMap,
+      playerSheet.equippedInstanceByType || {},
+    ),
   };
 }
 
@@ -575,17 +615,31 @@ export function swapItemFromBag(playerSheet, bagInstanceId, bagIndex = null) {
   }
 
   const equippedByType = { ...playerSheet.equippedByType };
+  const equippedInstanceByType = {
+    ...(playerSheet.equippedInstanceByType || {}),
+  };
+  const pickedBagEntry = bag[resolvedIndex] || null;
+  const pickedInstanceId = pickedBagEntry?.instanceId || createItemInstanceId();
   const currentEquippedId = equippedByType[item.type] || null;
+  const currentEquippedInstanceId = equippedInstanceByType[item.type] || null;
   equippedByType[item.type] = item.id;
+  equippedInstanceByType[item.type] = pickedInstanceId;
 
   const nextBag = [...bag];
   nextBag.splice(resolvedIndex, 1);
   if (currentEquippedId) {
-    nextBag.push(createBagEntry(currentEquippedId));
+    nextBag.push({
+      instanceId: currentEquippedInstanceId || createItemInstanceId(),
+      itemId: currentEquippedId,
+    });
   }
 
-  const equippedIds = Object.values(equippedByType).filter(Boolean);
-  const recalculated = recalculateSheetFromInventory(playerSheet, equippedByType, nextBag);
+  const recalculated = recalculateSheetFromInventory(
+    playerSheet,
+    equippedByType,
+    nextBag,
+    equippedInstanceByType,
+  );
 
   return {
     ...recalculated,
@@ -599,11 +653,19 @@ export function addLootItemToPlayer(playerSheet, itemId) {
   }
 
   const equippedByType = { ...playerSheet.equippedByType };
+  const equippedInstanceByType = {
+    ...(playerSheet.equippedInstanceByType || {}),
+  };
   const bag = normalizeBagEntries(playerSheet.bag || []);
   if (item.isConsumable) {
     bag.push(createBagEntry(item.id));
     return {
-      playerSheet: recalculateSheetFromInventory(playerSheet, equippedByType, bag),
+      playerSheet: recalculateSheetFromInventory(
+        playerSheet,
+        equippedByType,
+        bag,
+        equippedInstanceByType,
+      ),
       addedTo: "bag",
     };
   }
@@ -612,15 +674,26 @@ export function addLootItemToPlayer(playerSheet, itemId) {
 
   if (slotFree) {
     equippedByType[item.type] = item.id;
+    equippedInstanceByType[item.type] = createItemInstanceId();
     return {
-      playerSheet: recalculateSheetFromInventory(playerSheet, equippedByType, bag),
+      playerSheet: recalculateSheetFromInventory(
+        playerSheet,
+        equippedByType,
+        bag,
+        equippedInstanceByType,
+      ),
       addedTo: "equip",
     };
   }
 
   bag.push(createBagEntry(item.id));
   return {
-    playerSheet: recalculateSheetFromInventory(playerSheet, equippedByType, bag),
+    playerSheet: recalculateSheetFromInventory(
+      playerSheet,
+      equippedByType,
+      bag,
+      equippedInstanceByType,
+    ),
     addedTo: "bag",
   };
 }
@@ -677,11 +750,29 @@ function buildEquippedMap(items) {
 }
 
 function createBagEntry(itemId) {
-  bagInstanceSeq += 1;
   return {
-    instanceId: `bag_${bagInstanceSeq}`,
+    instanceId: createItemInstanceId(),
     itemId,
   };
+}
+
+function createItemInstanceId() {
+  bagInstanceSeq += 1;
+  return `item_${bagInstanceSeq}`;
+}
+
+function buildEquippedInstanceMap(equippedByType, sourceMap) {
+  const map = {};
+  for (const type of EQUIP_TYPES) {
+    const equippedItemId = equippedByType?.[type] || null;
+    if (!equippedItemId) {
+      map[type] = null;
+      continue;
+    }
+    const existingInstanceId = sourceMap?.[type] || null;
+    map[type] = existingInstanceId || createItemInstanceId();
+  }
+  return map;
 }
 
 function normalizeBagEntries(bag) {

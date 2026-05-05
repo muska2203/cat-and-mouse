@@ -65,7 +65,8 @@ export function createInventoryItemPopoverController(options) {
   }
 
   function updateFromEvent(event) {
-    if (getScreen() !== "game") {
+    const screen = getScreen();
+    if (screen !== "game" && screen !== "welcome" && screen !== "ending") {
       scheduleHide();
       return;
     }
