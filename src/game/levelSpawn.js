@@ -1,4 +1,4 @@
-import { randomPick } from "./rng.js?v=0.4.7-pre-alpha";
+import { randomFloat, randomPick } from "./rng.js?v=0.4.8-pre-alpha";
 
 function createFilledMask(width, height, fill) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => fill));
@@ -53,7 +53,7 @@ function isEdgeRoom(maze, room) {
   );
 }
 
-export function planStartAndGoalSpawn(maze) {
+export function planStartAndGoalSpawn(maze, rng = null) {
   const rooms = Array.isArray(maze.rooms) ? maze.rooms : [];
   const roomCandidates = rooms
     .map((room, index) => ({ room, index, cells: getWalkableCellsInRoom(maze, room) }))
@@ -69,8 +69,8 @@ export function planStartAndGoalSpawn(maze) {
   }
 
   const edgeCandidates = roomCandidates.filter((entry) => isEdgeRoom(maze, entry.room));
-  const startRoomEntry = randomPick(edgeCandidates.length > 0 ? edgeCandidates : roomCandidates);
-  const start = randomPick(startRoomEntry.cells);
+  const startRoomEntry = randomPick(edgeCandidates.length > 0 ? edgeCandidates : roomCandidates, rng);
+  const start = randomPick(startRoomEntry.cells, rng);
   const blockedSpawnKeys = new Set(startRoomEntry.cells.map((cell) => `${cell.x}:${cell.y}`));
 
   const distances = buildDistanceMapFromCell(maze, start);
@@ -91,8 +91,8 @@ export function planStartAndGoalSpawn(maze) {
       continue;
     }
     const farthestGroup = reachableCells.filter((cell) => cell.d === bestDistance);
-    const picked = randomPick(farthestGroup);
-    if (bestDistance > chosenDistance || Math.random() < 0.5) {
+    const picked = randomPick(farthestGroup, rng);
+    if (bestDistance > chosenDistance || randomFloat(rng) < 0.5) {
       chosenDistance = bestDistance;
       chosenGoalCell = { x: picked.x, y: picked.y };
     }
@@ -111,7 +111,7 @@ export function planStartAndGoalSpawn(maze) {
       fallbackCells.sort((a, b) => b.d - a.d);
       const maxD = fallbackCells[0].d;
       const farthest = fallbackCells.filter((cell) => cell.d === maxD);
-      const picked = randomPick(farthest);
+      const picked = randomPick(farthest, rng);
       chosenGoalCell = { x: picked.x, y: picked.y };
     } else {
       chosenGoalCell = maze.goal;

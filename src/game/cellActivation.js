@@ -1,17 +1,19 @@
-import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.7-pre-alpha";
-import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.4.7-pre-alpha";
-import { rollChestLootItems } from "./chestLoot.js?v=0.4.7-pre-alpha";
+import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.8-pre-alpha";
+import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.4.8-pre-alpha";
+import { rollChestLootItems } from "./chestLoot.js?v=0.4.8-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.8-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.8-pre-alpha";
 import {
   ACTOR_KIND,
   getObjectsAt,
   canObjectBeActivatedBy,
   removeObject,
-} from "./cellObjects.js?v=0.4.7-pre-alpha";
+} from "./cellObjects.js?v=0.4.8-pre-alpha";
 import {
   applyTrapEffectToEnemy,
   applyTrapEffectToPlayer,
   spawnPoisonCloudObjects,
-} from "./trapsAndClouds.js?v=0.4.7-pre-alpha";
+} from "./trapsAndClouds.js?v=0.4.8-pre-alpha";
 
 function collectChestDropCells(run, x, y) {
   const cells = [];
@@ -28,6 +30,7 @@ function collectChestDropCells(run, x, y) {
 }
 
 function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
+  const fx = ensureRunFxState(run);
   const candidateCells = collectChestDropCells(run, sourceX, sourceY);
   let ord = 0;
   const dropMotions = [];
@@ -35,7 +38,7 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
     if (!item?.id) continue;
     const targetCell = candidateCells.shift() || { x: sourceX, y: sourceY };
     const lootObject = {
-      id: `ground_loot_${Date.now()}_${targetCell.x}_${targetCell.y}_${ord}_${Math.floor(Math.random() * 10000)}`,
+      id: `ground_loot_${Date.now()}_${targetCell.x}_${targetCell.y}_${ord}_${randomInt(0, 9999, run?.rng || null)}`,
       name: `Лут: ${item.name}`,
       type: "ground_loot",
       purpose: "ground_loot",
@@ -65,7 +68,7 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
     ord += 1;
   }
   if (dropMotions.length > 0) {
-    run.environmentMotion = {
+    fx.environmentMotion = {
       kind: "object-move-batch",
       actors: dropMotions,
       durationMs: 220,
@@ -75,6 +78,7 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
 }
 
 export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, actorEntity = null) {
+  const fx = ensureRunFxState(run);
   const objects = getObjectsAt(run, x, y);
   const logs = [];
   let nextPlayerSheet = playerSheet;
@@ -85,7 +89,7 @@ export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, a
     if (object.activation?.effect === "open_chest" && actorKind === ACTOR_KIND.PLAYER) {
       removeObject(run, object.id);
       const chestRarity = object?.data?.chestRarity || "common";
-      const lootItems = rollChestLootItems(chestRarity, nextPlayerSheet?.stats?.LUK ?? 0);
+      const lootItems = rollChestLootItems(chestRarity, nextPlayerSheet?.stats?.LUK ?? 0, run?.rng || null);
       if (lootItems.length > 0) {
         spawnGroundLootObjects(run, lootItems, x, y, object.name);
         logs.push(`${object.name}: лут высыпан рядом (${lootItems.length}).`);
@@ -145,7 +149,7 @@ export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, a
       run.status = "victory";
     } else {
       run.status = "level_complete";
-      run.levelTransition = {
+      fx.levelTransition = {
         phase: "out",
         startedMs: null,
         durationMs: 420,

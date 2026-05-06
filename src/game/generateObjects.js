@@ -1,8 +1,11 @@
-import { ACTOR_KIND } from "./cellObjects.js?v=0.4.7-pre-alpha";
-import { getChestCountsForLevel } from "./chestLoot.js?v=0.4.7-pre-alpha";
-import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.4.7-pre-alpha";
+import { ACTOR_KIND } from "./cellObjects.js?v=0.4.8-pre-alpha";
+import { getChestCountsForLevel } from "./chestLoot.js?v=0.4.8-pre-alpha";
+import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.4.8-pre-alpha";
+import { getEnemyDefByType } from "./enemyDefs.js?v=0.4.8-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.8-pre-alpha";
 
 export function generateObjects(maze, level = 1, options = {}) {
+  const rng = options.rng && typeof options.rng.nextFloat === "function" ? options.rng : null;
   const freeCells = [];
   const reserved = new Set();
   const rooms = Array.isArray(maze.rooms) ? maze.rooms : [];
@@ -14,36 +17,27 @@ export function generateObjects(maze, level = 1, options = {}) {
   const objectTemplates = {
     cat_small: {
       id: "cat_small",
-      name: "Котенок",
       type: "enemy",
       purpose: "enemy",
-      icon: "🐱",
       oneTime: false,
       blocksMovement: true,
       activation: { by: [], effect: null },
-      data: { hp: 18, damage: 2 },
     },
     cat_mid: {
       id: "cat_mid",
-      name: "Домашний кот",
       type: "enemy",
       purpose: "enemy",
-      icon: "🐈",
       oneTime: false,
       blocksMovement: true,
       activation: { by: [], effect: null },
-      data: { hp: 27, damage: 5 },
     },
     cat_big: {
       id: "cat_big",
-      name: "Дворовый кот",
       type: "enemy",
       purpose: "enemy",
-      icon: "😾",
       oneTime: false,
       blocksMovement: true,
       activation: { by: [], effect: null },
-      data: { hp: 38, damage: 7 },
     },
     chest_common: {
       id: "chest_common",
@@ -112,8 +106,8 @@ export function generateObjects(maze, level = 1, options = {}) {
   }
 
   const walkableCells = freeCells.length;
-  const enemyCounts = getEnemyCountsForLevel(level, walkableCells);
-  const chestCounts = getChestCountsForLevel(level);
+  const enemyCounts = getEnemyCountsForLevel(level, walkableCells, rng);
+  const chestCounts = getChestCountsForLevel(level, rng);
   const extraChests = Math.max(0, Math.floor((walkableCells - 120) / 45));
   const byTypeCount = {
     cat_small: enemyCounts.cat_small,
@@ -125,7 +119,7 @@ export function generateObjects(maze, level = 1, options = {}) {
   };
 
   for (let i = freeCells.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = randomInt(0, i, rng);
     const tmp = freeCells[i];
     freeCells[i] = freeCells[j];
     freeCells[j] = tmp;
@@ -190,13 +184,13 @@ export function generateObjects(maze, level = 1, options = {}) {
   }
   for (const bucket of roomBuckets) {
     for (let i = bucket.deadEnds.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = randomInt(0, i, rng);
       const tmp = bucket.deadEnds[i];
       bucket.deadEnds[i] = bucket.deadEnds[j];
       bucket.deadEnds[j] = tmp;
     }
     for (let i = bucket.regular.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = randomInt(0, i, rng);
       const tmp = bucket.regular[i];
       bucket.regular[i] = bucket.regular[j];
       bucket.regular[j] = tmp;
@@ -221,13 +215,14 @@ export function generateObjects(maze, level = 1, options = {}) {
   }
 
   function placeObject(list, template, cell, ordinal) {
+    const enemyDef = template.type === "enemy" ? getEnemyDefByType(template.id) : null;
     reserved.add(keyOf(cell.x, cell.y));
     list.push({
       id: `${template.id}_${ordinal}_${cell.x}_${cell.y}`,
-      name: template.name,
+      name: enemyDef?.name || template.name,
       type: template.type,
       purpose: template.purpose || template.type,
-      icon: template.icon,
+      icon: enemyDef?.icon || template.icon,
       oneTime: template.oneTime,
       blocksMovement: template.blocksMovement !== false,
       blocksEnemyMovement: template.blocksEnemyMovement === true,
@@ -239,7 +234,14 @@ export function generateObjects(maze, level = 1, options = {}) {
         : { by: [], effect: null },
       x: cell.x,
       y: cell.y,
-      data: { ...template.data },
+      data: enemyDef
+        ? {
+            hp: enemyDef.hp,
+            maxHp: enemyDef.hp,
+            damage: enemyDef.damage,
+            enemyType: template.id,
+          }
+        : { ...template.data },
     });
   }
 

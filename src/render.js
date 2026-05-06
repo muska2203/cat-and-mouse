@@ -1,9 +1,12 @@
-import { roundStat } from "./rules.js?v=0.4.7-pre-alpha";
+import { roundStat } from "./rules.js?v=0.4.8-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.4.8-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.8-pre-alpha";
 
-export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1) {
+export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1, overlay = null) {
   if (!canvas || !run) {
     return;
   }
+  ensureRunFxState(run);
 
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
@@ -22,12 +25,13 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   ctx.fillRect(0, 0, width, height);
 
   const playerVisual = getPlayerVisual(run, nowMs);
-  const tile = Math.max(16, Math.floor((Math.min(width, height) / 11) * normalizeCanvasZoom(zoomScale)));
+  const tile = getCanvasTileSize(width, height, zoomScale);
   const cameraX = playerVisual.x + 0.5;
   const cameraY = playerVisual.y + 0.5;
   const shake = getScreenShakeOffset(run, nowMs);
-  const cameraOffsetX = width / 2 - cameraX * tile + shake.x;
-  const cameraOffsetY = height / 2 - cameraY * tile + shake.y;
+  const baseCameraOffset = getCanvasCameraOffset(width, height, cameraX, cameraY, tile);
+  const cameraOffsetX = baseCameraOffset.offsetX + shake.x;
+  const cameraOffsetY = baseCameraOffset.offsetY + shake.y;
 
   const minX = Math.max(0, Math.floor((-cameraOffsetX) / tile) - 2);
   const minY = Math.max(0, Math.floor((-cameraOffsetY) / tile) - 2);
@@ -55,7 +59,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   ctx.textBaseline = "middle";
   ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
 
-  drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs);
+  drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, overlay);
 
   if (Array.isArray(run.objects)) {
     const visibleObjects = run.objects.filter((object) => run.discovered?.[object.y]?.[object.x]);
@@ -100,8 +104,9 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     }
   }
 
-  if (Array.isArray(run.skillTargetCells) && run.skillTargetCells.length > 0) {
-    for (const cell of run.skillTargetCells) {
+  const skillTargetCells = Array.isArray(overlay?.skillTargetCells) ? overlay.skillTargetCells : (run.skillTargetCells || []);
+  if (Array.isArray(skillTargetCells) && skillTargetCells.length > 0) {
+    for (const cell of skillTargetCells) {
       if (!run.discovered?.[cell.y]?.[cell.x]) continue;
       const px = Math.floor(cameraOffsetX + cell.x * tile);
       const py = Math.floor(cameraOffsetY + cell.y * tile);
@@ -135,42 +140,67 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     mouseScreenY
   );
 
-  const str = playerSheet?.stats?.STR ?? 0;
-  const wd = playerSheet?.derived?.WEAPON_DAMAGE ?? 4;
-  const mouseBaseDamage = Math.max(1, Math.floor(roundStat(wd + str * 1)));
-  const mouseDamageMultiplier = Math.max(1, run?.nextHitMultiplier || 1);
-  const mouseShownDamage = Math.max(1, Math.floor(mouseBaseDamage * mouseDamageMultiplier));
-  // Урон мышки — подпись как у котов, рядом с иконкой мышки.
-  ctx.textAlign = "right";
-  ctx.textBaseline = "middle";
-  const preview = run?.skillTargetingPreview;
-  const shownValue = preview?.value ?? mouseShownDamage;
-  const shownColor = preview?.kind === "damage"
-    ? "#ef4444"
-    : preview?.kind === "heal"
-      ? "#22c55e"
-      : (mouseDamageMultiplier > 1 ? "#fde047" : "#ffffff");
-  ctx.fillStyle = shownColor;
-  ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
-  ctx.fillText(
-    `${shownValue}`,
-    mouseScreenX - tile * 0.36,
-    mouseScreenY + tile * 0.24
-  );
+  const skillTargetingPreviews = Array.isArray(overlay?.skillTargetingPreviews)
+    ? overlay.skillTargetingPreviews
+    : (run.skillTargetingPreviews || []);
+  if (Array.isArray(skillTargetingPreviews) && skillTargetingPreviews.length > 0) {
+    const grouped = new Map();
+    for (const entry of skillTargetingPreviews) {
+      const isPlayerCell = entry.x === run.player?.x && entry.y === run.player?.y;
+      if (!isPlayerCell && !run.discovered?.[entry.y]?.[entry.x]) continue;
+      const key = `${entry.x}:${entry.y}`;
+      const current = grouped.get(key) || [];
+      current.push(entry);
+      grouped.set(key, current);
+    }
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (const [key, entries] of grouped.entries()) {
+      const [xText, yText] = key.split(":");
+      const x = Number(xText);
+      const y = Number(yText);
+      const baseX = cameraOffsetX + x * tile + tile / 2;
+      const baseY = cameraOffsetY + y * tile + tile / 2;
+      for (let index = 0; index < entries.length; index += 1) {
+        const entry = entries[index];
+        const offsetY = (index - (entries.length - 1) / 2) * (Math.max(12, Math.floor(tile * 0.22)));
+        const text = String(entry.value || "");
+        const fontSize = Math.max(12, Math.floor(tile * 0.34));
+        ctx.font = `700 ${fontSize}px Arial`;
+        const textWidth = ctx.measureText(text).width;
+        const badgePadX = Math.max(4, Math.floor(tile * 0.08));
+        const badgeH = Math.max(14, Math.floor(fontSize * 1.15));
+        const badgeW = Math.max(18, Math.floor(textWidth + badgePadX * 2));
+        const drawX = baseX - badgeW / 2;
+        const drawY = baseY + offsetY - badgeH / 2;
+        ctx.fillStyle = "rgba(15, 23, 42, 0.74)";
+        ctx.fillRect(drawX, drawY, badgeW, badgeH);
+        ctx.strokeStyle = "rgba(148, 163, 184, 0.55)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(drawX, drawY, badgeW, badgeH);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(2, 6, 23, 0.95)";
+        ctx.strokeText(text, baseX, baseY + offsetY);
+        ctx.fillStyle = entry.color || "#ffffff";
+        ctx.fillText(text, baseX, baseY + offsetY);
+      }
+    }
+  }
 
   drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs);
   drawLevelTransitionOverlay(ctx, run, width, height, nowMs);
 }
 
-function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) {
-  const hoverCell = run.hoverCell;
-  const hoverCellEnemy = Boolean(run.hoverCellEnemy);
-  const previewCells = Array.isArray(run.previewPathCells) ? run.previewPathCells : [];
-  const lockedCells = Array.isArray(run.lockedPathCells) ? run.lockedPathCells : [];
-  const lockedTarget = run.lockedPathTarget;
-  const lockedEnemyTarget = Boolean(run.lockedPathEnemyId);
+function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, overlay = null) {
+  const hoverCell = overlay?.hoverCell || run.hoverCell;
+  const hoverCellEnemy = Boolean(overlay?.hoverCellEnemy ?? run.hoverCellEnemy);
+  const previewCells = Array.isArray(overlay?.previewPathCells) ? overlay.previewPathCells : (run.previewPathCells || []);
+  const lockedCells = Array.isArray(overlay?.lockedPathCells) ? overlay.lockedPathCells : (run.lockedPathCells || []);
+  const lockedTarget = overlay?.lockedPathTarget || run.lockedPathTarget;
+  const lockedPathEnemyId = overlay?.lockedPathEnemyId || run.lockedPathEnemyId;
+  const lockedEnemyTarget = Boolean(lockedPathEnemyId);
   const lockedEnemy = lockedEnemyTarget
-    ? run.objects?.find((object) => object.type === "enemy" && object.id === run.lockedPathEnemyId) || null
+    ? run.objects?.find((object) => object.type === "enemy" && object.id === lockedPathEnemyId) || null
     : null;
 
   if (hoverCell && run.discovered?.[hoverCell.y]?.[hoverCell.x] && !lockedTarget) {
@@ -226,7 +256,7 @@ function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) {
 }
 
 function getObjectVisualPosition(run, object, nowMs) {
-  const motion = run?.environmentMotion;
+  const motion = run?.fx?.environmentMotion;
   if (!motion) {
     return { x: object.x, y: object.y };
   }
@@ -234,9 +264,7 @@ function getObjectVisualPosition(run, object, nowMs) {
     if (motion.actorId !== object.id) {
       return { x: object.x, y: object.y };
     }
-    if (motion.startMs == null) {
-      motion.startMs = nowMs;
-    }
+    if (motion.startMs == null) return { x: motion.from.x, y: motion.from.y };
     const t = Math.min(1, (nowMs - motion.startMs) / Math.max(1, motion.durationMs || 1));
     const x = motion.from.x + (motion.to.x - motion.from.x) * t;
     const y = motion.from.y + (motion.to.y - motion.from.y) * t;
@@ -248,7 +276,10 @@ function getObjectVisualPosition(run, object, nowMs) {
       return { x: object.x, y: object.y };
     }
     if (motion.startMs == null) {
-      motion.startMs = nowMs;
+      if (actorMotion.kind === "bounce") {
+        return { x: actorMotion.from.x, y: actorMotion.from.y };
+      }
+      return { x: actorMotion.from.x, y: actorMotion.from.y };
     }
     const t = Math.min(1, (nowMs - motion.startMs) / Math.max(1, motion.durationMs || 1));
     if (actorMotion.kind === "bounce") {
@@ -317,29 +348,29 @@ function getGroundLootRarityColors(rarity) {
   if (rarity === "unique") {
     return {
       panelFill: "#2a1742",
-      panelStroke: "#6f42c1",
+      panelStroke: "#c445ff",
       badgeFill: "rgba(30, 18, 46, 0.88)",
-      badgeStroke: "rgba(196, 181, 253, 0.42)",
-      glowColor: "rgba(168, 85, 247, 0.5)",
+      badgeStroke: "rgba(196, 69, 255, 0.42)",
+      glowColor: "rgba(196, 69, 255, 0.5)",
       glowBlur: 14,
     };
   }
   if (rarity === "rare") {
     return {
-      panelFill: "#10233f",
-      panelStroke: "#2f5f9f",
-      badgeFill: "rgba(10, 28, 54, 0.84)",
-      badgeStroke: "rgba(96, 165, 250, 0.44)",
-      glowColor: "rgba(59, 130, 246, 0.35)",
+      panelFill: "#0a2a33",
+      panelStroke: "#00d2ff",
+      badgeFill: "rgba(10, 42, 51, 0.84)",
+      badgeStroke: "rgba(0, 210, 255, 0.44)",
+      glowColor: "rgba(0, 210, 255, 0.35)",
       glowBlur: 10,
     };
   }
   return {
-    panelFill: "#12261b",
-    panelStroke: "#2f6f4f",
-    badgeFill: "rgba(10, 33, 23, 0.84)",
-    badgeStroke: "rgba(74, 222, 128, 0.38)",
-    glowColor: "rgba(34, 197, 94, 0.24)",
+    panelFill: "#2a241e",
+    panelStroke: "#7a6855",
+    badgeFill: "rgba(42, 36, 30, 0.84)",
+    badgeStroke: "rgba(122, 104, 85, 0.38)",
+    glowColor: "rgba(122, 104, 85, 0.24)",
     glowBlur: 6,
   };
 }
@@ -379,20 +410,16 @@ function drawPoisonCloud(ctx, cameraOffsetX, cameraOffsetY, tile, cloudVisual, n
 }
 
 function getPlayerVisual(run, nowMs) {
-  if (!run.motion) {
+  const motion = run?.fx?.motion;
+  if (!motion) {
     return { x: run.player.x, y: run.player.y };
   }
-
-  const motion = run.motion;
-  if (motion.startMs == null) {
-    motion.startMs = nowMs;
-  }
+  if (motion.startMs == null) return { x: motion.from.x, y: motion.from.y };
   const t = Math.min(1, (nowMs - motion.startMs) / motion.durationMs);
 
   if (motion.kind === "move") {
     const x = motion.from.x + (motion.to.x - motion.from.x) * t;
     const y = motion.from.y + (motion.to.y - motion.from.y) * t;
-    if (t >= 1) run.motion = null;
     return { x, y };
   }
 
@@ -402,29 +429,24 @@ function getPlayerVisual(run, nowMs) {
     const dirY = motion.target.y - motion.from.y;
     const x = motion.from.x + dirX * push;
     const y = motion.from.y + dirY * push;
-    if (t >= 1) run.motion = null;
     return { x, y };
   }
 
-  run.motion = null;
   return { x: run.player.x, y: run.player.y };
 }
 
 function drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) {
-  if (!Array.isArray(run.floatingTexts) || run.floatingTexts.length === 0) {
+  const floatingTexts = run?.fx?.floatingTexts || [];
+  if (!Array.isArray(floatingTexts) || floatingTexts.length === 0) {
     return;
   }
 
-  const alive = [];
-  for (const text of run.floatingTexts) {
-    if (text.startMs == null) {
-      text.startMs = nowMs;
-    }
+  for (const text of floatingTexts) {
+    if (text.startMs == null) continue;
     const t = (nowMs - text.startMs) / text.durationMs;
     if (t >= 1) {
       continue;
     }
-    alive.push(text);
 
     const baseX = cameraOffsetX + text.x * tile + tile / 2;
     const baseY = cameraOffsetY + text.y * tile + tile / 2;
@@ -439,28 +461,25 @@ function drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) 
     ctx.textBaseline = "middle";
     ctx.fillText(text.value, baseX, y);
   }
-  run.floatingTexts = alive;
 }
 
 function getScreenShakeOffset(run, nowMs) {
-  const shake = run?.screenShake;
+  const shake = run?.fx?.screenShake;
   if (!shake) {
     return { x: 0, y: 0 };
   }
-  if (shake.startMs == null) {
-    shake.startMs = nowMs;
-  }
+  if (shake.startMs == null) return { x: 0, y: 0 };
   const t = (nowMs - shake.startMs) / Math.max(1, shake.durationMs || 1);
-  if (t >= 1) {
-    run.screenShake = null;
-    return { x: 0, y: 0 };
-  }
+  if (t >= 1) return { x: 0, y: 0 };
 
   const fade = 1 - t;
   const amplitude = (shake.amplitudePx || 4) * fade;
+  const randomFloat = run?.rng && typeof run.rng.nextFloat === "function"
+    ? () => run.rng.nextFloat()
+    : () => Math.random();
   return {
-    x: (Math.random() * 2 - 1) * amplitude,
-    y: (Math.random() * 2 - 1) * amplitude,
+    x: (randomFloat() * 2 - 1) * amplitude,
+    y: (randomFloat() * 2 - 1) * amplitude,
   };
 }
 
@@ -477,15 +496,14 @@ function withAlpha(hexOrColor, alpha) {
 }
 
 function drawLevelTransitionOverlay(ctx, run, width, height, nowMs) {
-  if (run.status !== "level_complete" || !run.levelTransition) {
+  const transition = run?.fx?.levelTransition;
+  if (run.status !== "level_complete" || !transition) {
     return;
   }
 
-  if (run.levelTransition.startedMs == null) {
-    run.levelTransition.startedMs = nowMs;
-  }
-  const duration = Math.max(1, run.levelTransition.durationMs || 420);
-  const t = Math.max(0, Math.min(1, (nowMs - run.levelTransition.startedMs) / duration));
+  if (transition.startedMs == null) return;
+  const duration = Math.max(1, transition.durationMs || 420);
+  const t = Math.max(0, Math.min(1, (nowMs - transition.startedMs) / duration));
   const alpha = Math.min(0.8, t * 0.9);
 
   ctx.fillStyle = `rgba(2, 6, 23, ${alpha})`;
@@ -500,10 +518,3 @@ function drawLevelTransitionOverlay(ctx, run, width, height, nowMs) {
   ctx.fillText("Подземный ход перестраивается...", width / 2, height / 2 + 24);
 }
 
-function normalizeCanvasZoom(value) {
-  const zoom = Number(value);
-  if (!Number.isFinite(zoom)) {
-    return 1;
-  }
-  return Math.max(0.35, Math.min(1.5, zoom));
-}

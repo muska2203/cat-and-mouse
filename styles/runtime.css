@@ -149,14 +149,29 @@
   color: var(--gold-dim);
 }
 
-.cm-skill-choice-card__mana-badge {
+.cm-skill-choice-card__mana-badge,
+.cm-skill-choice-card__heal-badge,
+.cm-skill-choice-card__damage-badge {
   border: 1px solid var(--bronze-dark);
   border-radius: 999px;
   padding: 3px 8px;
-  color: #9fd3ff;
-  background: rgba(11, 20, 30, 0.7);
   font-size: 11px;
   white-space: nowrap;
+}
+
+.cm-skill-choice-card__mana-badge {
+  color: #9fd3ff;
+  background: rgba(11, 20, 30, 0.7);
+}
+
+.cm-skill-choice-card__heal-badge {
+  color: #8fd88a;
+  background: rgba(20, 30, 11, 0.7);
+}
+
+.cm-skill-choice-card__damage-badge {
+  color: #ef4444;
+  background: rgba(30, 11, 11, 0.7);
 }
 
 .cm-skill-choice-card__delta s {
@@ -208,6 +223,7 @@
 .cm-app--game .cm-col--right .cm-panel--inventory .cm-inv-wrap {
   width: 276px;
   max-width: 276px;
+  min-height: var(--inv-cell);
   padding-right: 0;
   scrollbar-gutter: auto;
 }
@@ -246,6 +262,33 @@
   margin-left: auto;
 }
 
+.cm-app--game .cm-skill .cm-skill__btn .cm-skill__cooldown {
+  margin-left: 6px;
+  font-size: 10px;
+  color: #ffce8f;
+  border: 1px solid rgba(180, 103, 45, 0.7);
+  border-radius: 999px;
+  padding: 1px 5px;
+  line-height: 1.2;
+}
+
+.cm-app--game .cm-skills__divider {
+  list-style: none;
+  height: 1px;
+  margin: 6px 2px;
+  background: linear-gradient(90deg, rgba(196, 163, 90, 0), rgba(196, 163, 90, 0.75), rgba(196, 163, 90, 0));
+}
+
+.cm-app--game .cm-col--right .cm-panel--skills .cm-skills-viewport {
+  max-height: none;
+}
+
+.cm-app--game .cm-inv-cell,
+.cm-app--game .cm-hot-slot,
+.cm-app--game .cm-equip-slot__box {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", var(--font-ui);
+}
+
 /* Hover card for inventory items (new UI style). */
 .inventory-item-detail-popover {
   position: fixed;
@@ -274,9 +317,9 @@
   backdrop-filter: blur(1px);
 }
 
-.item-detail-rarity-common { border-color: #6b5a2a; }
-.item-detail-rarity-rare { border-color: #4c6b9d; }
-.item-detail-rarity-unique { border-color: #7d5a9f; }
+.item-detail-rarity-common { border-color: #7a6855; }
+.item-detail-rarity-rare { border-color: #00d2ff; }
+.item-detail-rarity-unique { border-color: #c445ff; }
 
 .item-detail-head {
   display: flex;
@@ -314,12 +357,16 @@
 
 .skill-detail-topline {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin-bottom: 8px;
 }
 
-.skill-detail-topline .cm-skill-choice-card__mana-badge {
+.skill-detail-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
   margin-left: auto;
 }
 
@@ -334,19 +381,25 @@
 .item-detail-desc { margin: 0; color: var(--text-muted); }
 .item-detail-muted { color: var(--text-muted); font-size: 11px; }
 
-/* Rarity visuals for real item cells (selected variant A). */
+/* Rarity visuals for real item cells (Variant 1: Magic Glow). */
 .item-rarity-common {
-  border-color: #8e6a2f !important;
+  border-color: #7a6855 !important;
 }
 
 .item-rarity-rare {
-  border-color: #2f7f88 !important;
-  box-shadow: 0 0 0 1px rgba(47, 127, 136, 0.24), 0 0 11px rgba(47, 127, 136, 0.3), var(--shadow-inset, inset 0 0 0 0 transparent) !important;
+  border-color: #00d2ff !important;
+  box-shadow: 
+    inset 0 0 16px rgba(0, 210, 255, 0.35), 
+    0 0 10px rgba(0, 210, 255, 0.4), 
+    0 0 0 1px rgba(0, 210, 255, 0.5) !important;
 }
 
 .item-rarity-unique {
-  border-color: #b4672d !important;
-  box-shadow: 0 0 0 1px rgba(180, 103, 45, 0.24), 0 0 12px rgba(180, 103, 45, 0.33), var(--shadow-inset, inset 0 0 0 0 transparent) !important;
+  border-color: #c445ff !important;
+  box-shadow: 
+    inset 0 0 16px rgba(196, 69, 255, 0.35), 
+    0 0 12px rgba(196, 69, 255, 0.45), 
+    0 0 0 1px rgba(196, 69, 255, 0.6) !important;
 }
 
 /* Ensure absolute item badges are anchored to item cells. */
@@ -359,7 +412,7 @@
 .cm-item-weapon-damage {
   position: absolute;
   right: 3px;
-  bottom: 3px;
+  top: 3px;
   min-width: 16px;
   height: 16px;
   border-radius: 999px;
@@ -422,5 +475,24 @@
   color: #9fd3ff;
   background: rgba(11, 20, 30, 0.92);
   border: 1px solid var(--bronze-dark);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+
+.cm-hot-slot__cooldown {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  min-width: 18px;
+  height: 16px;
+  border-radius: 999px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  line-height: 1;
+  color: #ffce8f;
+  background: rgba(38, 18, 12, 0.92);
+  border: 1px solid rgba(180, 103, 45, 0.8);
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
 }

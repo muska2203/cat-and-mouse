@@ -1,12 +1,10 @@
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
+import { randomFloat, randomInt, randomPick } from "./game/rng.js?v=0.4.8-pre-alpha";
 
 function createGrid(width, height, value) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => value));
 }
 
-function shuffledDirs() {
+function shuffledDirs(rng = null) {
   const dirs = [
     { x: 1, y: 0 },
     { x: -1, y: 0 },
@@ -14,7 +12,7 @@ function shuffledDirs() {
     { x: 0, y: -1 },
   ];
   for (let i = dirs.length - 1; i > 0; i -= 1) {
-    const j = randomInt(0, i);
+    const j = randomInt(0, i, rng);
     const tmp = dirs[i];
     dirs[i] = dirs[j];
     dirs[j] = tmp;
@@ -22,20 +20,20 @@ function shuffledDirs() {
   return dirs;
 }
 
-function pickRandomFrom(list) {
-  return list[randomInt(0, list.length - 1)];
+function pickRandomFrom(list, rng = null) {
+  return randomPick(list, rng);
 }
 
-function carvePerfectMaze(grid, width, height) {
-  const startX = randomInt(0, Math.floor((width - 3) / 2)) * 2 + 1;
-  const startY = randomInt(0, Math.floor((height - 3) / 2)) * 2 + 1;
+function carvePerfectMaze(grid, width, height, rng = null) {
+  const startX = randomInt(0, Math.floor((width - 3) / 2), rng) * 2 + 1;
+  const startY = randomInt(0, Math.floor((height - 3) / 2), rng) * 2 + 1;
   const stack = [{ x: startX, y: startY }];
   grid[startY][startX] = 0;
 
   while (stack.length > 0) {
     const current = stack[stack.length - 1];
     const candidates = [];
-    for (const dir of shuffledDirs()) {
+    for (const dir of shuffledDirs(rng)) {
       const nx = current.x + dir.x * 2;
       const ny = current.y + dir.y * 2;
       if (!inBounds(nx, ny, width - 1, height - 1)) continue;
@@ -50,7 +48,7 @@ function carvePerfectMaze(grid, width, height) {
       continue;
     }
 
-    const next = pickRandomFrom(candidates);
+    const next = pickRandomFrom(candidates, rng);
     grid[next.wallY][next.wallX] = 0;
     grid[next.ny][next.nx] = 0;
     stack.push({ x: next.nx, y: next.ny });
@@ -108,7 +106,7 @@ function countWalkableNeighbors(grid, x, y) {
   return count;
 }
 
-function pickStartAndGoalLongPath(grid, width, height) {
+function pickStartAndGoalLongPath(grid, width, height, rng = null) {
   const walkable = [];
   for (let y = 1; y < height - 1; y += 1) {
     for (let x = 1; x < width - 1; x += 1) {
@@ -116,7 +114,7 @@ function pickStartAndGoalLongPath(grid, width, height) {
     }
   }
 
-  const start = pickRandomFrom(walkable);
+  const start = pickRandomFrom(walkable, rng);
   const distances = buildDistanceMap(grid, start);
   const deadEndCandidates = [];
   const fallbackCandidates = [];
@@ -142,7 +140,7 @@ function pickStartAndGoalLongPath(grid, width, height) {
   source.sort((a, b) => b.d - a.d);
   const farthestDistance = source[0].d;
   const farthestGroup = source.filter((c) => c.d === farthestDistance);
-  const picked = pickRandomFrom(farthestGroup);
+  const picked = pickRandomFrom(farthestGroup, rng);
   return {
     start,
     goal: { x: picked.x, y: picked.y },
@@ -188,16 +186,16 @@ function canReachGoal(grid, start, goal) {
   return false;
 }
 
-export function generateMazeRun() {
+export function generateMazeRun(rng = null) {
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    const width = randomInt(24, 32);
-    const height = randomInt(24, 32);
+    const width = randomInt(24, 32, rng);
+    const height = randomInt(24, 32, rng);
     const grid = createGrid(width, height, 1);
-    const rooms = carveRoomsAndCorridors(grid, width, height);
+    const rooms = carveRoomsAndCorridors(grid, width, height, rng);
     if (rooms.length < 2) {
       continue;
     }
-    const points = pickStartAndGoalLongPath(grid, width, height);
+    const points = pickStartAndGoalLongPath(grid, width, height, rng);
     if (!points) {
       continue;
     }
@@ -221,9 +219,9 @@ export function generateMazeRun() {
   };
 }
 
-function carveRoomsAndCorridors(grid, width, height) {
+function carveRoomsAndCorridors(grid, width, height, rng = null) {
   const rooms = [];
-  const targetRooms = randomInt(7, 10);
+  const targetRooms = randomInt(7, 10, rng);
 
   function intersects(a, b) {
     return !(
@@ -236,10 +234,10 @@ function carveRoomsAndCorridors(grid, width, height) {
 
   // Шаг 1: генерируем случайное количество комнат в случайных местах.
   for (let i = 0; i < targetRooms * 8 && rooms.length < targetRooms; i += 1) {
-    const w = randomInt(3, 6);
-    const h = randomInt(3, 6);
-    const x = randomInt(1, Math.max(1, width - w - 2));
-    const y = randomInt(1, Math.max(1, height - h - 2));
+    const w = randomInt(3, 6, rng);
+    const h = randomInt(3, 6, rng);
+    const x = randomInt(1, Math.max(1, width - w - 2), rng);
+    const y = randomInt(1, Math.max(1, height - h - 2), rng);
     const room = { x, y, w, h };
     if (rooms.some((placed) => intersects(room, placed))) {
       continue;
@@ -265,7 +263,7 @@ function carveRoomsAndCorridors(grid, width, height) {
   for (let i = 1; i < centers.length; i += 1) {
     const from = centers[i - 1];
     const to = centers[i];
-    if (Math.random() < 0.5) {
+    if (randomFloat(rng) < 0.5) {
       carveHorizontal(grid, from.x, to.x, from.y);
       carveVertical(grid, from.y, to.y, to.x);
     } else {
@@ -295,11 +293,11 @@ function carveVertical(grid, y1, y2, x) {
 
 export function generateMazeRunLegacy() {
   for (let attempt = 0; attempt < 120; attempt += 1) {
-    const width = randomInt(10, 15);
-    const height = randomInt(10, 15);
+    const width = randomInt(10, 15, null);
+    const height = randomInt(10, 15, null);
     const grid = createGrid(width, height, 1);
-    carvePerfectMaze(grid, width, height);
-    const points = pickStartAndGoalLongPath(grid, width, height);
+    carvePerfectMaze(grid, width, height, null);
+    const points = pickStartAndGoalLongPath(grid, width, height, null);
     if (!points) {
       continue;
     }

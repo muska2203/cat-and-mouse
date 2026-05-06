@@ -19,18 +19,24 @@
 | [`state.js`](src/state.js) | Инициализация `state` и стартового `playerSheet`, базовые константы прогрессии и pre-game параметров. |
 | [`game.js`](src/game.js) | Оркестрация ядра забега: создание run-state/следующего уровня, пути к клетке и реэкспорты игровых подмодулей (`runSkills`, `playerStep`, `environmentTurn`). |
 | [`render.js`](src/render.js) | Отрисовка игрового canvas (`drawRunToCanvas`): клетки, объекты, туман, анимации и боевые/служебные оверлеи. |
-| [`ui.js`](src/ui.js) | Рендер HTML-экрана (`welcome`/`game`/`ending`), разметка HUD/инвентаря/быстрых слотов и утилиты представления UI-данных. |
 | [`rules.js`](src/rules.js) | Базовые числовые правила боя и статов: округления HP, профили оружия, derived-статы, расчёт ближней атаки. |
 | [`skills.js`](src/skills.js) | Каталог ядровых скиллов (`SKILL_DEFS`), доступ к дефам и формирование текста подсказок по скиллам. |
+| [`skills/coreSkillCalc.js`](src/skills/coreSkillCalc.js) | Единые вычислители формул для core-скиллов (regen/heal) для apply/preview/tooltip/UI. |
 | [`loadout.js`](src/loadout.js) | Каталог предметов/лут-пулы, операции инвентаря/экипировки, пересчёт листа персонажа и привязка apply-функций расходников. |
 | [`maze.js`](src/maze.js) | Генерация лабиринта и стартовых данных уровня (`generateMazeRun`, legacy-вариант для совместимости/сравнения). |
 | [`app-config.js`](src/app-config.js) | Константы приложения (название, версия, GA id). |
 | [`analytics.js`](src/analytics.js) | Инициализация и отправка аналитики (GA4): `initAnalytics`, `trackEvent`, генерация id забега. |
 | [`strings/ru.js`](src/strings/ru.js) | Статические строки UI (экраны, справка, бейдж, активные эффекты, подписи карточки предмета). |
-| [`items/itemPresentation.js`](src/items/itemPresentation.js) | Тултипы и тексты логов применения расходников (единый источник для [`ui.js`](src/ui.js), [`consumables.js`](src/game/consumables.js), [`consumableApply.js`](src/items/consumableApply.js)). |
-| [`items/consumableApply.js`](src/items/consumableApply.js) | Логика применения расходников: функции по `id`, привязка `applyWhenUsed` к объектам каталога в [`loadout.js`](src/loadout.js). |
+| [`items/itemPresentation.js`](src/items/itemPresentation.js) | Тултипы и тексты логов применения расходников (единый источник для `main.js`, [`consumables.js`](src/game/consumables.js), [`consumableApply.js`](src/items/consumableApply.js)). |
+| [`items/consumableApply.js`](src/items/consumableApply.js) | Логика применения расходников: функции по `id` и резолвер `resolveConsumableApply`; содержит проверку консистентности `itemId <-> handler`. |
 | [`player/statCopy.js`](src/player/statCopy.js) | Тултипы описаний характеристик персонажа. |
 | [`ui/inventoryPopover.js`](src/ui/inventoryPopover.js) | DOM-контроллер всплывающей карточки предмета; подключается из [`main.js`](src/main.js). |
+| [`ui/gameSkillQuickbarHtml.js`](src/ui/gameSkillQuickbarHtml.js) | Шаблоны HTML для списка скиллов и хотбара игрового экрана (view-model -> разметка). |
+| [`ui/gameInventoryHtml.js`](src/ui/gameInventoryHtml.js) | Шаблоны HTML ячеек инвентаря и расходников игрового экрана. |
+| [`ui/gameEffectsViewModel.js`](src/ui/gameEffectsViewModel.js) | View-model активных эффектов игрового экрана (без шаблонного рендера в `main.js`). |
+| [`ui/equipmentRowsHtml.js`](src/ui/equipmentRowsHtml.js) | Шаблоны HTML слотов экипировки для `game` и `ending` экранов. |
+| [`ui/renderers/gameScreen.js`](src/ui/renderers/gameScreen.js) | Renderer игрового экрана: формирует HTML game-экрана из подготовленного view-model. |
+| [`ui/renderers/endingScreen.js`](src/ui/renderers/endingScreen.js) | Renderer итогового экрана забега: формирует HTML ending-экрана из подготовленного view-model. |
 | [`nav/pathfinding.js`](src/nav/pathfinding.js) | Сетка и поиск пути: `DIRS_8`, границы/стены, эвристика, A* к цели и к ближайшей клетке атаки; блокировка клеток задаётся снаружи ([`game.js`](src/game.js)). |
 | [`nav/lineOfSight.js`](src/nav/lineOfSight.js) | Луч Брезенхэма и проверка видимости по сетке стен (`hasLineOfSightOnGrid`); туман — см. [`fogReveal.js`](src/game/fogReveal.js). |
 | [`game/rng.js`](src/game/rng.js) | `randomInt`, `randomPick`, `weightedPick` для лута и раскладки уровня ([`game.js`](src/game.js)). |
@@ -39,6 +45,8 @@
 | [`game/xp.js`](src/game/xp.js) | Опыт за врага и начисление XP / уровней (`getXpForEnemy`, `applyXpGain`). |
 | [`game/enemySpawn.js`](src/game/enemySpawn.js) | Подсчёт врагов по уровню и площади (`getEnemyCountsForLevel`). |
 | [`game/enemies.js`](src/game/enemies.js) | Поиск врага рядом с игроком и по id (`findNearestEnemy`, `getEnemyById`). |
+| [`game/enemyDefs.js`](src/game/enemyDefs.js) | Единый реестр базовых параметров врагов (HP/урон/XP) и резолверы по `type`/`id`. |
+| [`game/enemyCombat.js`](src/game/enemyCombat.js) | Общий пайплайн урона по врагу и разрешения смерти/XP (`applyDamageToEnemyAndResolveDefeat`). |
 | [`game/syncHp.js`](src/game/syncHp.js) | Синхронизация `stats.HP` / `baseStats.HP` с полом по [`floorHp`](src/rules.js). |
 | [`game/trapsAndClouds.js`](src/game/trapsAndClouds.js) | Статусы оглушения, эффекты ловушек на игрока/врага, ядовитое облако, тик `poison_cloud`. |
 | [`game/cellActivation.js`](src/game/cellActivation.js) | Активация объектов на клетке (сундук, лут, ловушки, облако, цель уровня); высыпание лута рядом с сундуком. |
@@ -49,14 +57,22 @@
 | [`game/turnEffects.js`](src/game/turnEffects.js) | Тик `overTimeEffects` на ход игрока (`bandage_regen`, `poison_player`). |
 | [`game/trapPlacement.js`](src/game/trapPlacement.js) | Соседние свободные клетки для установки ловушки (`getTrapPlacementCells`). |
 | [`game/consumables.js`](src/game/consumables.js) | Оркестрация применения расходника (ловушки — промпт; иначе `resolveConsumableApply`) и установка ловушки (`placeTrap`). |
+| [`game/skillTargetingPreviews.js`](src/game/skillTargetingPreviews.js) | Сборка превью-значений для прицеливания скиллами (core/weapon) для canvas оверлея. |
+| [`game/skillTargetsByKind.js`](src/game/skillTargetsByKind.js) | Единый выбор валидных клеток-целей для core/weapon скиллов с учётом кулдауна/экипировки. |
 | [`game/playerStep.js`](src/game/playerStep.js) | Ход игрока по клетке и бой в упор (`tryStep`). |
 | [`game/environmentTurn.js`](src/game/environmentTurn.js) | Старт и тик фазы окружения (`beginEnvironmentTurn`, `stepEnvironmentTurn`). |
 | [`game/runSkills.js`](src/game/runSkills.js) | Использование скиллов в забеге (`useSkill`, `useSkillAtCell`, `getSkillTargetCells`). |
 | [`ui/hudFormat.js`](src/ui/hudFormat.js) | Формат чисел для полосок HUD в [`main.js`](src/main.js). |
 | [`input/moveKeys.js`](src/input/moveKeys.js) | Карта клавиш → направление шага; [`resolveMoveDirectionFromEvent`](src/input/moveKeys.js). |
+| [`input/directionMap.js`](src/input/directionMap.js) | Единый маппинг `(dx,dy) -> direction` для клика/автопути и прочих источников ввода. |
 | [`input/gameControls.js`](src/input/gameControls.js) | Ввод с клавиатуры, общий для UI: сейчас — цифры / numpad → индекс быстрого слота. |
 | [`runtime/gameLoop.js`](src/runtime/gameLoop.js) | Обёртка `requestAnimationFrame` ([`startAnimationLoop`](src/runtime/gameLoop.js)); тик с логикой остаётся в [`main.js`](src/main.js). |
-| [`runtime/motionTiming.js`](src/runtime/motionTiming.js) | Активность `motion` / `environmentMotion`, сброс завершённых анимаций, фаза `levelTransition` — по `(run, nowMs)` без глобального state. |
+| [`runtime/motionTiming.js`](src/runtime/motionTiming.js) | Тайминг runtime-анимаций (`run.fx.motion`, `run.fx.environmentMotion`, `run.fx.levelTransition`, `run.fx.screenShake`, `run.fx.floatingTexts`) по `(run, nowMs)` без глобального state. |
+| [`runtime/runFxState.js`](src/runtime/runFxState.js) | Граница runtime/fx-состояния: инициализация и доступ к `run.fx` (временные анимации/эффекты, не доменные поля). |
+| [`runtime/runFlow.js`](src/runtime/runFlow.js) | Селекторы/проверки run-loop: блокировка ввода по анимациям и готовность перехода уровня. |
+| [`runtime/playerActionGuards.js`](src/runtime/playerActionGuards.js) | Единые guard-функции для проверки доступности действий игрока и старта фазы окружения. |
+| [`runtime/canvasCamera.js`](src/runtime/canvasCamera.js) | Единая математика canvas-камеры: зум, размер клетки, смещение камеры для render/input. |
+| [`runtime/canvasOverlayViewModel.js`](src/runtime/canvasOverlayViewModel.js) | View-model оверлеев canvas из `uiHud` (hover/path/target previews) без записи UI-полей в `run`. |
 | [`runtime/canvasGrid.js`](src/runtime/canvasGrid.js) | Клик по canvas → клетка (`screenPointToGrid`); проверка клетки для превью/автопути (`isValidPathTargetCell`). |
 | [`runtime/canvasRunHandlers.js`](src/runtime/canvasRunHandlers.js) | Фабрика `createCanvasRunHandlers`: клик/hover по canvas, автопоход (`lockAutoPathToCell`, `maybeRunAutoMoveStep`); подключается из [`main.js`](src/main.js). |
 
@@ -70,16 +86,16 @@
 
 1. **Экран выбора / настройки персонажа** — начальный экран: распределение начальных характеристик и выбор стартового снаряжения (до лимита обычных предметов), затем старт забега.
 
-2. **Основной игровой экран** — экран, где идёт забег: сетка-лабиринт (клетки), по мере исследования открывается туман войны; отображаются объекты на открытых клетках, цель уровня, фаза хода, автопуть и подсветка целей скиллов (см. [`renderGameScreen`](src/ui.js), [`drawRunToCanvas`](src/render.js)).
+2. **Основной игровой экран** — экран, где идёт забег: сетка-лабиринт (клетки), по мере исследования открывается туман войны; отображаются объекты на открытых клетках, цель уровня, фаза хода, автопуть и подсветка целей скиллов (см. [`renderGameScreen`](src/main.js), [`buildGameScreenHtml`](src/ui/renderers/gameScreen.js), [`drawRunToCanvas`](src/render.js)).
 
-   **Имена в коде:** `state.screen === "welcome" | "game" | "ending"` ([`ui.js`](src/ui.js) — `renderApp`).
+   **Имена в коде:** `state.screen === "welcome" | "game" | "ending"` ([`main.js`](src/main.js) — `render`/`renderGameScreen`/`renderEndingScreen`).
 
    **Что именно показывается про персонажа на этом экране (по коду UI, без доменных дополнений):**
    - **Слева панель «Инвентарь»:** слоты экипировки (`weapon`, `armor`, `amulet`), сумка по секциям (оружие / броня / амулеты / расходники), мини-панель **изученных** скиллов из ядра (`getCoreSkillDefs`), с манакостом на кнопке.
    - **По центру:** бейдж фазы хода («Ход игрока» / «Ход окружения»), canvas с картой, блок **«Эффекты»** (см. `renderActiveEffects` / `collectActiveEffects` — буст следующего удара, перевязь, стаки сыров/сухарей и т.д.), **быстрые слоты** 1–9, мобильные кнопки шага.
    - **Справа «Параметры персонажа»:** полосы HP, маны, XP; уровень персонажа; очки прокачки (`unspentPoints`); блок «Характеристики» — STR, INT, AGI, LUK с кнопками «+1» при наличии очков; блок «Остальные» — `HP_MAX`, шанс крита, множитель крита, базовый урон оружия (как в UI); строка журнала забега `run.lastLog`.
 
-3. **Победный / поражения экран** — итог забега (`run.status === "victory" | ...`), краткий текст, ходы, уровень лабиринта, уровень и XP персонажа, сводка статов / экипировки / сумки ([`renderEndingScreen`](src/ui.js)).
+3. **Победный / поражения экран** — итог забега (`run.status === "victory" | ...`), краткий текст, ходы, уровень лабиринта, уровень и XP персонажа, сводка статов / экипировки / сумки ([`renderEndingScreen`](src/main.js), [`buildEndingScreenHtml`](src/ui/renderers/endingScreen.js)).
 
 ### Персонаж, снаряжение, скиллы, эффекты (смысл от автора + привязка к коду)
 
@@ -89,9 +105,9 @@
 
 - **Скиллы** — в данных персонажа: `playerSheet.skills[skillId]` — `learned`, `level` для скиллов из [`getCoreSkillDefs`](src/skills.js). **Скиллы предметов (оружия и др.)** — задумка автора; в UI слева сейчас выводятся только изученные **ядровые** скиллы (`listSkillsForUi` → `getCoreSkillDefs`). Поведение «скиллы оружия только в слоте» — **на проверку**, см. пометку в [`IDEAS.md`](IDEAS.md).
 
-- **Активные эффекты** — на основном экране: комбинация `run` (например `nextHitMultiplier`, `overTimeEffects`) и `playerSheet.effectStacks` ([`collectActiveEffects`](src/ui.js)).
+- **Активные эффекты** — на основном экране: комбинация `run` (например `nextHitMultiplier`, `overTimeEffects`) и `playerSheet.effectStacks` ([`buildActiveEffectsViewModel`](src/ui/gameEffectsViewModel.js)).
 
-- **Быстрые слоты** — `state.uiHud.quickbarSlots` (9 слотов), payload вида `skill` / `consumable` ([`renderQuickbar`](src/ui.js), логика в [`main.js`](src/main.js)); клавиши 1–9 и справка в модалке помощи.
+- **Быстрые слоты** — `state.uiHud.quickbarSlots` (9 слотов), payload вида `skill` / `consumable` ([`buildQuickbarHtml`](src/ui/gameSkillQuickbarHtml.js), логика в [`main.js`](src/main.js)); клавиши 1–9 и справка в модалке помощи.
 
 ### Игровые объекты на поле
 
@@ -159,8 +175,8 @@
 
 ### Есть в `stats` / `derived`, но не вынесено в эту правую колонку «Остальные»
 
-- **`VISION`** — есть в `stats` после старта, в [`ui.js`](src/ui.js) для игрового экрана отдельной строкой не выводится (используется логикой карты / тумана в [`game.js`](src/game.js)).
-- **`ATK_PHYS`, `ATK_MAGIC`, `HP_MAX_COMPUTED`** — считаются в `derived`, на главной правой панели не показаны (есть в финальном экране через `buildFullStats` частично не все — см. [`buildFullStats`](src/ui.js): STR…LUK, HP, HP_MAX, CRIT_*, WEAPON_DM).
+- **`VISION`** — есть в `stats` после старта, в рендере игрового экрана отдельной строкой не выводится (используется логикой карты / тумана в [`game.js`](src/game.js)).
+- **`ATK_PHYS`, `ATK_MAGIC`, `HP_MAX_COMPUTED`** — считаются в `derived`, на главной правой панели не показаны; на итоговом экране выводится ограниченный набор полей.
 
 Если что-то из этого должно называться и отображаться иначе — поправьте формулировки в этом файле.
 
@@ -176,7 +192,7 @@
 Минимальный фактический поток по коду (от ввода до кадра):
 
 1. `index.html` грузит `src/main.js`, там создаётся глобальный `state` через `createInitialState`.
-2. `renderApp(root, state)` в `ui.js` рисует текущий экран по `state.screen`: `welcome` / `game` / `ending`.
+2. `render()` в `main.js` рисует текущий экран по `state.screen`: `welcome` / `game` / `ending` (через `renderGameScreen`/`renderEndingScreen` и UI renderer-модули).
 3. В `game`-режиме пользовательский ввод (клавиатура, клики/hover canvas, quickbar, drag&drop) обрабатывается в `main.js` и `runtime/canvasRunHandlers.js`.
 4. Обработчики вызывают прикладные функции домена: `tryStep`, `useSkillAtCell`, `useConsumable`, `placeTrap`, `stepEnvironmentTurn`, операции инвентаря из `loadout.js`.
 5. Эти функции мутируют `run` и/или `playerSheet` (позиции, HP/мана, `run.objects`, эффекты, фаза хода, логи, анимации), после чего `main.js` обновляет `state`.
@@ -190,8 +206,8 @@
 - **Завершение хода игрока:** после расхода действия запускается фаза окружения; в конце цикла хода тикают эффекты (`overTimeEffects`) и у временных эффектов уменьшается счётчик `turnsLeft` на 1.
 - **Ход окружения (лимит действий):** противники действуют в своей фазе, сейчас также с лимитом **1 действие на ход** на сущность (атака/перемещение/действие по ситуации), после чего управление возвращается игроку.
 - В фазе **`run.turnPhase === "environment"`** персонаж **не** может двигаться и **ничего** применять (шаг, скиллы, расходники и т.п.). Исключение: **отмена автопохода** — при активном `uiHud.autoMoveActive` отпускание кнопки мыши над canvas сбрасывает маршрут и логирует отмену даже вне хода игрока (см. обработчик `mouseup` в [`main.js`](src/main.js)); дальнейший клик по canvas в эту фазу не обрабатывается как ход.
-- **Блокирующая анимация** — основная анимация движения объектов и фазы окружения: `run.motion`, `run.environmentMotion` (и связанные проверки «активна ли анимация» в [`motionTiming.js`](src/runtime/motionTiming.js)); пока она активна, ввод, который зависит от неё, не должен продвигать игру.
-- **Неблокирующие анимации** — как правило мелкие эффекты (например всплывающий урон `run.floatingTexts`, тряска `run.screenShake` и т.п.); они не должны удерживать фазу хода и общий прогресс так же, как движение по клеткам.
+- **Блокирующая анимация** — основная анимация движения объектов и фазы окружения: `run.fx.motion`, `run.fx.environmentMotion` (и связанные проверки «активна ли анимация» в [`motionTiming.js`](src/runtime/motionTiming.js)); пока она активна, ввод, который зависит от неё, не должен продвигать игру.
+- **Неблокирующие анимации** — как правило мелкие эффекты (например всплывающий урон `run.fx.floatingTexts`, тряска `run.fx.screenShake` и т.п.); они не должны удерживать фазу хода и общий прогресс так же, как движение по клеткам.
 
 ---
 
@@ -211,13 +227,14 @@
   - в экипировке не использовать старые `+1`-метки.
 - **Область применения визуала:** правила редкости/беджей держать консистентными на всех экранах `ui-new` — стартовом (`welcome`), игровом (`game`) и итоговом (`ending`).
 - **Формулы в UI-текстах:** любые формулы в описаниях/тултипах/карточках UI поддерживать синхронными с реальными расчётами в коде; при изменении игровой формулы обновлять соответствующие тексты в UI в той же задаче.
+- **Формулы в UI (стиль):** в пользовательских формулах не показывать технические функции и детали реализации (`floor`, `round`, `ceil` и т.п.); формулировки должны быть простыми и читаемыми для игрока.
 - **`AGENTS.md`:** не править без явного запроса в задаче; если правка нужна — минимальный дифф, только проверяемые факты из кода/репозитория, без переписывания глоссария и правил от себя.
 - **Папка `design/`:** любые правки в `design/` (включая `design/impl`, `design/projects`, `design/avatars` и файлы изображений) вносить **только по прямой инструкции автора** в текущей задаче.
 - **Любые правки UI:** перед изменениями сверять с концептом [`design/main_concept.png`](design/main_concept.png) и профильным документом в [`design/projects/`](design/projects/) + соответствующим макетом в [`design/impl/`](design/impl/).
 - **Если есть расхождение** между текущим UI и дизайн-проектом — не импровизировать: сначала согласовать направление с пользователем.
 - **Десктоп-этап миграции UI:** не добавлять/не возвращать мобильные элементы управления, пока задача явно не требует mobile.
 
-**Расходники (не-ловушки):** не добавлять ветвление по `item.id` в [`consumables.js`](src/game/consumables.js). Новая логика — отдельная функция в [`consumableApply.js`](src/items/consumableApply.js), контекст вызова `{ run, playerSheet, item }`, результат `{ log, restoredMana? }` (`restoredMana` — доп. мана после текста лога, как у сыров с бонусом маны). Зарегистрировать в `CONSUMABLE_APPLY_BY_ID`; при загрузке [`loadout.js`](src/loadout.js) вызывает `attachConsumableApplyToItems` — на объектах каталога появляется поле `applyWhenUsed`. Тексты логов и тултипов — только через [`itemPresentation.js`](src/items/itemPresentation.js).
+**Расходники (не-ловушки):** не добавлять ветвление по `item.id` в [`consumables.js`](src/game/consumables.js). Новая логика — отдельная функция в [`consumableApply.js`](src/items/consumableApply.js), контекст вызова `{ run, playerSheet, item }`, результат `{ log, restoredMana? }` (`restoredMana` — доп. мана после текста лога, как у сыров с бонусом маны). Регистрировать в `CONSUMABLE_APPLY_BY_ID` и резолвить через `resolveConsumableApply(item)`; каталог предметов в [`loadout.js`](src/loadout.js) держать декларативным (без вшивания `apply`-функций в объекты предметов). Тексты логов и тултипов — только через [`itemPresentation.js`](src/items/itemPresentation.js).
 
 **Версия и основная ветка (`main`):** перед коммитом или пушем в `main` выполните из корня репозитория `node scripts/set-app-version.mjs --suggest` — скрипт покажет текущую версию и **предложит** следующую (эвристика patch+1). Утвердите номер (или задайте свой), затем `node scripts/set-app-version.mjs <новая_версия>`, чтобы обновить [`src/app-config.js`](src/app-config.js), [`index.html`](index.html) и все `?v=` в импортах под `src/`. Проверка без записи: `node scripts/set-app-version.mjs --dry-run <версия>`. После успешной смены версии обязательно обновляйте [`src/devlog.js`](src/devlog.js): **добавляйте новую запись в начало массива** для этой версии с кратким списком пользовательских изменений.
 
@@ -228,6 +245,24 @@
 - Если менялась игровая механика, описывать **что изменилось для игрока**.
 - Технические рефакторинги, которые не меняют пользовательское поведение, в `devlog` **не перечислять**.
 - На странице `Devlog` показываются только последние 5 версий; структуру данных поддерживать совместимой с этой логикой.
+
+---
+
+## Архитектурные рекомендации и паттерны разработки
+
+- **Composition Root:** держать [`main.js`](src/main.js) как точку склейки модулей (wiring), а не как место доменной логики. Новые фичи выносить в профильные модули (`game/*`, `items/*`, `runtime/*`, `ui/*`).
+- **Single Source of Truth:** для каждой сущности (враг, предмет, скилл, эффект) должен быть один каноничный источник данных. Не дублировать ключевые параметры (HP/XP/формулы/кулдауны) в нескольких файлах.
+- **Разделение слоёв:** доменное состояние (`run`, `playerSheet`) не смешивать с чисто UI-временным состоянием (hover/preview/targeting). Для отображения использовать производные view-model, а не записи UI-полей в домен.
+- **Калькуляторы формул:** формулы скиллов/эффектов хранить в общих вычислителях (calculator functions), и использовать их одновременно для apply/preview/tooltip, чтобы исключить расхождение текста и фактического эффекта.
+- **Единые доменные пайплайны:** повторяющиеся последовательности (например урон -> смерть -> XP -> лог) выносить в общий helper/сервис вместо копипасты по фичам.
+- **Декларативные каталоги:** данные каталогов (`loadout`, defs врагов/скиллов/предметов) держать декларативными; не вшивать исполняемую логику в объекты каталога, если это можно решить резолверами/диспетчерами.
+- **Инкапсуляция динамических свойств в определениях:** если свойство сущности (например, стоимость маны скилла) зависит от других параметров (например, от максимальной маны персонажа), эту логику следует выносить прямо в определение сущности (например, передавая функцию вместо статического числа в `SKILL_DEFS`). Это позволяет UI и ядру не знать деталей расчёта и просто делегировать его сущности, сохраняя код чистым.
+- **Избегание больших if-else (Паттерн Strategy / Резолверы):** для вариативной логики (например, расчёт урона разного оружия, эффекты расходников) использовать словари-резолверы (диспетчеры функций) вместо длинных цепочек `if-else` или `switch`. Это позволяет переиспользовать логику в UI и ядре без дублирования кода и сохраняет ООП-подобную гибкость (полиморфизм поведения) в рамках функциональной архитектуры.
+- **Границы ответственности модулей:** модуль должен иметь узкий контракт. Избегать передачи «мешка зависимостей» из десятков функций; вместо этого использовать небольшие фасады или явные команды/события.
+- **Централизация общих правил:** проверки доступности действия, маппинг направлений, преобразования canvas/zoom и подобные кросс-срезовые правила хранить в одном месте, чтобы избежать drift.
+- **Детерминируемый RNG:** по возможности передавать RNG через контекст run/функции, а не смешивать с прямыми вызовами `Math.random` в разных местах.
+- **Legacy-код:** при добавлении нового пути выполнения старые ветки либо удалять, либо помечать как legacy с явным планом удаления; не держать неиспользуемые fallback-ветки.
+- **Порядок рефакторинга:** сначала стабилизация без изменения поведения (удаление мёртвого кода, централизация общих правил), затем унификация источников истины, затем крупная декомпозиция модулей.
 
 ---
 

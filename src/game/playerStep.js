@@ -1,23 +1,24 @@
-import { computeBasicMeleeDamage } from "../rules.js?v=0.4.7-pre-alpha";
+import { computeBasicMeleeDamage } from "../rules.js?v=0.4.8-pre-alpha";
 import {
   inBounds,
   isWall,
   isDiagonalCutBlocked,
-} from "../nav/pathfinding.js?v=0.4.7-pre-alpha";
+} from "../nav/pathfinding.js?v=0.4.8-pre-alpha";
 import {
   ACTOR_KIND,
   getObjectsAt,
   getBlockingObjectAt,
-  removeObject,
-} from "./cellObjects.js?v=0.4.7-pre-alpha";
-import { getXpForEnemy, applyXpGain } from "./xp.js?v=0.4.7-pre-alpha";
-import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.7-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.7-pre-alpha";
+} from "./cellObjects.js?v=0.4.8-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./enemyCombat.js?v=0.4.8-pre-alpha";
+import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.8-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.4.8-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.8-pre-alpha";
 
 export function tryStep(run, playerSheet, direction) {
   if (!run || run.status !== "running") {
     return { run, playerSheet, log: "", motion: null, actionConsumed: false };
   }
+  const fx = ensureRunFxState(run);
 
   const delta = {
     up: { x: 0, y: -1 },
@@ -54,21 +55,24 @@ export function tryStep(run, playerSheet, direction) {
   let log = "";
   let motion = null;
   const from = { x: run.player.x, y: run.player.y };
+  const hpBefore = Number(playerSheet?.stats?.HP ?? playerSheet?.baseStats?.HP ?? 0);
+  let objectActivated = false;
 
   if (!blockingObject) {
     run.player.x = nx;
     run.player.y = ny;
     const activationResult = applyObjectActivationOnCell(run, playerSheet, ACTOR_KIND.PLAYER, nx, ny);
     playerSheet = activationResult.playerSheet || playerSheet;
+    objectActivated = Boolean(activationResult.log);
     log = activationResult.log || "Переход на соседнюю клетку.";
     motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 120 };
   } else if (blockingObject.type === "enemy") {
-    const hit = computeBasicMeleeDamage(playerSheet, run.nextHitMultiplier || 1);
+    const hit = computeBasicMeleeDamage(playerSheet, run.nextHitMultiplier || 1, run?.rng || null);
     run.nextHitMultiplier = 1;
     const playerDamage = hit.damage;
     const isCrit = hit.isCrit;
-    blockingObject.data.hp = Math.max(0, blockingObject.data.hp - playerDamage);
-    run.floatingTexts.push({
+    const combatResult = applyDamageToEnemyAndResolveDefeat(run, playerSheet, blockingObject, playerDamage);
+    fx.floatingTexts.push({
       x: blockingObject.x,
       y: blockingObject.y,
       value: `-${playerDamage}`,
@@ -79,24 +83,18 @@ export function tryStep(run, playerSheet, direction) {
       startMs: null,
     });
     if (isCrit) {
-      run.screenShake = {
+      fx.screenShake = {
         durationMs: 220,
         amplitudePx: 5,
         startMs: null,
       };
     }
 
-    if (blockingObject.data.hp <= 0) {
-      const gainedXp = getXpForEnemy(blockingObject.id);
-      const xpResult = applyXpGain(playerSheet, gainedXp);
-      removeObject(run, blockingObject.id);
+    if (combatResult.defeated) {
       const combatLog = isCrit
         ? `КРИТ! ${blockingObject.name} повержен (-${playerDamage} HP).`
         : `${blockingObject.name} повержен (-${playerDamage} HP).`;
-      const levelUpLog = xpResult.levelUps > 0
-        ? ` Уровень повышен: ${playerSheet.level}. Очков прокачки: ${playerSheet.unspentPoints}.`
-        : "";
-      log = `${combatLog} +${gainedXp} XP.${levelUpLog}`;
+      log = `${combatLog} +${combatResult.gainedXp} XP.${combatResult.levelUpLog}`;
       motion = { kind: "bounce", from, target: { x: nx, y: ny }, durationMs: 170 };
     } else {
       log = isCrit
@@ -109,6 +107,7 @@ export function tryStep(run, playerSheet, direction) {
     run.player.y = ny;
     const activationResult = applyObjectActivationOnCell(run, playerSheet, ACTOR_KIND.PLAYER, nx, ny);
     playerSheet = activationResult.playerSheet || playerSheet;
+    objectActivated = Boolean(activationResult.log);
     log = activationResult.log || "Переход на соседнюю клетку.";
     motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 120 };
   }
@@ -121,5 +120,14 @@ export function tryStep(run, playerSheet, direction) {
 
   run.lastLog = log;
   revealAroundPlayer(run, run.visionRange || 6);
-  return { run, playerSheet, log, motion, actionConsumed: true };
+  const hpAfter = Number(playerSheet?.stats?.HP ?? playerSheet?.baseStats?.HP ?? 0);
+  return {
+    run,
+    playerSheet,
+    log,
+    motion,
+    actionConsumed: true,
+    playerDamaged: hpAfter < hpBefore,
+    objectActivated,
+  };
 }

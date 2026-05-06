@@ -1,6 +1,8 @@
-import { floorHp } from "../rules.js?v=0.4.7-pre-alpha";
-import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.7-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.7-pre-alpha";
+import { floorHp } from "../rules.js?v=0.4.8-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.8-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.8-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.8-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.8-pre-alpha";
 
 export function ensureEnemyStatus(enemy) {
   if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0 };
@@ -21,12 +23,13 @@ export function ensurePlayerStatus(run) {
 
 export function applyTrapEffectToEnemy(run, enemy, trapConfig) {
   if (!enemy) return "";
+  const fx = ensureRunFxState(run);
   const status = ensureEnemyStatus(enemy);
   const parts = [];
   const damage = Math.max(0, trapConfig?.damage || 0);
   if (damage > 0) {
     enemy.data.hp = Math.max(0, (enemy.data?.hp || 0) - damage);
-    run.floatingTexts.push({
+    fx.floatingTexts.push({
       x: enemy.x,
       y: enemy.y,
       value: `-${damage}`,
@@ -53,13 +56,14 @@ export function applyTrapEffectToEnemy(run, enemy, trapConfig) {
 }
 
 export function applyTrapEffectToPlayer(run, playerSheet, trapConfig) {
+  const fx = ensureRunFxState(run);
   const parts = [];
   const damage = Math.max(0, trapConfig?.damage || 0);
   if (damage > 0) {
     const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
     const nextHp = floorHp(hpNow - damage);
     syncPlayerHp(playerSheet, nextHp);
-    run.floatingTexts.push({
+    fx.floatingTexts.push({
       x: run.player.x,
       y: run.player.y,
       value: `-${damage}`,
@@ -107,7 +111,7 @@ export function spawnPoisonCloudObjects(run, centerX, centerY, sourceName, trapC
   }
   for (const cell of cells) {
     run.objects.push({
-      id: `poison_cloud_${Date.now()}_${cell.x}_${cell.y}_${Math.floor(Math.random() * 10000)}`,
+      id: `poison_cloud_${Date.now()}_${cell.x}_${cell.y}_${randomInt(0, 9999, run?.rng || null)}`,
       name: "Ядовитый туман",
       type: "poison_cloud",
       purpose: "poison_cloud",

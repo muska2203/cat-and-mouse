@@ -1,5 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.7-pre-alpha";
-import { attachConsumableApplyToItems } from "./items/consumableApply.js?v=0.4.7-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.8-pre-alpha";
+import { normalizeWeaponInstanceData } from "./weaponSkills.js?v=0.4.8-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
@@ -31,7 +31,7 @@ export const LOOT_COMMON_ITEMS = [
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
-    weaponDamage: 1,
+    weaponDamage: 2,
     weaponCritChance: 1,
     weaponCritMult: 1.1,
   },
@@ -89,7 +89,7 @@ export const LOOT_COMMON_ITEMS = [
     type: "consumable",
     subtype: "heal_hp",
     icon: "🧀",
-    effectText: "Восстанавливает 10 HP",
+    effectText: "Восстанавливает 12 HP",
     description: "Маленький сыр, большое утешение.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -101,7 +101,7 @@ export const LOOT_COMMON_ITEMS = [
     type: "consumable",
     subtype: "heal_mana",
     icon: "💧",
-    effectText: "Восстанавливает 10 маны",
+    effectText: "Восстанавливает 12 маны",
     description: "Глоток мяты и мысли снова бегут.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -113,7 +113,7 @@ export const LOOT_COMMON_ITEMS = [
     type: "consumable",
     subtype: "heal_hybrid",
     icon: "🧴",
-    effectText: "Восстанавливает 6 HP и 6 маны",
+    effectText: "Восстанавливает 8 HP и 8 маны",
     description: "Молоко: и телу, и магии по чуть-чуть.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -150,7 +150,7 @@ export const LOOT_COMMON_ITEMS = [
     name: "Клейкая растяжка",
     type: "consumable",
     subtype: "trap",
-    icon: "🕸",
+    icon: "🕸️",
     effectText: "Ставит ловушку: оглушение на 2 хода",
     description: "Прилип и задумался о жизни.",
     classRestriction: ["mage", "warrior"],
@@ -173,7 +173,7 @@ export const LOOT_RARE_ITEMS = [
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
-    weaponDamage: 8,
+    weaponDamage: 7,
     weaponCritChance: 10,
     weaponCritMult: 1.5,
   },
@@ -188,7 +188,7 @@ export const LOOT_RARE_ITEMS = [
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
-    weaponDamage: 1,
+    weaponDamage: 3,
     weaponCritChance: 1,
     weaponCritMult: 1.1,
   },
@@ -241,42 +241,6 @@ export const LOOT_RARE_ITEMS = [
     statBonuses: { INT: 2, LUK: 2 },
   },
   {
-    id: "rare_hp_recover_18",
-    name: "Кусок сыра",
-    type: "consumable",
-    subtype: "heal_hp",
-    icon: "🧀",
-    effectText: "Восстанавливает 18 HP",
-    description: "Кусок посолиднее — герой бодрее.",
-    classRestriction: ["mage", "warrior"],
-    isConsumable: true,
-    statBonuses: {},
-  },
-  {
-    id: "rare_mana_recover_16",
-    name: "Настойка мяты",
-    type: "consumable",
-    subtype: "heal_mana",
-    icon: "💧",
-    effectText: "Восстанавливает 16 маны",
-    description: "Мята покрепче, заклинания погромче.",
-    classRestriction: ["mage", "warrior"],
-    isConsumable: true,
-    statBonuses: {},
-  },
-  {
-    id: "rare_hp_mana_recover_12",
-    name: "Крышка молока",
-    type: "consumable",
-    subtype: "heal_hybrid",
-    icon: "🧴",
-    effectText: "Восстанавливает 12 HP и 12 маны",
-    description: "Молочная классика в редком издании.",
-    classRestriction: ["mage", "warrior"],
-    isConsumable: true,
-    statBonuses: {},
-  },
-  {
     id: "rare_next_hit_mult_2",
     name: "Боевой перец",
     type: "consumable",
@@ -293,7 +257,7 @@ export const LOOT_RARE_ITEMS = [
     name: "Ядовитая мина",
     type: "consumable",
     subtype: "trap",
-    icon: "☣",
+    icon: "☣️",
     effectText: "Ставит мину: 4 урона + ядовитый туман 3x3",
     description: "Небольшой хлопок и очень плохой воздух.",
     classRestriction: ["mage", "warrior"],
@@ -325,7 +289,7 @@ export const LOOT_UNIQUE_ITEMS = [
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
-    weaponDamage: 12,
+    weaponDamage: 10,
     weaponCritChance: 10,
     weaponCritMult: 1.5,
   },
@@ -340,7 +304,7 @@ export const LOOT_UNIQUE_ITEMS = [
     classRestriction: ["mage", "warrior"],
     isConsumable: false,
     statBonuses: {},
-    weaponDamage: 2,
+    weaponDamage: 4,
     weaponCritChance: 1,
     weaponCritMult: 1.1,
   },
@@ -393,42 +357,6 @@ export const LOOT_UNIQUE_ITEMS = [
     statBonuses: { INT: 3, LUK: 2 },
   },
   {
-    id: "unique_hp_recover_28",
-    name: "Головка сыра",
-    type: "consumable",
-    subtype: "heal_hp",
-    icon: "🧀",
-    effectText: "Восстанавливает 28 HP",
-    description: "Сыр, который лечит даже настроение.",
-    classRestriction: ["mage", "warrior"],
-    isConsumable: true,
-    statBonuses: {},
-  },
-  {
-    id: "unique_mana_recover_24",
-    name: "Эликсир мяты",
-    type: "consumable",
-    subtype: "heal_mana",
-    icon: "💧",
-    effectText: "Восстанавливает 24 маны",
-    description: "Один глоток — и маг снова на максималках.",
-    classRestriction: ["mage", "warrior"],
-    isConsumable: true,
-    statBonuses: {},
-  },
-  {
-    id: "unique_hp_mana_recover_20",
-    name: "Бурдюк молока",
-    type: "consumable",
-    subtype: "heal_hybrid",
-    icon: "🧴",
-    effectText: "Восстанавливает 20 HP и 20 маны",
-    description: "Тяжелый бурдюк, легкая победа.",
-    classRestriction: ["mage", "warrior"],
-    isConsumable: true,
-    statBonuses: {},
-  },
-  {
     id: "unique_next_hit_mult_2_5",
     name: "Грозовой перец",
     type: "consumable",
@@ -443,40 +371,14 @@ export const LOOT_UNIQUE_ITEMS = [
 ];
 
 const ALL_ITEMS = [...LOOT_COMMON_ITEMS, ...LOOT_RARE_ITEMS, ...LOOT_UNIQUE_ITEMS];
-attachConsumableApplyToItems(ALL_ITEMS);
 let bagInstanceSeq = 0;
-
-const LEGACY_ITEM_ID_ALIASES = {
-  cheese_ration: "common_hp_recover_10_mana_4",
-  common_crumb_ration: "common_hp_recover_10",
-  common_mint_drop: "common_mana_recover_10",
-  common_warm_milk: "common_hp_mana_recover_6",
-  common_sharp_pepper: "common_next_hit_mult_1_5",
-  common_mousetrap: "common_trap_damage_8_stun_1",
-  common_glue_trap: "common_trap_stun_2",
-  rare_hearty_stew: "rare_hp_recover_18",
-  rare_focus_tonic: "rare_mana_recover_16",
-  rare_dual_elixir: "rare_hp_mana_recover_12",
-  rare_battle_pepper: "rare_next_hit_mult_2",
-  rare_venom_trap: "rare_trap_poison_cloud",
-  unique_phoenix_broth: "unique_hp_recover_28",
-  unique_aether_draught: "unique_mana_recover_24",
-  unique_twilight_mix: "unique_hp_mana_recover_20",
-  unique_storm_pepper: "unique_next_hit_mult_2_5",
-  hard_cheese: "stack_hp_max_plus_5",
-  common_cracker: "stack_hp_max_plus_4",
-  rare_royal_cheese: "stack_hp_max_plus_1_heal_20_mana_8",
-  rare_spice_vial: "rare_next_hit_mult_2_alt",
-  pepper_bomb: "common_trap_damage_8_stun_1",
-};
 
 export function getStarterCommonItems() {
   return [...LOOT_COMMON_ITEMS];
 }
 
 export function getItemById(itemId) {
-  const normalizedId = LEGACY_ITEM_ID_ALIASES[itemId] || itemId;
-  return ALL_ITEMS.find((item) => item.id === normalizedId) || null;
+  return ALL_ITEMS.find((item) => item.id === itemId) || null;
 }
 
 export function getAllLootItems() {
@@ -521,16 +423,29 @@ export function applyLoadoutToSheet(playerSheet, selectedItemIds) {
   const selectedItems = ALL_ITEMS.filter((item) => selectedItemIds.includes(item.id));
   const equippedByType = buildEquippedMap(selectedItems.filter((item) => !item.isConsumable));
   const equippedInstanceByType = buildEquippedInstanceMap(equippedByType, {});
+  const itemInstances = normalizeItemInstances(
+    playerSheet?.itemInstances || {},
+    equippedByType,
+    equippedInstanceByType,
+    [],
+  );
   const selectedConsumables = selectedItems
     .filter((item) => item.isConsumable)
-    .map((item) => createBagEntry(item.id));
-  return recalculateSheetFromInventory(playerSheet, equippedByType, selectedConsumables, equippedInstanceByType);
+    .map((item) => createBagEntry(item.id, itemInstances));
+  return recalculateSheetFromInventory(
+    { ...playerSheet, itemInstances },
+    equippedByType,
+    selectedConsumables,
+    equippedInstanceByType,
+  );
 }
 
 export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, equippedInstanceByType = null) {
   const baseStats = { ...playerSheet.baseStats };
   const previousHp = floorHp(playerSheet?.stats?.HP ?? baseStats.HP ?? 0);
   const previousHpMax = floorHpMax(playerSheet?.stats?.HP_MAX ?? baseStats.HP_MAX ?? 1);
+  const previousMana = roundStat(playerSheet?.mana ?? playerSheet?.manaMax ?? 0);
+  const previousManaMax = roundStat(playerSheet?.manaMax ?? 1);
   const equippedIds = Object.values(equippedByType).filter(Boolean);
   const equipped = equippedIds.map((id) => getItemById(id)).filter(Boolean);
 
@@ -564,10 +479,19 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, 
   const derived = buildDerivedStats(baseStats, weaponItem);
 
   const manaMax = roundStat(30 + intTotal * 6);
-  const nextMana = roundStat(Math.min(playerSheet.mana ?? manaMax, manaMax));
+  const previousManaRatio = previousManaMax > 0 ? previousMana / previousManaMax : 0;
+  const scaledMana = roundStat(previousManaRatio * manaMax);
+  const nextMana = roundStat(Math.min(scaledMana, manaMax));
   const normalizedEquippedInstances = buildEquippedInstanceMap(
     equippedByType,
     equippedInstanceByType || playerSheet.equippedInstanceByType || {},
+  );
+  const normalizedBag = normalizeBagEntries(bag, playerSheet?.itemInstances || {});
+  const normalizedItemInstances = normalizeItemInstances(
+    playerSheet?.itemInstances || {},
+    equippedByType,
+    normalizedEquippedInstances,
+    normalizedBag,
   );
 
   return {
@@ -579,23 +503,33 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, 
     loadout: equipped,
     equippedByType: buildEquippedMap(equipped),
     equippedInstanceByType: normalizedEquippedInstances,
+    itemInstances: normalizedItemInstances,
     inventory: equipped.filter((item) => item.isConsumable),
-    bag: normalizeBagEntries(bag),
+    bag: normalizedBag,
     skills: { ...(playerSheet.skills || {}) },
   };
 }
 
 export function initializeInventoryForRun(playerSheet) {
   const equippedMap = { ...playerSheet.equippedByType };
+  const normalizedEquippedInstances = buildEquippedInstanceMap(
+    equippedMap,
+    playerSheet.equippedInstanceByType || {},
+  );
+  const normalizedBag = normalizeBagEntries(playerSheet.bag || [], playerSheet?.itemInstances || {});
+  const normalizedItemInstances = normalizeItemInstances(
+    playerSheet?.itemInstances || {},
+    equippedMap,
+    normalizedEquippedInstances,
+    normalizedBag,
+  );
 
   return {
     ...playerSheet,
-    bag: normalizeBagEntries(playerSheet.bag || []),
+    bag: normalizedBag,
     equippedByType: equippedMap,
-    equippedInstanceByType: buildEquippedInstanceMap(
-      equippedMap,
-      playerSheet.equippedInstanceByType || {},
-    ),
+    equippedInstanceByType: normalizedEquippedInstances,
+    itemInstances: normalizedItemInstances,
   };
 }
 
@@ -656,12 +590,13 @@ export function addLootItemToPlayer(playerSheet, itemId) {
   const equippedInstanceByType = {
     ...(playerSheet.equippedInstanceByType || {}),
   };
-  const bag = normalizeBagEntries(playerSheet.bag || []);
+  const itemInstances = { ...(playerSheet?.itemInstances || {}) };
+  const bag = normalizeBagEntries(playerSheet.bag || [], itemInstances);
   if (item.isConsumable) {
-    bag.push(createBagEntry(item.id));
+    bag.push(createBagEntry(item.id, itemInstances));
     return {
       playerSheet: recalculateSheetFromInventory(
-        playerSheet,
+        { ...playerSheet, itemInstances },
         equippedByType,
         bag,
         equippedInstanceByType,
@@ -686,10 +621,10 @@ export function addLootItemToPlayer(playerSheet, itemId) {
     };
   }
 
-  bag.push(createBagEntry(item.id));
+    bag.push(createBagEntry(item.id, itemInstances));
   return {
     playerSheet: recalculateSheetFromInventory(
-      playerSheet,
+        { ...playerSheet, itemInstances },
       equippedByType,
       bag,
       equippedInstanceByType,
@@ -749,9 +684,11 @@ function buildEquippedMap(items) {
   return map;
 }
 
-function createBagEntry(itemId) {
+function createBagEntry(itemId, itemInstances = {}) {
+  const instanceId = createItemInstanceId();
+  ensureItemInstanceData(itemInstances, instanceId, itemId);
   return {
-    instanceId: createItemInstanceId(),
+    instanceId,
     itemId,
   };
 }
@@ -775,20 +712,59 @@ function buildEquippedInstanceMap(equippedByType, sourceMap) {
   return map;
 }
 
-function normalizeBagEntries(bag) {
+function normalizeBagEntries(bag, itemInstances = {}) {
   return (bag || []).map((entry) => {
     if (typeof entry === "string") {
-      return createBagEntry(entry);
+      return createBagEntry(entry, itemInstances);
     }
     if (!entry || typeof entry !== "object") {
       return null;
     }
     if (!entry.instanceId) {
-      return createBagEntry(entry.itemId);
+      return createBagEntry(entry.itemId, itemInstances);
     }
+    ensureItemInstanceData(itemInstances, entry.instanceId, entry.itemId);
     return {
       instanceId: entry.instanceId,
       itemId: entry.itemId,
     };
   }).filter(Boolean);
+}
+
+function normalizeItemInstances(sourceInstances, equippedByType, equippedInstanceByType, bagEntries) {
+  const next = {};
+  for (const type of EQUIP_TYPES) {
+    const itemId = equippedByType?.[type] || null;
+    const instanceId = equippedInstanceByType?.[type] || null;
+    if (!itemId || !instanceId) continue;
+    const existing = sourceInstances?.[instanceId] || null;
+    next[instanceId] = buildNormalizedItemInstance(existing, instanceId, itemId);
+  }
+  for (const entry of bagEntries || []) {
+    const itemId = entry?.itemId || null;
+    const instanceId = entry?.instanceId || null;
+    if (!itemId || !instanceId) continue;
+    const existing = sourceInstances?.[instanceId] || next[instanceId] || null;
+    next[instanceId] = buildNormalizedItemInstance(existing, instanceId, itemId);
+  }
+  return next;
+}
+
+function ensureItemInstanceData(itemInstances, instanceId, itemId) {
+  if (!instanceId || !itemId) return;
+  if (itemInstances[instanceId]) return;
+  itemInstances[instanceId] = buildNormalizedItemInstance(null, instanceId, itemId);
+}
+
+function buildNormalizedItemInstance(source, instanceId, itemId) {
+  const item = getItemById(itemId);
+  const base = source && typeof source === "object" ? source : {};
+  const entry = {
+    instanceId,
+    itemId,
+  };
+  if (item?.type === "weapon") {
+    entry.weapon = normalizeWeaponInstanceData(item, base.weapon || null);
+  }
+  return entry;
 }

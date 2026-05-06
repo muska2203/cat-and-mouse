@@ -2,12 +2,16 @@
  * Всплывающая карточка предмета инвентаря (DOM вне #app).
  */
 export function createInventoryItemPopoverController(options) {
-  const { root, getScreen, getItemById, buildInventoryItemDetailHtml } = options;
+  const {
+    root,
+    getScreen,
+    getItemById,
+    getItemInstanceById,
+    buildInventoryItemDetailHtml,
+  } = options;
 
   let popoverEl = null;
   let popoverKey = null;
-  let hideTimer = null;
-
   function ensureEl() {
     if (popoverEl) {
       return popoverEl;
@@ -22,8 +26,6 @@ export function createInventoryItemPopoverController(options) {
   }
 
   function hide() {
-    clearTimeout(hideTimer);
-    hideTimer = null;
     popoverKey = null;
     if (popoverEl) {
       popoverEl.hidden = true;
@@ -34,28 +36,26 @@ export function createInventoryItemPopoverController(options) {
   }
 
   function scheduleHide() {
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => {
-      hide();
-    }, 120);
+    hide();
   }
 
-  function position(clientX, clientY) {
+  function positionByAnchor(anchorEl) {
     const el = popoverEl;
-    if (!el || el.hidden) {
+    if (!el || el.hidden || !anchorEl) {
       return;
     }
-    const pad = 14;
+    const pad = 10;
+    const rect = anchorEl.getBoundingClientRect();
     el.style.visibility = "hidden";
     const w = el.offsetWidth;
     const h = el.offsetHeight;
-    let x = clientX + pad;
-    let y = clientY + pad;
-    if (x + w > window.innerWidth - 10) {
-      x = Math.max(10, clientX - w - pad);
+    let x = rect.left - w - pad;
+    let y = rect.top;
+    if (x < 10) {
+      x = rect.right + pad;
     }
     if (y + h > window.innerHeight - 10) {
-      y = Math.max(10, clientY - h - pad);
+      y = Math.max(10, window.innerHeight - h - 10);
     }
     if (x < 10) x = 10;
     if (y < 10) y = 10;
@@ -76,27 +76,28 @@ export function createInventoryItemPopoverController(options) {
       return;
     }
 
-    clearTimeout(hideTimer);
-    hideTimer = null;
-
     const itemId = trigger.dataset.inventoryDetailItemId;
+    const instanceId = trigger.dataset.inventoryDetailInstanceId || "";
     const stackRaw = trigger.dataset.inventoryDetailStack;
     const stackCount = stackRaw !== undefined && stackRaw !== "" ? Number(stackRaw) : undefined;
-    const key = `${itemId}:${stackRaw ?? ""}`;
+    const key = `${itemId}:${instanceId}:${stackRaw ?? ""}`;
     const item = itemId ? getItemById(itemId) : null;
     if (!item) {
       hide();
       return;
     }
+    const instanceEntry = instanceId && typeof getItemInstanceById === "function"
+      ? getItemInstanceById(instanceId)
+      : null;
 
     const pop = ensureEl();
     if (popoverKey !== key) {
-      pop.innerHTML = buildInventoryItemDetailHtml(item, { stackCount });
+      pop.innerHTML = buildInventoryItemDetailHtml(item, { stackCount, instanceEntry });
       popoverKey = key;
     }
     pop.hidden = false;
     pop.setAttribute("aria-hidden", "false");
-    position(event.clientX, event.clientY);
+    positionByAnchor(trigger);
   }
 
   return { hide, scheduleHide, updateFromEvent };

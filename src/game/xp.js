@@ -1,9 +1,9 @@
-import { PROGRESSION_CONFIG } from "../state.js?v=0.4.7-pre-alpha";
+import { PROGRESSION_CONFIG } from "../state.js?v=0.4.8-pre-alpha";
+import { getEnemyDefById } from "./enemyDefs.js?v=0.4.8-pre-alpha";
 
 export function getXpForEnemy(enemyId) {
-  if (enemyId?.startsWith("cat_big")) return 15;
-  if (enemyId?.startsWith("cat_mid")) return 10;
-  return 6;
+  const def = getEnemyDefById(enemyId);
+  return Math.max(0, Number(def?.xp || 0));
 }
 
 export function applyXpGain(playerSheet, gainedXp) {

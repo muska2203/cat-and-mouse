@@ -1,5 +1,5 @@
-import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.7-pre-alpha";
-import { getCoreSkillDefs } from "./skills.js?v=0.4.7-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.8-pre-alpha";
+import { getCoreSkillDefs } from "./skills.js?v=0.4.8-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -34,7 +34,7 @@ export function createInitialState() {
       skillTargeting: null,
       trapTargeting: null,
       pathHoverCell: null,
-      pathHoverEnemy: false,
+      pathHoverEnemy: null,
       pathPreviewCells: [],
       pathLockedCells: [],
       pathLockedTarget: null,
@@ -79,6 +79,7 @@ export function createPlayerSheet(preGameStats) {
     inventory: [],
     equippedByType: { weapon: null, armor: null, amulet: null },
     equippedInstanceByType: { weapon: null, armor: null, amulet: null },
+    itemInstances: {},
     bag: [],
     level: 1,
     xp: 0,

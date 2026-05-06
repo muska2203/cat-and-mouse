@@ -1,36 +1,71 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.7-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.8-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
   chooseStarterLoadoutItem,
   getStarterCommonItems,
+  getAllLootItems,
   getItemById,
   initializeInventoryForRun,
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.4.7-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.7-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.7-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.7-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.7-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.7-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.7-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.7-pre-alpha";
-import { normalizeFinishedAnimationsForRun, isBlockingMotionActive } from "./runtime/motionTiming.js?v=0.4.7-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.4.7-pre-alpha";
-import { getCoreSkillDefs } from "./skills.js?v=0.4.7-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.4.7-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.4.7-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.7-pre-alpha";
-import { useSkillAtCell, getSkillTargetCells } from "./game/runSkills.js?v=0.4.7-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.4.7-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.4.7-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.7-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.7-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.7-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.7-pre-alpha";
-import { buildDerivedStats } from "./rules.js?v=0.4.7-pre-alpha";
+} from "./loadout.js?v=0.4.8-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.8-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.8-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.8-pre-alpha";
+import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.8-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.8-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.8-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.8-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.8-pre-alpha";
+import {
+  advanceRunAnimationState,
+  isBlockingMotionActive,
+  normalizeFinishedAnimationsForRun,
+} from "./runtime/motionTiming.js?v=0.4.8-pre-alpha";
+import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.8-pre-alpha";
+import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.8-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.8-pre-alpha";
+import {
+  isEnvironmentTurnStepReady,
+  isLevelTransitionReady,
+  isPlayerInputBlockedByMotion,
+} from "./runtime/runFlow.js?v=0.4.8-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.4.8-pre-alpha";
+import { getCoreSkillDefs, getSkillManaCost } from "./skills.js?v=0.4.8-pre-alpha";
+import { getCoreSkillFormulaText, getHealSkillRawValue, getRegenHealPerTurn, getRegenTotalHeal } from "./skills/coreSkillCalc.js?v=0.4.8-pre-alpha";
+import { randomInt, randomPick } from "./game/rng.js?v=0.4.8-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.4.8-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.4.8-pre-alpha";
+import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.8-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.8-pre-alpha";
+import { useSkillAtCell } from "./game/runSkills.js?v=0.4.8-pre-alpha";
+import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.8-pre-alpha";
+import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.8-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.4.8-pre-alpha";
+import {
+  getWeaponSkillsForEquippedWeapon,
+  getWeaponSkillById,
+  getWeaponSkillIdsForItem,
+  useWeaponSkillAtCell,
+  tickWeaponSkillCooldowns,
+  buildWeaponSkillHoverData,
+} from "./weaponSkills.js?v=0.4.8-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.4.8-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.8-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.8-pre-alpha";
+import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.8-pre-alpha";
+import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.8-pre-alpha";
+import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.8-pre-alpha";
+import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.8-pre-alpha";
+import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.8-pre-alpha";
+import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.8-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.8-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.8-pre-alpha";
+import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.8-pre-alpha";
+
+import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.8-pre-alpha";
 
 const root = document.getElementById("app");
 
@@ -93,16 +128,10 @@ let lastPointerClientY = null;
 
 initAnalytics({ measurementId: GA4_MEASUREMENT_ID, version: APP_VERSION });
 
-const DIR_BY_DELTA = {
-  "0:-1": "up",
-  "0:1": "down",
-  "-1:0": "left",
-  "1:0": "right",
-  "-1:-1": "up_left",
-  "1:-1": "up_right",
-  "-1:1": "down_left",
-  "1:1": "down_right",
-};
+const consumableConsistency = getConsumableApplyConsistencyReport(getAllLootItems());
+if (!consumableConsistency.ok) {
+  console.warn("[consumables] handler consistency mismatch", consumableConsistency);
+}
 
 const SUBTYPE_SORT_ORDER_BY_TYPE = {
   weapon: ["sword", "staff"],
@@ -136,11 +165,43 @@ function getSubtypeSortWeight(item) {
   return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
+function getTypeSortWeight(item) {
+  const type = String(item?.type || "");
+  if (type === "weapon") return 1;
+  if (type === "armor") return 2;
+  if (type === "amulet") return 3;
+  if (type === "consumable") return 4;
+  return Number.MAX_SAFE_INTEGER;
+}
+
 function compareItemsByRarityThenId(a, b) {
+  const byType = getTypeSortWeight(a) - getTypeSortWeight(b);
+  if (byType !== 0) return byType;
   const bySubtype = getSubtypeSortWeight(a) - getSubtypeSortWeight(b);
   if (bySubtype !== 0) return bySubtype;
   const byRarity = getRaritySortWeight(b) - getRaritySortWeight(a);
   if (byRarity !== 0) return byRarity;
+  return String(a?.id || "").localeCompare(String(b?.id || ""));
+}
+
+function getConsumableSubtypeSortWeight(item) {
+  const subtype = String(item?.subtype || "");
+  if (subtype === "heal_hp") return 1;
+  if (subtype === "heal_mana") return 2;
+  if (subtype === "heal_hybrid") return 3;
+  if (subtype === "trap") return 4;
+  return 5;
+}
+
+function compareConsumablesForInventory(a, b) {
+  const bySubtype = getConsumableSubtypeSortWeight(a) - getConsumableSubtypeSortWeight(b);
+  if (bySubtype !== 0) return bySubtype;
+  const aIsTrap = String(a?.subtype || "") === "trap";
+  const bIsTrap = String(b?.subtype || "") === "trap";
+  if (aIsTrap && bIsTrap) {
+    const byRarity = getRaritySortWeight(b) - getRaritySortWeight(a);
+    if (byRarity !== 0) return byRarity;
+  }
   return String(a?.id || "").localeCompare(String(b?.id || ""));
 }
 
@@ -183,13 +244,49 @@ function formatWeaponCombatDetailSection(item) {
   const wd = item.weaponDamage != null ? Number(item.weaponDamage) : "—";
   const cc = item.weaponCritChance != null ? Number(item.weaponCritChance) : "—";
   const cm = item.weaponCritMult != null ? Number(item.weaponCritMult) : "—";
+  const formulaText = getWeaponDamageFormulaText(item);
   const id = STRINGS_RU.itemDetail;
-  return `<div class="item-detail-section"><h4 class="item-detail-section-title">${id.combatTitle}</h4><ul class="item-detail-list item-detail-list-plain"><li>${id.baseDamage} <strong>${escapeHtml(String(wd))}</strong></li><li>${id.critChanceBase} <strong>${escapeHtml(String(cc))}%</strong></li><li>${id.critMultBase} <strong>×${escapeHtml(String(cm))}</strong></li></ul></div>`;
+  return `<div class="item-detail-section"><h4 class="item-detail-section-title">${id.combatTitle}</h4><ul class="item-detail-list item-detail-list-plain"><li>${id.baseDamage} <strong>${escapeHtml(String(wd))}</strong></li><li>${id.critChanceBase} <strong>${escapeHtml(String(cc))}%</strong></li><li>${id.critMultBase} <strong>×${escapeHtml(String(cm))}</strong></li><li>Формула: <span class="item-detail-muted">${escapeHtml(formulaText)}</span></li></ul></div>`;
 }
+
+function formatWeaponSkillsDetailSection(item, instanceEntry) {
+  if (item?.type !== "weapon") return "";
+  const weaponData = instanceEntry?.weapon || null;
+  const assignedSkillIds = Array.isArray(weaponData?.weaponSkillIds) ? weaponData.weaponSkillIds : [];
+  const fallbackSkillIds = getWeaponSkillIdsForItem(item);
+  const skillIds = assignedSkillIds.length > 0 ? assignedSkillIds : fallbackSkillIds;
+  if (skillIds.length === 0) return "";
+  const rows = skillIds
+    .map((skillId) => {
+      const skill = getWeaponSkillById(skillId);
+      if (!skill) return null;
+      const level = Math.max(1, Number(weaponData?.weaponSkillLevels?.[skillId] || 1));
+      const cooldownLeft = Math.max(0, Number(weaponData?.weaponSkillCooldowns?.[skillId] || 0));
+      const cooldownText = cooldownLeft > 0 ? ` (CD ${cooldownLeft})` : "";
+      return `<li>${escapeHtml(skill.icon || "✨")} ${escapeHtml(skill.name)} [ур. ${level}]${escapeHtml(cooldownText)}</li>`;
+    })
+    .filter(Boolean)
+    .join("");
+  if (!rows) return "";
+  const note = assignedSkillIds.length === 0
+    ? `<p class="item-detail-muted">При создании экземпляра выдаются случайные 2 скилла.</p>`
+    : "";
+  return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы оружия</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
+}
+
+import { getConsumableDescription } from "./items/itemPresentation.js?v=0.4.8-pre-alpha";
 
 function formatItemDetailDescriptionSection(item, stackCount) {
   const id = STRINGS_RU.itemDetail;
-  const rawDescription = String(item?.description || "").trim();
+  let rawDescription = String(item?.description || "").trim();
+  
+  if (item?.isConsumable) {
+    const consumableEffect = getConsumableDescription(item);
+    if (consumableEffect) {
+      rawDescription += (rawDescription ? "\n\n" : "") + "Принцип работы:\n" + consumableEffect;
+    }
+  }
+
   if (rawDescription) {
     return `<div class="item-detail-section"><h4 class="item-detail-section-title">${id.descriptionTitle}</h4><p class="item-detail-desc">${escapeHtml(rawDescription).replace(/\n/g, "<br>")}</p></div>`;
   }
@@ -210,6 +307,7 @@ function buildInventoryItemDetailHtml(item, options = {}) {
   const sections = [
     formatItemStatBonusesDetailSection(item),
     formatWeaponCombatDetailSection(item),
+    formatWeaponSkillsDetailSection(item, options.instanceEntry || null),
     formatItemDetailDescriptionSection(item, stackCount),
   ].filter(Boolean).join("");
   const emptyHint = sections === "" ? `<p class="item-detail-muted item-detail-empty">${STRINGS_RU.itemDetail.emptyHint}</p>` : "";
@@ -220,40 +318,13 @@ const inventoryPopover = createInventoryItemPopoverController({
   root,
   getScreen: () => state.screen,
   getItemById,
+  getItemInstanceById: (instanceId) => state.playerSheet?.itemInstances?.[instanceId] || null,
   buildInventoryItemDetailHtml,
 });
-let inventoryHoverShowTimer = null;
-let skillHoverShowTimer = null;
-
-function buildSkillDetailHtml(skill, skillState) {
-  if (!skill) return "";
-  const manaCost = Math.max(1, Number(skill.manaCost || 1));
-  const level = Math.max(1, Number(skillState?.level || 1));
-  const rawDescription = String(skill.description || "").trim();
-  const description = rawDescription
-    .replace(/^Выбери клетку персонажа\.\s*/i, "")
-    .replace(/^Цель:\s*своя клетка\.\s*/i, "")
-    .trim() || "—";
-  let formula = String(skill.property || "").trim() || "Формула не указана.";
-  let targets = "По правилам скилла";
-  if (skill.id === "skill_support_regen") {
-    const healPerTurn = 5 + level;
-    formula = `Лечение за ход = 5 + уровень скилла = ${healPerTurn}. Длительность: 3 хода.`;
-    targets = "Своя клетка";
-  } else if (skill.id === "skill_support_heal") {
-    const heal = 40 + Math.max(0, (level - 1) * 10);
-    formula = `Лечение = 40 + 10 x (уровень - 1) = ${heal}.`;
-    targets = "Своя клетка";
-  } else if (rawDescription.toLowerCase().includes("клетку персонажа")) {
-    targets = "Своя клетка";
-  }
-  return `<div class="item-detail-card item-detail-rarity-rare"><div class="skill-detail-topline"><span class="item-detail-icon" aria-hidden="true">${esc(skill.icon || "✨")}</span><span class="item-detail-name">${esc(skill.name)}</span><span class="cm-skill-choice-card__mana-badge">Мана: ${manaCost}</span></div><div class="item-detail-section"><h4 class="item-detail-section-title">Описание</h4><p class="item-detail-desc">${esc(description).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Формула</h4><p class="item-detail-desc">${esc(formula).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Доступные цели</h4><p class="item-detail-desc">${esc(targets)}</p></div></div>`;
-}
 
 function createSkillPopoverController() {
   let popoverEl = null;
   let popoverKey = null;
-  let hideTimer = null;
 
   function ensureEl() {
     if (popoverEl) return popoverEl;
@@ -267,8 +338,6 @@ function createSkillPopoverController() {
   }
 
   function hide() {
-    clearTimeout(hideTimer);
-    hideTimer = null;
     popoverKey = null;
     if (!popoverEl) return;
     popoverEl.hidden = true;
@@ -278,20 +347,21 @@ function createSkillPopoverController() {
   }
 
   function scheduleHide() {
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(() => hide(), 120);
+    hide();
   }
 
-  function position(clientX, clientY) {
+  function positionByAnchor(anchorEl) {
     if (!popoverEl || popoverEl.hidden) return;
-    const pad = 14;
+    if (!anchorEl) return;
+    const pad = 10;
+    const rect = anchorEl.getBoundingClientRect();
     popoverEl.style.visibility = "hidden";
     const w = popoverEl.offsetWidth;
     const h = popoverEl.offsetHeight;
-    let x = clientX + pad;
-    let y = clientY + pad;
-    if (x + w > window.innerWidth - 10) x = Math.max(10, clientX - w - pad);
-    if (y + h > window.innerHeight - 10) y = Math.max(10, clientY - h - pad);
+    let x = rect.left - w - pad;
+    let y = rect.top;
+    if (x < 10) x = rect.right + pad;
+    if (y + h > window.innerHeight - 10) y = Math.max(10, window.innerHeight - h - 10);
     if (x < 10) x = 10;
     if (y < 10) y = 10;
     popoverEl.style.left = `${x}px`;
@@ -309,24 +379,38 @@ function createSkillPopoverController() {
       scheduleHide();
       return;
     }
-    clearTimeout(hideTimer);
-    hideTimer = null;
     const skillId = trigger.dataset.skillDetailId;
-    const skill = getCoreSkillDefs().find((s) => s.id === skillId) || null;
+    const skillKind = trigger.dataset.skillDetailKind || "core";
+    const weaponSkills = getActiveWeaponSkills(state.playerSheet);
+    const weaponSkill = skillKind === "weapon"
+      ? weaponSkills.find((skill) => skill.id === skillId) || null
+      : null;
+    const skill = skillKind === "weapon"
+      ? (weaponSkill ? { ...getWeaponSkillById(weaponSkill.id), level: weaponSkill.level } : null)
+      : getCoreSkillDefs().find((s) => s.id === skillId) || null;
     if (!skill) {
       hide();
       return;
     }
-    const skillState = state.playerSheet?.skills?.[skill.id] || { learned: true, level: 1 };
-    const key = `${skill.id}:${Number(skillState?.level || 1)}`;
+    const skillState = skillKind === "weapon"
+      ? { learned: true, level: 1 }
+      : (state.playerSheet?.skills?.[skill.id] || { learned: true, level: 1 });
+    const cooldownLeft = skillKind === "weapon" ? Math.max(0, Number(weaponSkill?.cooldownLeft || 0)) : 0;
+    const key = `${skillKind}:${skill.id}:${Number(skillState?.level || 1)}:${cooldownLeft}`;
     const pop = ensureEl();
     if (popoverKey !== key) {
-      pop.innerHTML = buildSkillDetailHtml(skill, skillState);
+      pop.innerHTML = buildSkillDetailHtml(skill, skillState, {
+        skillKind,
+        cooldownBase: skill.cooldownTurns || 0,
+        cooldownLeft,
+        weaponItem: getEquippedWeaponContext(state.playerSheet)?.item || null,
+        playerSheet: state.playerSheet,
+      });
       popoverKey = key;
     }
     pop.hidden = false;
     pop.setAttribute("aria-hidden", "false");
-    position(event.clientX, event.clientY);
+    positionByAnchor(trigger);
   }
 
   return { hide, scheduleHide, updateFromEvent };
@@ -337,61 +421,30 @@ const skillPopover = createSkillPopoverController();
 function queueInventoryPopoverUpdate(event) {
   const trigger = event.target.closest("[data-inventory-detail-item-id]");
   if (!trigger || !root.contains(trigger)) {
-    if (inventoryHoverShowTimer) {
-      clearTimeout(inventoryHoverShowTimer);
-      inventoryHoverShowTimer = null;
-    }
     inventoryPopover.scheduleHide();
     return;
   }
-  if (inventoryHoverShowTimer) {
-    clearTimeout(inventoryHoverShowTimer);
-  }
-  const clientX = Number(event.clientX || 0) + 6;
-  const clientY = Number(event.clientY || 0) + 6;
-  inventoryHoverShowTimer = setTimeout(() => {
-    inventoryPopover.updateFromEvent({
-      target: trigger,
-      clientX,
-      clientY,
-    });
-    inventoryHoverShowTimer = null;
-  }, 90);
+  inventoryPopover.updateFromEvent({ target: trigger });
 }
 
 function queueSkillPopoverUpdate(event) {
   const trigger = event.target.closest("[data-skill-detail-id]");
   if (!trigger || !root.contains(trigger)) {
-    if (skillHoverShowTimer) {
-      clearTimeout(skillHoverShowTimer);
-      skillHoverShowTimer = null;
-    }
     skillPopover.scheduleHide();
     return;
   }
-  if (skillHoverShowTimer) {
-    clearTimeout(skillHoverShowTimer);
-  }
-  const clientX = Number(event.clientX || 0) + 6;
-  const clientY = Number(event.clientY || 0) + 6;
-  skillHoverShowTimer = setTimeout(() => {
-    skillPopover.updateFromEvent({
-      target: trigger,
-      clientX,
-      clientY,
-    });
-    skillHoverShowTimer = null;
-  }, 90);
+  skillPopover.updateFromEvent({ target: trigger });
 }
 
 function clearSkillTargeting() {
   state.uiHud.skillTargeting = null;
   state.uiHud.trapTargeting = null;
+  state.uiHud.skillTargetingPreviews = [];
 }
 
 function clearPathingState() {
   state.uiHud.pathHoverCell = null;
-  state.uiHud.pathHoverEnemy = false;
+  state.uiHud.pathHoverEnemy = null;
   state.uiHud.pathPreviewCells = [];
   state.uiHud.pathLockedCells = [];
   state.uiHud.pathLockedTarget = null;
@@ -410,8 +463,7 @@ function pulseQuickbarSlot() {}
 
 function pickRandom(list) {
   if (!Array.isArray(list) || list.length === 0) return null;
-  const idx = Math.floor(Math.random() * list.length);
-  return list[idx] || null;
+  return randomPick(list, state.run?.rng || null) || null;
 }
 
 function getSkillLevelLabel(skillDef, skillState) {
@@ -515,12 +567,7 @@ function maybeTrackRunEnd() {
 }
 
 function isPlayerInputBlocked(nowMs) {
-  if (!state.run) return true;
-  normalizeFinishedAnimationsForRun(state.run, nowMs);
-  return Boolean(
-    isBlockingMotionActive(state.run.motion, nowMs)
-    || isBlockingMotionActive(state.run.environmentMotion, nowMs),
-  );
+  return isPlayerInputBlockedByMotion(state.run, nowMs);
 }
 
 function getPortraitById(id) {
@@ -539,6 +586,7 @@ function toRuType(type) {
   if (type === "weapon") return "Оружие";
   if (type === "armor") return "Броня";
   if (type === "amulet") return "Амулет";
+  if (type === "consumable") return "Расходник";
   return type;
 }
 
@@ -596,6 +644,125 @@ function getHoveredItemPreview() {
   };
 }
 
+function getEquippedWeaponContext(playerSheet) {
+  const itemId = playerSheet?.equippedByType?.weapon || null;
+  const instanceId = playerSheet?.equippedInstanceByType?.weapon || null;
+  if (!itemId || !instanceId) {
+    return null;
+  }
+  const item = getItemById(itemId);
+  const instanceEntry = playerSheet?.itemInstances?.[instanceId] || null;
+  if (!item || !instanceEntry) {
+    return null;
+  }
+  return { item, instanceId, instanceEntry };
+}
+
+function getActiveWeaponSkills(playerSheet) {
+  const context = getEquippedWeaponContext(playerSheet);
+  if (!context) return [];
+  const skills = getWeaponSkillsForEquippedWeapon(context.item, context.instanceEntry.weapon || null);
+  return skills.map((skill) => ({
+    ...skill,
+    sourceWeaponInstanceId: context.instanceId,
+  }));
+}
+
+function getWeaponSkillCooldownLeft(playerSheet, skillId) {
+  const skills = getActiveWeaponSkills(playerSheet);
+  const skill = skills.find((entry) => entry.id === skillId) || null;
+  return Math.max(0, Number(skill?.cooldownLeft || 0));
+}
+
+function useSkillAtCellByKind(run, playerSheet, skillId, skillKind, targetX, targetY) {
+  if (skillKind === "weapon") {
+    const context = getEquippedWeaponContext(playerSheet);
+    if (!context) {
+      return { run, playerSheet, ok: false, log: "Оружие не экипировано.", actionConsumed: false };
+    }
+    const result = useWeaponSkillAtCell(
+      run,
+      playerSheet,
+      context.item,
+      context.instanceEntry.weapon || null,
+      skillId,
+      targetX,
+      targetY,
+    );
+    if (result.instanceData) {
+      if (!playerSheet.itemInstances) {
+        playerSheet.itemInstances = {};
+      }
+      playerSheet.itemInstances[context.instanceId] = {
+        ...(playerSheet.itemInstances[context.instanceId] || {}),
+        instanceId: context.instanceId,
+        itemId: context.item.id,
+        weapon: result.instanceData,
+      };
+    }
+    return result;
+  }
+  return useSkillAtCell(run, playerSheet, skillId, targetX, targetY);
+}
+
+function refreshSkillTargetingPreviewFromPointer() {
+  if (
+    state.screen !== "game"
+    || !state.run
+    || !state.playerSheet
+    || !state.uiHud.skillTargeting?.skillId
+    || !Number.isFinite(lastPointerClientX)
+    || !Number.isFinite(lastPointerClientY)
+  ) {
+    return;
+  }
+  const canvas = document.getElementById("newGameCanvas");
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const localX = lastPointerClientX - rect.left;
+  const localY = lastPointerClientY - rect.top;
+  const cell = screenPointToGrid(
+    state.run,
+    localX,
+    localY,
+    rect.width,
+    rect.height,
+    state.uiHud?.canvasZoom ?? 1,
+  );
+  const nextPreviews = buildSkillTargetingPreviews(
+    state.run,
+    state.playerSheet,
+    state.uiHud.skillTargeting,
+    cell,
+    getEquippedWeaponContext,
+  );
+  state.uiHud.skillTargetingPreviews = nextPreviews;
+}
+
+function tickWeaponCooldownsAtPlayerTurnStart() {
+  if (!state.run || !state.playerSheet || state.run.turnPhase !== "player") {
+    return;
+  }
+  const tickTurn = Number(state.run.turns || 0);
+  if (state.run.weaponCooldownsTickedAtTurn === tickTurn) {
+    return;
+  }
+  const weaponContext = getEquippedWeaponContext(state.playerSheet);
+  if (weaponContext) {
+    const nextWeaponData = tickWeaponSkillCooldowns(weaponContext.instanceEntry.weapon || null);
+    if (!state.playerSheet.itemInstances) {
+      state.playerSheet.itemInstances = {};
+    }
+    state.playerSheet.itemInstances[weaponContext.instanceId] = {
+      ...(state.playerSheet.itemInstances[weaponContext.instanceId] || {}),
+      instanceId: weaponContext.instanceId,
+      itemId: weaponContext.item.id,
+      weapon: nextWeaponData,
+    };
+  }
+  state.run.weaponCooldownsTickedAtTurn = tickTurn;
+}
+
 function buildPreGamePreviewStats(hoverPreview) {
   const current = {
     STR: Number(state.preGameStats.STR || 0),
@@ -614,10 +781,10 @@ function buildPreGamePreviewStats(hoverPreview) {
   return { ...current, [stat]: nextValue };
 }
 
-function renderAllocStatRow(key, baseValue, previewValue) {
+function renderAllocStatRow(key, baseValue, previewValue, canDecrease = false) {
   const value = Number(baseValue || 0);
   const nextValue = Number(previewValue ?? baseValue ?? 0);
-  const minusDisabled = value <= 0;
+  const minusDisabled = !canDecrease;
   const plusDisabled = state.preGamePointsRemaining <= 0;
   const valueDeltaClass = getValueDeltaClass(value, nextValue);
   return `
@@ -678,28 +845,28 @@ function formatSkillDeltaHtml(fromValue, toValue) {
   return `<span class="cm-skill-choice-card__delta"><s>${fromValue}</s><strong>${toValue}</strong></span>`;
 }
 
-function getSkillChoiceCardContent(skillDef, skillState) {
+function getSkillChoiceCardContent(skillDef, skillState, playerSheet) {
   const isLearned = Boolean(skillState?.learned);
   const currentLevel = Math.max(0, Number(skillState?.level || 0));
   const nextLevel = Math.min(currentLevel + 1, Math.max(1, Number(skillDef?.maxLevel || 1)));
   if (skillDef?.id === "skill_support_regen") {
-    const currentPerTurn = 5 + Math.max(1, currentLevel);
-    const nextPerTurn = 5 + nextLevel;
+    const currentPerTurn = getRegenHealPerTurn(Math.max(1, currentLevel), playerSheet);
+    const nextPerTurn = getRegenHealPerTurn(nextLevel, playerSheet);
     return {
       lines: isLearned
         ? [
             `Лечение за ход: ${formatSkillDeltaHtml(currentPerTurn, nextPerTurn)} HP`,
-            `Суммарно за 3 хода: ${formatSkillDeltaHtml(currentPerTurn * 3, nextPerTurn * 3)} HP`,
+            `Суммарно за 3 хода: ${formatSkillDeltaHtml(getRegenTotalHeal(Math.max(1, currentLevel), playerSheet, 3), getRegenTotalHeal(nextLevel, playerSheet, 3))} HP`,
           ]
         : [
             `Лечение за ход: ${nextPerTurn} HP`,
-            `Суммарно за 3 хода: ${nextPerTurn * 3} HP`,
+            `Суммарно за 3 хода: ${getRegenTotalHeal(nextLevel, playerSheet, 3)} HP`,
           ],
     };
   }
   if (skillDef?.id === "skill_support_heal") {
-    const currentValue = 40 + Math.max(0, (Math.max(1, currentLevel) - 1) * 10);
-    const nextValue = 40 + Math.max(0, (nextLevel - 1) * 10);
+    const currentValue = getHealSkillRawValue(Math.max(1, currentLevel), playerSheet);
+    const nextValue = getHealSkillRawValue(nextLevel, playerSheet);
     return {
       lines: isLearned
         ? [`Мгновенное лечение: ${formatSkillDeltaHtml(currentValue, nextValue)} HP`]
@@ -720,10 +887,7 @@ function getWeaponDamageForActorStats(actorStats, item) {
     LUK: Number(actorStats?.LUK || 0),
     HP_MAX: Number(actorStats?.HP_MAX || 1),
   };
-  const derived = buildDerivedStats(safeStats, item);
-  const str = Number(safeStats.STR || 0);
-  const weaponDamage = Number(derived?.WEAPON_DAMAGE || item.weaponDamage || 0);
-  return Math.max(1, Math.floor(weaponDamage + str));
+  return calculateWeaponDamage(item, safeStats);
 }
 
 function getWeaponDamageForSheet(sheet, item) {
@@ -786,8 +950,8 @@ function renderModal() {
           const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false, level: 0 };
           const isSelected = selectedSkillId === skill.id;
           const levelLabel = getSkillLevelLabel(skill, skillState);
-          const manaCost = Math.max(1, Number(skill.manaCost || 1));
-          const cardContent = getSkillChoiceCardContent(skill, skillState);
+          const manaCost = getSkillManaCost(skill, state.playerSheet);
+          const cardContent = getSkillChoiceCardContent(skill, skillState, state.playerSheet);
           return `
             <button class="cm-skill-choice-card ${isSelected ? "is-selected" : ""}" type="button" data-action="select-skill-choice" data-skill-id="${skill.id}" data-skill-detail-id="${skill.id}">
               <div class="cm-skill-choice-card__head">
@@ -855,6 +1019,7 @@ function render() {
   const previewSheetFromStats = previewStats ? applyLoadoutToSheet(createPlayerSheet(previewStats), state.starterLoadout) : null;
   const previewSheetFromItem = !previewStats ? buildWelcomePreviewSheetFromItem(itemPreview) : null;
   const previewSheet = previewSheetFromStats || previewSheetFromItem;
+  const displaySheet = previewSheet || sheet;
   const starterItems = getStarterCommonItems().filter((item) => ["weapon", "armor", "amulet"].includes(item.type));
   const grouped = {
     weapon: starterItems.filter((item) => item.type === "weapon"),
@@ -890,8 +1055,8 @@ function render() {
                 <div class="cm-bar__row">
                   <span class="cm-bar__icon-wrap" aria-hidden="true"><img class="cm-bar__icon" src="./src/assets/icons/ui/hp.svg" width="22" height="22" alt="" /></span>
                   <div class="cm-bar__content">
-                    <div class="cm-bar__label"><span>HP</span><span>${sheet.stats.HP} / ${sheet.stats.HP_MAX}</span></div>
-                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round((sheet.stats.HP / Math.max(1, sheet.stats.HP_MAX)) * 100)))}%"></div></div>
+                    <div class="cm-bar__label"><span>HP</span><span>${displaySheet.stats.HP} / ${displaySheet.stats.HP_MAX}</span></div>
+                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round((displaySheet.stats.HP / Math.max(1, displaySheet.stats.HP_MAX)) * 100)))}%"></div></div>
                   </div>
                 </div>
               </div>
@@ -899,8 +1064,8 @@ function render() {
                 <div class="cm-bar__row">
                   <span class="cm-bar__icon-wrap" aria-hidden="true"><img class="cm-bar__icon" src="./src/assets/icons/ui/mana.svg" width="22" height="22" alt="" /></span>
                   <div class="cm-bar__content">
-                    <div class="cm-bar__label"><span>Мана</span><span>${sheet.mana} / ${sheet.manaMax}</span></div>
-                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round((sheet.mana / Math.max(1, sheet.manaMax)) * 100)))}%"></div></div>
+                    <div class="cm-bar__label"><span>Мана</span><span>${displaySheet.mana} / ${displaySheet.manaMax}</span></div>
+                    <div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round((displaySheet.mana / Math.max(1, displaySheet.manaMax)) * 100)))}%"></div></div>
                   </div>
                 </div>
               </div>
@@ -908,10 +1073,10 @@ function render() {
               <div class="cm-welcome-section-title">Распределение очков</div>
               <div class="cm-welcome-points">Свободно очков: <span class="cm-welcome-points-val">${state.preGamePointsRemaining}</span></div>
               <ul class="cm-stats cm-stats--alloc">
-                ${renderAllocStatRow("STR", Number(sheet?.stats?.STR || 0), Number(previewSheet?.stats?.STR || sheet?.stats?.STR || 0))}
-                ${renderAllocStatRow("INT", Number(sheet?.stats?.INT || 0), Number(previewSheet?.stats?.INT || sheet?.stats?.INT || 0))}
-                ${renderAllocStatRow("AGI", Number(sheet?.stats?.AGI || 0), Number(previewSheet?.stats?.AGI || sheet?.stats?.AGI || 0))}
-                ${renderAllocStatRow("LUK", Number(sheet?.stats?.LUK || 0), Number(previewSheet?.stats?.LUK || sheet?.stats?.LUK || 0))}
+                ${renderAllocStatRow("STR", Number(sheet?.stats?.STR || 0), Number(previewSheet?.stats?.STR || sheet?.stats?.STR || 0), Number(state.preGameStats?.STR || 0) > 0)}
+                ${renderAllocStatRow("INT", Number(sheet?.stats?.INT || 0), Number(previewSheet?.stats?.INT || sheet?.stats?.INT || 0), Number(state.preGameStats?.INT || 0) > 0)}
+                ${renderAllocStatRow("AGI", Number(sheet?.stats?.AGI || 0), Number(previewSheet?.stats?.AGI || sheet?.stats?.AGI || 0), Number(state.preGameStats?.AGI || 0) > 0)}
+                ${renderAllocStatRow("LUK", Number(sheet?.stats?.LUK || 0), Number(previewSheet?.stats?.LUK || sheet?.stats?.LUK || 0), Number(state.preGameStats?.LUK || 0) > 0)}
                 ${renderReadOnlyStatRow(sheet, "CRIT_CHANCE", previewSheet)}
                 ${renderReadOnlyStatRow(sheet, "CRIT_MULT", previewSheet)}
               </ul>
@@ -989,7 +1154,44 @@ function render() {
   `;
 }
 
+function syncQuickbarWeaponSkills() {
+  if (!state.playerSheet || !state.uiHud) return;
+  const activeWeaponSkills = getActiveWeaponSkills(state.playerSheet);
+  const activeIds = activeWeaponSkills.map(s => s.id);
+  
+  const slots = [...(state.uiHud.quickbarSlots || [])];
+  while (slots.length < 9) slots.push(null);
+
+  let changed = false;
+
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    if (slot && slot.kind === "weapon-skill") {
+      if (!activeIds.includes(slot.weaponSkillId)) {
+        slots[i] = null;
+        changed = true;
+      }
+    }
+  }
+
+  for (const skillId of activeIds) {
+    const isAlreadyInQuickbar = slots.some(s => s && s.kind === "weapon-skill" && s.weaponSkillId === skillId);
+    if (!isAlreadyInQuickbar) {
+      const emptyIndex = slots.findIndex(s => !s);
+      if (emptyIndex !== -1) {
+        slots[emptyIndex] = { kind: "weapon-skill", weaponSkillId: skillId };
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    state.uiHud.quickbarSlots = slots;
+  }
+}
+
 function renderGameScreen() {
+  syncQuickbarWeaponSkills();
   shouldAutoOpenSkillChoiceModal();
   const portrait = getPortraitById(state.selectedPortraitId);
   const run = state.run;
@@ -1003,215 +1205,97 @@ function renderGameScreen() {
     ? swapItemFromBag(sheet, itemPreview.bagInstanceId, -1)
     : null;
   const previewSheet = previewSheetFromStats || previewSheetFromItem;
-  const equipped = sheet?.equippedByType || {};
+  const displaySheet = previewSheet || sheet;
   const bag = sheet?.bag || [];
-  const equipTypes = ["weapon", "armor", "amulet"];
-  const equipRows = equipTypes.map((type) => {
-    const item = getItemById(equipped[type]);
-    if (item) {
-      return `
-      <div class="cm-equip-slot">
-        <span class="cm-equip-slot__label">${toRuType(type)}</span>
-        <button class="cm-equip-slot__box item-rarity-${getItemRarity(item)}" type="button" data-action="equip-slot-action" data-equip-type="${type}" data-drag-kind="equipped-item" data-drag-equip-type="${type}" data-inventory-detail-item-id="${item.id}" draggable="true" title="${esc(item.name)}">
-          <span class="cm-equip-slot__icon">${item.icon || "—"}</span>
-          ${type === "weapon" ? `<span class="cm-item-weapon-damage ${getValueDeltaClass(getWeaponDamageForSheet(sheet, item), getWeaponDamageForSheet(previewSheet || sheet, item))}">${getWeaponDamageForSheet(previewSheet || sheet, item)}</span>` : ""}
-        </button>
-      </div>
-    `;
-    }
-    return `
-      <div class="cm-equip-slot">
-        <span class="cm-equip-slot__label">${toRuType(type)}</span>
-        <div class="cm-equip-slot__box" data-equip-type="${type}">
-          <span class="cm-equip-slot__icon">${item?.icon || "—"}</span>
-          <span class="cm-equip-slot__bonus">${item ? "+1" : ""}</span>
-        </div>
-      </div>
-    `;
-  }).join("");
+  const equipRows = buildGameEquipRowsHtml({
+    sheet,
+    previewSheet,
+    getItemById,
+    getItemRarity,
+    getWeaponDamageForSheet,
+    getValueDeltaClass,
+    toRuType,
+    esc,
+  });
 
-  const equipables = bag
-    .map((entry, index) => {
-      const item = getItemById(entry.itemId);
-      if (!item || !["weapon", "armor", "amulet"].includes(item.type)) return null;
-      return { entry, item, bagIndex: index };
-    })
-    .filter(Boolean)
-    .sort((a, b) => compareItemsByRarityThenId(a.item, b.item));
+  const equipablesById = new Map();
   const consumablesById = new Map();
   for (const entry of bag) {
     const item = getItemById(entry.itemId);
-    if (!item || item.type !== "consumable") continue;
-    const cur = consumablesById.get(item.id) || { item, count: 0 };
-    cur.count += 1;
-    consumablesById.set(item.id, cur);
+    if (!item) continue;
+    if (["weapon", "armor", "amulet"].includes(item.type)) {
+      const cur = equipablesById.get(item.id) || { item, count: 0, entries: [] };
+      cur.count += 1;
+      cur.entries.push(entry);
+      equipablesById.set(item.id, cur);
+      continue;
+    }
+    if (item.type === "consumable") {
+      const cur = consumablesById.get(item.id) || { item, count: 0, entries: [] };
+      cur.count += 1;
+      cur.entries.push(entry);
+      consumablesById.set(item.id, cur);
+    }
   }
-  const consumables = Array.from(consumablesById.values())
+  const equipables = Array.from(equipablesById.values())
     .sort((a, b) => compareItemsByRarityThenId(a.item, b.item));
+  const consumables = Array.from(consumablesById.values())
+    .sort((a, b) => compareConsumablesForInventory(a.item, b.item));
   const learnedSkills = getCoreSkillDefs().filter((skill) => {
     const skillState = sheet?.skills?.[skill.id];
     return Boolean(skillState?.learned);
   });
+  const weaponSkills = getActiveWeaponSkills(sheet);
 
-  const effects = [];
-  if ((run?.nextHitMultiplier || 1) > 1) {
-    effects.push({ icon: "🧪", name: "Колба специй", desc: `Следующий удар x${run.nextHitMultiplier}.`, turns: "1 х." });
-  }
-  const bandage = (run?.overTimeEffects || []).find((effect) => effect.type === "bandage_regen");
-  if (bandage?.turnsLeft > 0) {
-    effects.push({ icon: "🩹", name: "Перевязан", desc: "Восстановление HP каждый ход.", turns: `${bandage.turnsLeft} х.` });
-  }
-  const stackEffects = sheet?.effectStacks || {};
-  if ((stackEffects.hp_max_plus_5 || 0) > 0) {
-    effects.push({ icon: "🧀", name: "Твердый сыр", desc: "Постоянный бонус HP.", turns: "∞" });
-  }
-  if ((stackEffects.hp_max_plus_4 || 0) > 0) {
-    effects.push({ icon: "🥨", name: "Сухарик", desc: "Постоянный бонус HP.", turns: "∞" });
-  }
-  if ((stackEffects.hp_max_plus_1 || 0) > 0) {
-    effects.push({ icon: "👑", name: "Королевский сыр", desc: "Постоянный бонус HP.", turns: "∞" });
-  }
+  const effects = buildActiveEffectsViewModel(run, sheet);
 
   const quickSlots = Array.isArray(state.uiHud?.quickbarSlots) ? state.uiHud.quickbarSlots : [];
-  const inventoryCellsHtml = (equipables.length
-    ? equipables.map((entry) => `<button class="cm-inv-cell item-rarity-${getItemRarity(entry.item)}" type="button" title="${esc(entry.item.name)}" data-action="bag-item-action" data-item-id="${entry.item.id}" data-bag-instance-id="${entry.entry.instanceId}" data-bag-index="${entry.bagIndex}" data-drag-kind="bag-equip" data-drag-bag-instance-id="${entry.entry.instanceId}" data-drag-item-type="${entry.item.type}" data-preview-item-screen="game" data-preview-item-id="${entry.item.id}" data-preview-item-bag-instance-id="${entry.entry.instanceId}" data-inventory-detail-item-id="${entry.item.id}" draggable="true">${entry.item.icon || "•"}${entry.item.type === "weapon" ? `<span class="cm-item-weapon-damage ${getValueDeltaClass(getWeaponDamageForSheet(sheet, entry.item), getWeaponDamageForSheet(previewSheet || sheet, entry.item))}">${getWeaponDamageForSheet(previewSheet || sheet, entry.item)}</span>` : ""}</button>`)
-    : [`<div class="cm-inv-cell cm-inv-cell--empty"></div>`])
-    .join("");
-  const consumableCellsHtml = (consumables.length
-    ? consumables.map((entry) => `<button class="cm-inv-cell item-rarity-${getItemRarity(entry.item)}" type="button" data-action="use-consumable" data-item-id="${entry.item.id}" data-drag-kind="consumable" data-drag-item-id="${entry.item.id}" data-inventory-detail-item-id="${entry.item.id}" data-inventory-detail-stack="${entry.count}" draggable="true" title="${esc(entry.item.name)}">${entry.item.icon || "•"}<span class="cm-inv-cell__qty">${entry.count}</span></button>`)
-    : [`<div class="cm-inv-cell cm-inv-cell--empty"></div>`])
-    .join("");
-  const skillsHtml = learnedSkills.length
-    ? learnedSkills
-      .map((skill) => `<li class="cm-skill"><button class="cm-skill__btn" type="button" data-action="left-skill-use" data-skill-id="${skill.id}" data-skill-detail-id="${skill.id}" data-drag-kind="skill" data-drag-skill-id="${skill.id}" draggable="true"><span class="cm-skill__icon">${skill.icon || "✨"}</span><span class="cm-skill__name">${esc(skill.name)}</span><span class="cm-skill__mana">${Math.max(1, skill.manaCost)}</span></button></li>`)
-      .join("")
-    : `<li class="cm-skill"><span class="cm-skill__icon">—</span><span class="cm-skill__name">Нет изученных скиллов</span><span class="cm-skill__mana"></span></li>`;
+  const inventoryCellsHtml = buildInventoryCellsHtml({
+    equipables,
+    getItemRarity,
+    getWeaponDamageForSheet,
+    getValueDeltaClass,
+    sheet,
+    previewSheet,
+    esc,
+  });
+  const consumableCellsHtml = buildConsumableCellsHtml({
+    consumables,
+    getItemRarity,
+    esc,
+  });
+  const skillsHtml = buildSkillsListHtml({ learnedSkills, weaponSkills, sheet, esc });
+  const quickbarHtml = buildQuickbarHtml({
+    quickSlots,
+    sheet,
+    weaponSkills,
+    getItemById,
+    getCoreSkillDefs,
+    activeSlotIndex: state.uiHud?.skillTargeting?.slotIndex ?? null,
+    esc,
+  });
 
-  root.innerHTML = `
-    <div class="cm-app cm-app--game">
-      <div class="cm-main">
-        <aside class="cm-col cm-col--left">
-          <section class="cm-panel cm-panel--hero" aria-labelledby="hero-title">
-            <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span><span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span><span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span><span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
-            <h2 class="cm-panel__title" id="hero-title">Герой</h2>
-            <div class="cm-panel__body">
-              <div class="cm-hero-portrait"><div class="cm-portrait-ring"><div class="cm-portrait-inner"><img src="${portrait.imageSrc}" width="112" height="112" alt="${esc(portrait.name)}" /></div></div><button class="cm-level-badge" type="button" data-action="secret-level-up" aria-label="Скрытое повышение уровня">${sheet?.level || 1}</button></div>
-              <div class="cm-bar cm-bar--hp"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/hp.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>HP</span><span>${sheet?.stats?.HP || 0} / ${sheet?.stats?.HP_MAX || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.stats?.HP || 0) / Math.max(1, sheet?.stats?.HP_MAX || 1)) * 100)))}%"></div></div></div></div></div>
-              <div class="cm-bar cm-bar--mana"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/mana.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>Мана</span><span>${sheet?.mana || 0} / ${sheet?.manaMax || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.mana || 0) / Math.max(1, sheet?.manaMax || 1)) * 100)))}%"></div></div></div></div></div>
-              <div class="cm-bar cm-bar--xp"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/xp.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>Опыт</span><span>${sheet?.xp || 0} / ${sheet?.xpToNext || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.xp || 0) / Math.max(1, sheet?.xpToNext || 1)) * 100)))}%"></div></div></div></div></div>
-            </div>
-          </section>
+  root.innerHTML = buildGameScreenHtml({
+    portrait,
+    run,
+    sheet,
+    displaySheet,
+    previewSheet,
+    effects,
+    quickbarHtml,
+    equipRows,
+    inventoryCellsHtml,
+    consumableCellsHtml,
+    skillsHtml,
+    esc,
+    getUiStatIcon,
+    getUiStatName,
+    getValueDeltaClass,
+    renderModal,
+  });
 
-          <section class="cm-panel"><span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Характеристики</h2>
-            <div class="cm-panel__body">
-              <ul class="cm-stats">
-                ${["STR", "INT", "AGI", "LUK"].map((k) => `
-                  <li class="cm-stat-row">
-                    <span class="cm-stat-icon">${getUiStatIcon(k)}</span><span class="cm-stat-name">${getUiStatName(k)}</span><span class="cm-stat-value ${getValueDeltaClass(Number(sheet?.stats?.[k] || 0), Number(previewSheet?.stats?.[k] || sheet?.stats?.[k] || 0))}">${Number(previewSheet?.stats?.[k] || sheet?.stats?.[k] || 0)}</span>
-                    <button type="button" class="cm-stat-plus" data-action="upgrade-stat" data-stat="${k}" data-preview-screen="game" data-preview-stat="${k}" data-preview-delta="1" ${Number(sheet?.unspentPoints || 0) > 0 ? "" : "disabled"}>+</button>
-                  </li>`).join("")}
-                <li class="cm-stat-row"><span class="cm-stat-icon">🎯</span><span class="cm-stat-name">Крит шанс</span><span class="cm-stat-value ${getValueDeltaClass(Number(sheet?.derived?.CRIT_CHANCE || 0), Number(previewSheet?.derived?.CRIT_CHANCE || sheet?.derived?.CRIT_CHANCE || 0))}">${Number(previewSheet?.derived?.CRIT_CHANCE || sheet?.derived?.CRIT_CHANCE || 0)}%</span><span class="cm-stat-plus-spacer"></span></li>
-                <li class="cm-stat-row"><span class="cm-stat-icon">💥</span><span class="cm-stat-name">Крит x</span><span class="cm-stat-value ${getValueDeltaClass(Number(sheet?.derived?.CRIT_MULT || 1), Number(previewSheet?.derived?.CRIT_MULT || sheet?.derived?.CRIT_MULT || 1))}">${Number(previewSheet?.derived?.CRIT_MULT || sheet?.derived?.CRIT_MULT || 1)}x</span><span class="cm-stat-plus-spacer"></span></li>
-              </ul>
-            </div>
-          </section>
-
-          <section class="cm-panel"><span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Активные эффекты</h2>
-            <div class="cm-panel__body">
-              <div class="cm-effects-viewport cm-scroll-wood">
-                <div class="cm-effects">
-                  ${effects.length
-                    ? effects.map((effect) => `
-                        <div class="cm-effect">
-                          <div class="cm-effect__icon">${effect.icon}</div>
-                          <div class="cm-effect__main">
-                            <div class="cm-effect__name">${esc(effect.name)}</div>
-                            <div class="cm-effect__desc">${esc(effect.desc)}</div>
-                          </div>
-                          <div class="cm-effect__turns">${esc(effect.turns)}</div>
-                        </div>
-                      `).join("")
-                    : `<div class="cm-effect"><div class="cm-effect__icon">—</div><div class="cm-effect__main"><div class="cm-effect__name">Эффекты</div><div class="cm-effect__desc">Нет активных эффектов.</div></div><div class="cm-effect__turns">0</div></div>`}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="cm-panel"><span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Журнал</h2>
-            <div class="cm-panel__body"><div class="cm-log"><p class="cm-log__line cm-log__line--with-icon"><img class="cm-log__mark" src="./src/assets/icons/ui/log.svg" width="16" height="16" alt="" /><span class="cm-log__text">${esc(run?.lastLog || "—")}</span></p></div></div>
-          </section>
-        </aside>
-
-        <main class="cm-col cm-col--center">
-          <div class="cm-center-stack">
-            <div class="cm-panel cm-panel--fill cm-center-panel"><span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-              <h2 class="cm-panel__title">Поле</h2>
-              <div class="cm-panel__body">
-                <div class="cm-field" role="img" aria-label="Игровое поле">
-                  <div class="cm-phase cm-phase--field">${run?.turnPhase === "environment" ? "Ход окружения" : "Ход игрока"}</div>
-                  <div class="cm-field__main"><canvas id="newGameCanvas" width="800" height="500" style="width:100%;height:100%;"></canvas></div>
-                  <footer class="cm-hotbar-wrap cm-panel cm-hotbar-wrap--in-field cm-hotbar-wrap--recessed"><span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span><div class="cm-hotbar">${Array.from({ length: 9 }).map((_, i) => {
-                    const slot = quickSlots[i] || null;
-                    if (!slot) {
-                      return `<button class="cm-hot-slot cm-hot-slot--empty" type="button" data-action="quickbar-use" data-slot-index="${i}" data-drag-kind="quick-slot" data-drag-slot-index="${i}" draggable="false"><span class="cm-hot-slot__key">${i + 1}</span></button>`;
-                    }
-                    if (slot.kind === "consumable") {
-                      const item = getItemById(slot.itemId);
-                      const count = (sheet?.bag || []).filter((entry) => entry.itemId === slot.itemId).length;
-                      return `<button class="cm-hot-slot" type="button" data-action="quickbar-use" data-slot-index="${i}" data-drag-kind="quick-slot" data-drag-slot-index="${i}" data-inventory-detail-item-id="${item?.id || ""}" data-inventory-detail-stack="${count}" draggable="true" title="${esc(item?.name || "Расходник")}"><span class="cm-hot-slot__key">${i + 1}</span>${item?.icon || "•"}<span class="cm-hot-slot__qty">${count}</span></button>`;
-                    }
-                    if (slot.kind === "skill") {
-                      const skill = getCoreSkillDefs().find((s) => s.id === slot.skillId);
-                      const manaCost = Math.max(1, Number(skill?.manaCost || 1));
-                      return `<button class="cm-hot-slot" type="button" data-action="quickbar-use" data-slot-index="${i}" data-skill-detail-id="${skill?.id || ""}" data-drag-kind="quick-slot" data-drag-slot-index="${i}" draggable="true" title="${esc(skill?.name || "Скилл")}"><span class="cm-hot-slot__key">${i + 1}</span>${skill?.icon || "✨"}<span class="cm-hot-slot__mana">${manaCost}</span></button>`;
-                    }
-                    return `<button class="cm-hot-slot cm-hot-slot--empty" type="button" data-action="quickbar-use" data-slot-index="${i}" data-drag-kind="quick-slot" data-drag-slot-index="${i}" draggable="false"><span class="cm-hot-slot__key">${i + 1}</span></button>`;
-                  }).join("")}</div></footer>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <aside class="cm-col cm-col--right">
-          <section class="cm-panel">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Экипировка</h2>
-            <div class="cm-panel__body"><div class="cm-equip-slots">${equipRows}</div></div>
-          </section>
-          <section class="cm-panel cm-panel--inventory">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Инвентарь</h2>
-            <div class="cm-panel__body"><div class="cm-inv-wrap cm-scroll-wood"><div class="cm-inv-grid" data-bag-dropzone="true">${inventoryCellsHtml}</div></div></div>
-          </section>
-          <section class="cm-panel cm-panel--consumables">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Расходники</h2>
-            <div class="cm-panel__body"><div class="cm-cons-wrap cm-scroll-wood"><div class="cm-cons-row">${consumableCellsHtml}</div></div></div>
-          </section>
-          <section class="cm-panel cm-panel--skills">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Скиллы</h2>
-            <div class="cm-panel__body cm-panel__body--flex-grow"><div class="cm-skills-viewport cm-scroll-wood"><ul class="cm-skills">${skillsHtml}</ul></div></div>
-          </section>
-        </aside>
-      </div>
-    </div>
-    ${renderModal()}
-  `;
-
-  run.hoverCell = state.uiHud.pathHoverCell || null;
-  run.hoverCellEnemy = Boolean(state.uiHud.pathHoverEnemy);
-  run.previewPathCells = state.uiHud.pathPreviewCells || [];
-  run.lockedPathCells = state.uiHud.pathLockedCells || [];
-  run.lockedPathTarget = state.uiHud.pathLockedTarget || null;
-  run.lockedPathEnemyId = state.uiHud.pathLockedEnemyId || null;
-  run.skillTargetCells = state.uiHud.skillTargeting?.targets || state.uiHud.trapTargeting?.targets || [];
-
-  drawRunToCanvas(document.getElementById("newGameCanvas"), run, sheet, performance.now(), 1);
+  const canvasOverlay = buildCanvasOverlayViewModel(state.uiHud);
+  drawRunToCanvas(document.getElementById("newGameCanvas"), run, sheet, performance.now(), 1, canvasOverlay);
 }
 
 function renderEndingScreen() {
@@ -1228,91 +1312,28 @@ function renderEndingScreen() {
   const secs = durationSec % 60;
   const durationLabel = `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 
-  const equipTypes = ["weapon", "armor", "amulet"];
-  const equipRows = equipTypes.map((type) => {
-    const item = getItemById(sheet?.equippedByType?.[type]);
-    return `
-      <div class="cm-equip-slot">
-        <span class="cm-equip-slot__label">${toRuType(type)}</span>
-        <div class="cm-equip-slot__box ${item ? `item-rarity-${getItemRarity(item)}` : ""}" ${item ? `data-inventory-detail-item-id="${item.id}"` : ""}>
-          <span class="cm-equip-slot__icon">${item?.icon || "—"}</span>
-          ${type === "weapon" && item ? `<span class="cm-item-weapon-damage">${getWeaponDamageForSheet(sheet, item)}</span>` : ""}
-        </div>
-      </div>
-    `;
-  }).join("");
+  const equipRows = buildEndingEquipRowsHtml({
+    sheet,
+    getItemById,
+    getItemRarity,
+    getWeaponDamageForSheet,
+    toRuType,
+  });
 
-  root.innerHTML = `
-    <div class="cm-app cm-ending-app">
-      <div class="cm-main cm-ending-main">
-        <aside class="cm-col cm-col--left">
-          <section class="cm-panel cm-panel--fill">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Карточка героя</h2>
-            <div class="cm-panel__body">
-              <div class="cm-hero-portrait"><div class="cm-portrait-ring"><div class="cm-portrait-inner"><img src="${portrait.imageSrc}" width="112" height="112" alt="${esc(portrait.name)}" /></div></div><div class="cm-level-badge">${sheet?.level || 1}</div></div>
-              <div class="cm-bar cm-bar--hp"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/hp.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>HP</span><span>${sheet?.stats?.HP || 0} / ${sheet?.stats?.HP_MAX || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.stats?.HP || 0) / Math.max(1, sheet?.stats?.HP_MAX || 1)) * 100)))}%"></div></div></div></div></div>
-              <div class="cm-bar cm-bar--mana"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/mana.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>Мана</span><span>${sheet?.mana || 0} / ${sheet?.manaMax || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.mana || 0) / Math.max(1, sheet?.manaMax || 1)) * 100)))}%"></div></div></div></div></div>
-              <div class="cm-bar cm-bar--xp"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/xp.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>Опыт</span><span>${sheet?.xp || 0} / ${sheet?.xpToNext || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.xp || 0) / Math.max(1, sheet?.xpToNext || 1)) * 100)))}%"></div></div></div></div></div>
-              <ul class="cm-stats">
-                ${["STR", "INT", "AGI", "LUK"].map((k) => `<li class="cm-stat-row"><span class="cm-stat-icon">${getUiStatIcon(k)}</span><span class="cm-stat-name">${getUiStatName(k)}</span><span class="cm-stat-value">${Number(sheet?.stats?.[k] || 0)}</span><span class="cm-stat-plus-spacer"></span></li>`).join("")}
-                <li class="cm-stat-row"><span class="cm-stat-icon">🎯</span><span class="cm-stat-name">Крит шанс</span><span class="cm-stat-value">${Number(sheet?.derived?.CRIT_CHANCE || 0)}%</span><span class="cm-stat-plus-spacer"></span></li>
-                <li class="cm-stat-row"><span class="cm-stat-icon">💥</span><span class="cm-stat-name">Крит x</span><span class="cm-stat-value">${Number(sheet?.derived?.CRIT_MULT || 1)}x</span><span class="cm-stat-plus-spacer"></span></li>
-              </ul>
-            </div>
-          </section>
-        </aside>
-
-        <main class="cm-col cm-col--center">
-          <section class="cm-panel cm-panel--fill">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Итоги забега</h2>
-            <div class="cm-panel__body cm-ending-summary">
-              <div class="cm-ending-status ${isVictory ? "cm-ending-status--victory" : ""}">${title}</div>
-              <p class="cm-ending-subtitle">${esc(subtitle)}</p>
-              <div class="cm-ending-metrics">
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Длительность</span><span class="cm-ending-metric__value">${durationLabel}</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Ходов</span><span class="cm-ending-metric__value">${Number(run?.turns || 0)}</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Убито противников</span><span class="cm-ending-metric__value">—</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Пройдено уровней</span><span class="cm-ending-metric__value">${Number(run?.level || 1)}</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Открыто сундуков</span><span class="cm-ending-metric__value">—</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Подобрано предметов</span><span class="cm-ending-metric__value">—</span></div>
-              </div>
-            </div>
-          </section>
-        </main>
-
-        <aside class="cm-col cm-col--right">
-          <section class="cm-panel">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Снаряжение</h2>
-            <div class="cm-panel__body"><div class="cm-equip-slots">${equipRows}</div></div>
-          </section>
-          <section class="cm-panel">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Побежденные боссы</h2>
-            <div class="cm-panel__body">
-              <ul class="cm-ending-loot">
-                <li class="cm-ending-loot__item">🐈 Подвальный охотник</li>
-                <li class="cm-ending-loot__item">👁 Слепой сторож</li>
-                <li class="cm-ending-loot__item">🦴 Костяной мурчун</li>
-                <li class="cm-ending-loot__item">👑 Кот-хозяин кладовки</li>
-              </ul>
-            </div>
-          </section>
-          <section class="cm-panel">
-            <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-            <h2 class="cm-panel__title">Дальше</h2>
-            <div class="cm-panel__body cm-ending-actions">
-              <button class="cm-btn cm-btn--primary" type="button" data-action="end-to-welcome">Новый забег</button>
-              <button class="cm-btn cm-btn--secondary" type="button" data-action="open-devlog">Devlog</button>
-            </div>
-          </section>
-        </aside>
-      </div>
-    </div>
-    ${renderModal()}
-  `;
+  root.innerHTML = buildEndingScreenHtml({
+    portrait,
+    run,
+    sheet,
+    isVictory,
+    title,
+    subtitle,
+    durationLabel,
+    equipRows,
+    esc,
+    getUiStatIcon,
+    getUiStatName,
+    renderModal,
+  });
 }
 
 function resetToWelcome() {
@@ -1332,14 +1353,14 @@ function resetToWelcome() {
 }
 
 function performStep(direction) {
-  if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
+  if (!canAcceptPlayerAction(state)) {
     return false;
   }
   const result = tryStep(state.run, state.playerSheet, direction);
   state.run = result.run;
   state.playerSheet = result.playerSheet;
   if (state.run && result.motion) {
-    state.run.motion = result.motion;
+    ensureRunFxState(state.run).motion = result.motion;
   }
 
   if (state.run.status === "victory" || state.run.status === "defeat") {
@@ -1357,14 +1378,7 @@ function performStep(direction) {
 }
 
 function handleLevelTransition(nowMs) {
-  if (!state.run || state.run.status !== "level_complete" || !state.run.levelTransition) {
-    return;
-  }
-  if (state.run.levelTransition.startedMs == null) {
-    state.run.levelTransition.startedMs = nowMs;
-    return;
-  }
-  if (nowMs - state.run.levelTransition.startedMs < state.run.levelTransition.durationMs) {
+  if (!isLevelTransitionReady(state.run, nowMs)) {
     return;
   }
   state.run = createNextLevelRun(state.run, state.playerSheet);
@@ -1374,7 +1388,7 @@ function handleLevelTransition(nowMs) {
 }
 
 function consumeActionAndRunEnvironment() {
-  if (!state.run || state.run.status !== "running" || state.run.turnPhase !== "player") {
+  if (!canStartEnvironmentTurn(state.run)) {
     return;
   }
   clearSkillTargeting();
@@ -1382,7 +1396,7 @@ function consumeActionAndRunEnvironment() {
 }
 
 function tryMoveToCanvasCell(canvas, clientX, clientY) {
-  if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
+  if (!canAcceptPlayerAction(state)) {
     return;
   }
   const rect = canvas.getBoundingClientRect();
@@ -1402,13 +1416,14 @@ function tryMoveToCanvasCell(canvas, clientX, clientY) {
     return;
   }
   const next = path[1];
-  const direction = DIR_BY_DELTA[`${next.x - state.run.player.x}:${next.y - state.run.player.y}`];
+  const direction = resolveDirectionByDelta(next.x - state.run.player.x, next.y - state.run.player.y);
   if (!direction) return;
   performStep(direction);
 }
 
 const canvasHandlers = createCanvasRunHandlers({
   getState: () => state,
+  canAcceptPlayerAction,
   rerender: render,
   clearPathingState,
   performStep,
@@ -1423,7 +1438,8 @@ const canvasHandlers = createCanvasRunHandlers({
   recalculateSheetFromInventory,
   consumePlayerActionAndStartEnvironment: consumeActionAndRunEnvironment,
   clearSkillTargeting,
-  useSkillAtCell,
+  useSkillAtCell: (run, playerSheet, skillId, x, y) =>
+    useSkillAtCellByKind(run, playerSheet, skillId, state.uiHud?.skillTargeting?.skillKind || "core", x, y),
   snapshotProgress,
   maybeOpenSkillsOnNewPoint,
   maybeTriggerLevelUpPulse,
@@ -1458,6 +1474,12 @@ function initQuickbarForNewRun() {
     slots[slotIndex] = { kind: "skill", skillId: skill.id };
     slotIndex += 1;
   }
+  const weaponSkills = getActiveWeaponSkills(state.playerSheet);
+  for (const skill of weaponSkills) {
+    if (slotIndex >= 9) break;
+    slots[slotIndex] = { kind: "weapon-skill", weaponSkillId: skill.id };
+    slotIndex += 1;
+  }
   state.uiHud.quickbarSlots = slots;
 }
 
@@ -1465,6 +1487,7 @@ function normalizeQuickbarSlot(value) {
   if (!value) return null;
   if (value.kind === "consumable" && value.itemId) return value;
   if (value.kind === "skill" && value.skillId) return value;
+  if (value.kind === "weapon-skill" && value.weaponSkillId) return value;
   return null;
 }
 
@@ -1483,6 +1506,7 @@ function isQuickbarPayloadAssigned(targetPayload) {
     if (!slotPayload || slotPayload.kind !== targetPayload.kind) continue;
     if (slotPayload.kind === "consumable" && slotPayload.itemId === targetPayload.itemId) return true;
     if (slotPayload.kind === "skill" && slotPayload.skillId === targetPayload.skillId) return true;
+    if (slotPayload.kind === "weapon-skill" && slotPayload.weaponSkillId === targetPayload.weaponSkillId) return true;
   }
   return false;
 }
@@ -1498,7 +1522,7 @@ function assignQuickbarSlotIfAvailable(payload) {
 }
 
 function useConsumableById(itemId, bagInstanceId = null, bagIndex = -1) {
-  if (!itemId || !state.playerSheet || !state.run || state.run.turnPhase !== "player") {
+  if (!itemId || !canAcceptPlayerAction(state)) {
     return false;
   }
   const item = getItemById(itemId);
@@ -1542,7 +1566,7 @@ function useConsumableById(itemId, bagInstanceId = null, bagIndex = -1) {
 }
 
 function useQuickbarSlot(slotIndex) {
-  if (!state.playerSheet || !state.run || state.run.turnPhase !== "player") {
+  if (!canAcceptPlayerAction(state)) {
     return;
   }
   const slotValue = state.uiHud.quickbarSlots?.[slotIndex];
@@ -1556,23 +1580,77 @@ function useQuickbarSlot(slotIndex) {
     return;
   }
   if (slotPayload.kind === "skill") {
+    const skillDef = getCoreSkillDefs().find(s => s.id === slotPayload.skillId);
+    const manaCost = getSkillManaCost(skillDef, state.playerSheet);
+    if ((state.playerSheet.mana || 0) < manaCost) {
+      state.run.lastLog = "Недостаточно маны.";
+      return;
+    }
     clearPathingState();
-    const skillTargets = getSkillTargetCells(state.run, state.playerSheet, slotPayload.skillId);
+    const skillTargets = getSkillTargetsByKind(state.run, state.playerSheet, slotPayload.skillId, "core", getEquippedWeaponContext);
     if (skillTargets.length === 0) {
       state.run.lastLog = "Нет доступной цели для скилла.";
       return;
     }
-    const alreadyActive = state.uiHud.skillTargeting?.slotIndex === slotIndex;
+    const alreadyActive = (
+      state.uiHud.skillTargeting?.slotIndex === slotIndex
+      || (
+        state.uiHud.skillTargeting?.skillKind === "core"
+        && state.uiHud.skillTargeting?.skillId === slotPayload.skillId
+      )
+    );
     if (alreadyActive) {
       clearSkillTargeting();
     } else {
       state.uiHud.skillTargeting = {
         slotIndex,
         skillId: slotPayload.skillId,
+        skillKind: "core",
         previousSkillPoints: state.playerSheet.skillPoints || 0,
         targets: skillTargets,
       };
       trackSkillUse(slotPayload.skillId);
+      refreshSkillTargetingPreviewFromPointer();
+    }
+    return;
+  }
+  if (slotPayload.kind === "weapon-skill") {
+    const skillDef = getWeaponSkillById(slotPayload.weaponSkillId);
+    const manaCost = getSkillManaCost(skillDef, state.playerSheet);
+    if ((state.playerSheet.mana || 0) < manaCost) {
+      state.run.lastLog = "Недостаточно маны.";
+      return;
+    }
+    const cooldownLeft = getWeaponSkillCooldownLeft(state.playerSheet, slotPayload.weaponSkillId);
+    if (cooldownLeft > 0) {
+      state.run.lastLog = `Скилл на перезарядке: ${cooldownLeft} х.`;
+      return;
+    }
+    clearPathingState();
+    const skillTargets = getSkillTargetsByKind(state.run, state.playerSheet, slotPayload.weaponSkillId, "weapon", getEquippedWeaponContext);
+    if (skillTargets.length === 0) {
+      state.run.lastLog = "Нет доступной цели для оружейного скилла.";
+      return;
+    }
+    const alreadyActive = (
+      state.uiHud.skillTargeting?.slotIndex === slotIndex
+      || (
+        state.uiHud.skillTargeting?.skillKind === "weapon"
+        && state.uiHud.skillTargeting?.skillId === slotPayload.weaponSkillId
+      )
+    );
+    if (alreadyActive) {
+      clearSkillTargeting();
+    } else {
+      state.uiHud.skillTargeting = {
+        slotIndex,
+        skillId: slotPayload.weaponSkillId,
+        skillKind: "weapon",
+        previousSkillPoints: state.playerSheet.skillPoints || 0,
+        targets: skillTargets,
+      };
+      trackSkillUse(slotPayload.weaponSkillId);
+      refreshSkillTargetingPreviewFromPointer();
     }
   }
 }
@@ -1582,10 +1660,11 @@ function tryCastPreparedSkillOnSelf() {
   if (!targeting?.skillId || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
     return;
   }
-  const result = useSkillAtCell(
+  const result = useSkillAtCellByKind(
     state.run,
     state.playerSheet,
     targeting.skillId,
+    targeting.skillKind || "core",
     state.run.player.x,
     state.run.player.y,
   );
@@ -1695,7 +1774,8 @@ function onRootClick(event) {
 
   if (action === "use-consumable" && state.screen === "game" && state.run?.turnPhase === "player") {
     const itemId = actionEl.dataset.itemId;
-    useConsumableById(itemId, null, -1);
+    const bagInstanceId = actionEl.dataset.bagInstanceId || null;
+    useConsumableById(itemId, bagInstanceId, -1);
     render();
     return;
   }
@@ -1703,15 +1783,13 @@ function onRootClick(event) {
   if (action === "bag-item-action" && state.screen === "game" && state.run?.turnPhase === "player") {
     const itemId = actionEl.dataset.itemId;
     const bagInstanceId = actionEl.dataset.bagInstanceId;
-    const bagIndexRaw = Number(actionEl.dataset.bagIndex);
-    const bagIndex = Number.isInteger(bagIndexRaw) ? bagIndexRaw : -1;
     const item = getItemById(itemId);
     if (!item) return;
     if (item.isConsumable) {
-      useConsumableById(item.id, bagInstanceId || null, bagIndex);
+      useConsumableById(item.id, bagInstanceId || null, -1);
     } else {
       const previousSheet = state.playerSheet;
-      state.playerSheet = swapItemFromBag(state.playerSheet, bagInstanceId, bagIndex);
+      state.playerSheet = swapItemFromBag(state.playerSheet, bagInstanceId, -1);
       if (state.playerSheet !== previousSheet) {
         consumeActionAndRunEnvironment();
       }
@@ -1729,9 +1807,29 @@ function onRootClick(event) {
 
   if (action === "left-skill-use" && state.screen === "game" && state.run?.turnPhase === "player") {
     const skillId = actionEl.dataset.skillId;
+    const skillKind = actionEl.dataset.skillKind || "core";
     if (!skillId) return;
+
+    const manaCost = skillKind === "weapon"
+      ? getSkillManaCost(getWeaponSkillById(skillId), state.playerSheet)
+      : getSkillManaCost(getCoreSkillDefs().find(s => s.id === skillId), state.playerSheet);
+    
+    if ((state.playerSheet.mana || 0) < manaCost) {
+      state.run.lastLog = "Недостаточно маны.";
+      render();
+      return;
+    }
+
+    if (skillKind === "weapon") {
+      const cooldownLeft = getWeaponSkillCooldownLeft(state.playerSheet, skillId);
+      if (cooldownLeft > 0) {
+        state.run.lastLog = `Скилл на перезарядке: ${cooldownLeft} х.`;
+        render();
+        return;
+      }
+    }
     clearPathingState();
-    const targets = getSkillTargetCells(state.run, state.playerSheet, skillId);
+    const targets = getSkillTargetsByKind(state.run, state.playerSheet, skillId, skillKind, getEquippedWeaponContext);
     if (!targets.length) {
       state.run.lastLog = "Нет доступных клеток для применения.";
       render();
@@ -1740,10 +1838,12 @@ function onRootClick(event) {
     state.uiHud.skillTargeting = {
       slotIndex: null,
       skillId,
+      skillKind,
       previousSkillPoints: state.playerSheet.skillPoints || 0,
       targets,
     };
     trackSkillUse(skillId);
+    refreshSkillTargetingPreviewFromPointer();
     render();
     return;
   }
@@ -1887,7 +1987,7 @@ function applyEquipDropTargetHighlight(payload) {
 }
 
 function moveEquippedItemToBag(equipType) {
-  if (!state.playerSheet || !state.run || state.run.turnPhase !== "player") {
+  if (!canAcceptPlayerAction(state)) {
     return false;
   }
   if (!equipType || !["weapon", "armor", "amulet"].includes(equipType)) {
@@ -1896,7 +1996,8 @@ function moveEquippedItemToBag(equipType) {
   const equippedId = state.playerSheet.equippedByType?.[equipType];
   if (!equippedId) return false;
   const equippedInstanceByType = { ...(state.playerSheet.equippedInstanceByType || {}) };
-  const instanceId = equippedInstanceByType[equipType] || `item_runtime_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+  const instanceId = equippedInstanceByType[equipType]
+    || `item_runtime_${Date.now()}_${randomInt(0, 99999, state.run?.rng || null)}`;
   const nextEquippedByType = { ...(state.playerSheet.equippedByType || {}) };
   nextEquippedByType[equipType] = null;
   equippedInstanceByType[equipType] = null;
@@ -1970,13 +2071,14 @@ function onRootDragStart(event) {
   const skill = event.target.closest("[data-drag-kind='skill']");
   if (!skill) return;
   const skillId = skill.dataset.dragSkillId;
+  const skillKind = skill.dataset.dragSkillKind || "core";
   if (!skillId) {
     event.preventDefault();
     return;
   }
-  state.uiHud.dragPayload = { kind: "skill", skillId };
+  state.uiHud.dragPayload = { kind: "skill", skillId, skillKind };
   event.dataTransfer.effectAllowed = "copyMove";
-  event.dataTransfer.setData("text/plain", `skill:${skillId}`);
+  event.dataTransfer.setData("text/plain", `skill:${skillKind}:${skillId}`);
 }
 
 function onRootDragOver(event) {
@@ -2046,7 +2148,13 @@ function onRootDrop(event) {
   const slots = [...(state.uiHud.quickbarSlots || [])];
   const payload = state.uiHud.dragPayload;
   if (payload.kind === "consumable" && payload.itemId) slots[targetSlot] = { kind: "consumable", itemId: payload.itemId };
-  if (payload.kind === "skill" && payload.skillId) slots[targetSlot] = { kind: "skill", skillId: payload.skillId };
+  if (payload.kind === "skill" && payload.skillId) {
+    if (payload.skillKind === "weapon") {
+      slots[targetSlot] = { kind: "weapon-skill", weaponSkillId: payload.skillId };
+    } else {
+      slots[targetSlot] = { kind: "skill", skillId: payload.skillId };
+    }
+  }
   if (payload.kind === "quick-slot" && Number.isInteger(payload.slotIndex)) {
     const sourceSlot = payload.slotIndex;
     if (sourceSlot !== targetSlot) {
@@ -2108,22 +2216,47 @@ root.addEventListener("mousemove", (event) => {
   queueSkillPopoverUpdate(event);
   const canvas = event.target.closest("#newGameCanvas");
   if (!canvas) return;
+  if (state.screen === "game" && state.run && state.playerSheet && state.uiHud.skillTargeting?.skillId) {
+    const rect = canvas.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+    const cell = screenPointToGrid(
+      state.run,
+      localX,
+      localY,
+      rect.width,
+      rect.height,
+      state.uiHud?.canvasZoom ?? 1,
+    );
+    const nextPreviews = buildSkillTargetingPreviews(
+      state.run,
+      state.playerSheet,
+      state.uiHud.skillTargeting,
+      cell,
+      getEquippedWeaponContext,
+    );
+    const prevJson = JSON.stringify(state.uiHud.skillTargetingPreviews || []);
+    const nextJson = JSON.stringify(nextPreviews);
+    if (prevJson !== nextJson) {
+      state.uiHud.skillTargetingPreviews = nextPreviews;
+      render();
+      return;
+    }
+  }
   canvasHandlers.onCanvasMouseMove(event, canvas);
 });
 root.addEventListener("mouseout", (event) => {
+  if (event.target.closest("#newGameCanvas") && !event.relatedTarget?.closest?.("#newGameCanvas")) {
+    if ((state.uiHud.skillTargetingPreviews || []).length > 0) {
+      state.uiHud.skillTargetingPreviews = [];
+      render();
+    }
+  }
   if (event.target.closest("[data-preview-item-id]") && !event.relatedTarget?.closest?.("[data-preview-item-id]")) {
     updateItemHoverPreviewFromTarget(null);
   }
   if (event.target.closest("[data-preview-stat]") && !event.relatedTarget?.closest?.("[data-preview-stat]")) {
     updateStatHoverPreviewFromTarget(null);
-  }
-  if (inventoryHoverShowTimer) {
-    clearTimeout(inventoryHoverShowTimer);
-    inventoryHoverShowTimer = null;
-  }
-  if (skillHoverShowTimer) {
-    clearTimeout(skillHoverShowTimer);
-    skillHoverShowTimer = null;
   }
   const toTarget = event.relatedTarget;
   const stillInsideDetail = toTarget?.closest?.("[data-inventory-detail-item-id]");
@@ -2139,8 +2272,7 @@ root.addEventListener("mouseout", (event) => {
   }
 });
 window.addEventListener("keydown", (event) => {
-  if (state.screen !== "game") return;
-  if (!state.run || state.run.turnPhase !== "player") return;
+  if (!canAcceptPlayerAction(state)) return;
 
   const quickSlot = resolveQuickbarSlotIndexFromKeyboardEvent(event);
   if (quickSlot != null) {
@@ -2168,6 +2300,16 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
+  if (event.key === "Escape") {
+    if (state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
+      event.preventDefault();
+      clearSkillTargeting();
+      state.run.lastLog = "Подготовка скилла отменена.";
+      render();
+    }
+    return;
+  }
+
   if (state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
     return;
   }
@@ -2189,31 +2331,19 @@ window.addEventListener("resize", () => {
 });
 startAnimationLoop((nowMs) => {
   if (state.screen === "game") {
+    if (state.run) {
+      ensureRunFxState(state.run);
+      advanceRunAnimationState(state.run, nowMs);
+    }
     handleLevelTransition(nowMs);
     maybeTrackRunEnd();
     const canvas = document.getElementById("newGameCanvas");
     if (canvas && state.run && state.playerSheet) {
-      if (state.run.motion) {
-        if (state.run.motion.startMs == null) {
-          state.run.motion.startMs = nowMs;
-        } else if (nowMs - state.run.motion.startMs >= state.run.motion.durationMs) {
-          state.run.motion = null;
-        }
-      }
-      if (state.run.environmentMotion) {
-        if (state.run.environmentMotion.startMs == null) {
-          state.run.environmentMotion.startMs = nowMs;
-        } else if (nowMs - state.run.environmentMotion.startMs >= state.run.environmentMotion.durationMs) {
-          state.run.environmentMotion = null;
-        }
+      if (state.run.turnPhase === "player" && state.run.status === "running") {
+        tickWeaponCooldownsAtPlayerTurnStart();
       }
 
-      if (
-        state.run.turnPhase === "environment"
-        && state.run.status === "running"
-        && !state.run.motion
-        && !state.run.environmentMotion
-      ) {
+      if (isEnvironmentTurnStepReady(state.run)) {
         const envResult = stepEnvironmentTurn(state.run, state.playerSheet);
         state.run = envResult.run;
         state.playerSheet = envResult.playerSheet;
@@ -2224,19 +2354,16 @@ startAnimationLoop((nowMs) => {
           return;
         }
         if (envResult.finished) {
+          if (state.run.turnPhase === "player" && state.run.status === "running") {
+            tickWeaponCooldownsAtPlayerTurnStart();
+          }
           render();
           return;
         }
       }
 
-      state.run.hoverCell = state.uiHud.pathHoverCell || null;
-      state.run.hoverCellEnemy = Boolean(state.uiHud.pathHoverEnemy);
-      state.run.previewPathCells = state.uiHud.pathPreviewCells || [];
-      state.run.lockedPathCells = state.uiHud.pathLockedCells || [];
-      state.run.lockedPathTarget = state.uiHud.pathLockedTarget || null;
-      state.run.lockedPathEnemyId = state.uiHud.pathLockedEnemyId || null;
-      state.run.skillTargetCells = state.uiHud.skillTargeting?.targets || state.uiHud.trapTargeting?.targets || [];
-      drawRunToCanvas(canvas, state.run, state.playerSheet, nowMs, 1);
+      const canvasOverlay = buildCanvasOverlayViewModel(state.uiHud);
+      drawRunToCanvas(canvas, state.run, state.playerSheet, nowMs, 1, canvasOverlay);
     }
     canvasHandlers.maybeRunAutoMoveStep();
   }

@@ -1,6 +1,7 @@
-import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.7-pre-alpha";
-import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.7-pre-alpha";
-import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.7-pre-alpha";
+import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.8-pre-alpha";
+import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.8-pre-alpha";
+import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.8-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.8-pre-alpha";
 
 export function useConsumable(run, playerSheet, item) {
   if (!run || !playerSheet || !item?.isConsumable) {
@@ -48,7 +49,7 @@ export function placeTrap(run, playerSheet, item, targetX, targetY) {
   }
   const trapType = item.trapConfig?.trapType || "trap";
   run.objects.push({
-    id: `trap_${trapType}_${Date.now()}_${targetX}_${targetY}_${Math.floor(Math.random() * 10000)}`,
+    id: `trap_${trapType}_${Date.now()}_${targetX}_${targetY}_${randomInt(0, 9999, run?.rng || null)}`,
     name: item.name,
     type: "trap",
     purpose: "trap",

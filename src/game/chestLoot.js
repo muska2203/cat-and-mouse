@@ -1,5 +1,5 @@
-import { getLootPool } from "../loadout.js?v=0.4.7-pre-alpha";
-import { randomInt, randomPick, weightedPick } from "./rng.js?v=0.4.7-pre-alpha";
+import { getLootPool } from "../loadout.js?v=0.4.8-pre-alpha";
+import { randomFloat, randomInt, randomPick, weightedPick } from "./rng.js?v=0.4.8-pre-alpha";
 
 function getChestSpawnWeights(level) {
   const levelShift = Math.max(0, level - 1);
@@ -9,8 +9,8 @@ function getChestSpawnWeights(level) {
   return { common, rare, unique };
 }
 
-export function getChestCountsForLevel(level) {
-  const totalChests = randomInt(5, 8);
+export function getChestCountsForLevel(level, rng = null) {
+  const totalChests = randomInt(5, 8, rng);
   const weights = getChestSpawnWeights(level);
   const counts = { chest_common: 0, chest_rare: 0, chest_unique: 0 };
   for (let i = 0; i < totalChests; i += 1) {
@@ -18,13 +18,13 @@ export function getChestCountsForLevel(level) {
       { value: "chest_common", weight: weights.common },
       { value: "chest_rare", weight: weights.rare },
       { value: "chest_unique", weight: weights.unique },
-    ]);
+    ], rng);
     counts[picked] += 1;
   }
   return counts;
 }
 
-function rollLootPoolByChestRarity(chestRarity, luck = 0) {
+function rollLootPoolByChestRarity(chestRarity, luck = 0, rng = null) {
   const tables = {
     common: [
       { value: "common", weight: 90 },
@@ -50,10 +50,10 @@ function rollLootPoolByChestRarity(chestRarity, luck = 0) {
     }
     return { ...entry };
   });
-  return weightedPick(adjustedTable);
+  return weightedPick(adjustedTable, rng);
 }
 
-function getLootCountFromChest(chestRarity) {
+function getLootCountFromChest(chestRarity, rng = null) {
   const tables = {
     common: [
       { value: 1, weight: 80 },
@@ -72,25 +72,19 @@ function getLootCountFromChest(chestRarity) {
     ],
   };
   const table = tables[chestRarity] || tables.common;
-  return weightedPick(table);
+  return weightedPick(table, rng);
 }
 
 function isManaSustainItem(item) {
   const manaItemIds = new Set([
     "common_mana_recover_10",
     "common_hp_mana_recover_6",
-    "common_hp_recover_10_mana_4",
-    "rare_mana_recover_16",
-    "rare_hp_mana_recover_12",
-    "stack_hp_max_plus_1_heal_20_mana_8",
-    "unique_mana_recover_24",
-    "unique_hp_mana_recover_20",
   ]);
   return Boolean(item?.id && manaItemIds.has(item.id));
 }
 
-function getLootFromChest(chestRarity, excludedItemIds = new Set(), luck = 0) {
-  const rolledPool = rollLootPoolByChestRarity(chestRarity, luck);
+function getLootFromChest(chestRarity, excludedItemIds = new Set(), luck = 0, rng = null) {
+  const rolledPool = rollLootPoolByChestRarity(chestRarity, luck, rng);
   const fallbackPools = {
     common: ["common", "rare", "unique"],
     rare: ["rare", "common", "unique"],
@@ -108,21 +102,21 @@ function getLootFromChest(chestRarity, excludedItemIds = new Set(), luck = 0) {
       };
       const manaCandidates = pool.filter((item) => isManaSustainItem(item));
       const manaChance = manaWeightedChance[chestRarity] ?? manaWeightedChance.common;
-      if (manaCandidates.length > 0 && Math.random() < manaChance) {
-        return randomPick(manaCandidates);
+      if (manaCandidates.length > 0 && randomFloat(rng) < manaChance) {
+        return randomPick(manaCandidates, rng);
       }
-      return randomPick(pool);
+      return randomPick(pool, rng);
     }
   }
   return null;
 }
 
-export function rollChestLootItems(chestRarity, luck = 0) {
-  const lootCount = getLootCountFromChest(chestRarity);
+export function rollChestLootItems(chestRarity, luck = 0, rng = null) {
+  const lootCount = getLootCountFromChest(chestRarity, rng);
   const picks = [];
   const excluded = new Set();
   for (let i = 0; i < lootCount; i += 1) {
-    const item = getLootFromChest(chestRarity, excluded, luck);
+    const item = getLootFromChest(chestRarity, excluded, luck, rng);
     if (!item) continue;
     picks.push(item);
     excluded.add(item.id);

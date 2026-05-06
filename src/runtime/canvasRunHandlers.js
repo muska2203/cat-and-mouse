@@ -2,9 +2,13 @@
  * Клик / hover по игровому canvas и автопоход по залоченному пути.
  * Зависимости передаются снаружи (состояние живёт в main.js).
  */
+import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.4.8-pre-alpha";
+import { ensureRunFxState } from "./runFxState.js?v=0.4.8-pre-alpha";
+
 export function createCanvasRunHandlers(deps) {
   const {
     getState,
+    canAcceptPlayerAction,
     rerender,
     clearPathingState,
     performStep,
@@ -38,7 +42,7 @@ export function createCanvasRunHandlers(deps) {
 
   function onCanvasClick(event, canvas) {
     const state = getState();
-    if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
+    if (!canAcceptPlayerAction(state)) {
       return;
     }
     const nowMs = performance.now();
@@ -97,17 +101,7 @@ export function createCanvasRunHandlers(deps) {
       const enemyAtCell = getEnemyAtCell(state.run, cell);
       const dx = cell.x - state.run.player.x;
       const dy = cell.y - state.run.player.y;
-      const directionMap = {
-        "0:-1": "up",
-        "0:1": "down",
-        "-1:0": "left",
-        "1:0": "right",
-        "-1:-1": "up_left",
-        "1:-1": "up_right",
-        "-1:1": "down_left",
-        "1:1": "down_right",
-      };
-      const adjacentDirection = directionMap[`${dx}:${dy}`];
+      const adjacentDirection = resolveDirectionByDelta(dx, dy);
       if (adjacentDirection) {
         const consumed = performStep(adjacentDirection);
         if (consumed) {
@@ -146,7 +140,7 @@ export function createCanvasRunHandlers(deps) {
 
   function onCanvasMouseMove(event, canvas) {
     const state = getState();
-    if (state.screen !== "game" || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
+    if (!canAcceptPlayerAction(state)) {
       return;
     }
     if (state.uiHud.autoMoveActive || state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
@@ -175,7 +169,7 @@ export function createCanvasRunHandlers(deps) {
     if (!cell) {
       if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0 || state.uiHud.pathHoverEnemy) {
         state.uiHud.pathHoverCell = null;
-        state.uiHud.pathHoverEnemy = false;
+        state.uiHud.pathHoverEnemy = null;
         state.uiHud.pathPreviewCells = [];
         rerender();
       }
@@ -184,7 +178,7 @@ export function createCanvasRunHandlers(deps) {
     if (!isValidPathTargetCell(state.run, cell)) {
       if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0 || state.uiHud.pathHoverEnemy) {
         state.uiHud.pathHoverCell = null;
-        state.uiHud.pathHoverEnemy = false;
+        state.uiHud.pathHoverEnemy = null;
         state.uiHud.pathPreviewCells = [];
         rerender();
       }
@@ -201,7 +195,8 @@ export function createCanvasRunHandlers(deps) {
       }
     );
     state.uiHud.pathHoverCell = { x: cell.x, y: cell.y };
-    state.uiHud.pathHoverEnemy = Boolean(getEnemyAtCell(state.run, cell));
+    const enemyAtCell = getEnemyAtCell(state.run, cell);
+    state.uiHud.pathHoverEnemy = enemyAtCell ? enemyAtCell.id : null;
     state.uiHud.pathPreviewCells = path.length > 1 ? path.slice(1) : [];
     rerender();
   }
@@ -213,7 +208,7 @@ export function createCanvasRunHandlers(deps) {
     }
     if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0 || state.uiHud.pathHoverEnemy) {
       state.uiHud.pathHoverCell = null;
-      state.uiHud.pathHoverEnemy = false;
+      state.uiHud.pathHoverEnemy = null;
       state.uiHud.pathPreviewCells = [];
       rerender();
     }
@@ -305,12 +300,21 @@ export function createCanvasRunHandlers(deps) {
     if (!state.run || !state.playerSheet || !state.uiHud.autoMoveActive) {
       return;
     }
-    if (state.screen !== "game" || state.run.status !== "running" || state.run.turnPhase !== "player") {
+    if (!canAcceptPlayerAction(state)) {
       return;
     }
     const nowMs = performance.now();
+    const fx = ensureRunFxState(state.run);
     normalizeFinishedAnimationsForRun(state.run, nowMs);
-    if (isBlockingMotionActive(state.run.motion, nowMs) || isBlockingMotionActive(state.run.environmentMotion, nowMs)) {
+    if (isBlockingMotionActive(fx.motion, nowMs) || isBlockingMotionActive(fx.environmentMotion, nowMs)) {
+      return;
+    }
+    const hpNowBeforeStep = Number(state.playerSheet?.stats?.HP ?? state.playerSheet?.baseStats?.HP ?? 0);
+    const hpAtLock = Number(state.uiHud.autoMoveLastHp ?? hpNowBeforeStep);
+    if (hpNowBeforeStep < hpAtLock) {
+      state.run.lastLog = "Автодвижение остановлено: персонаж получил урон.";
+      clearPathingState();
+      rerender();
       return;
     }
     if (state.uiHud.pathLockedEnemyId) {
@@ -349,17 +353,7 @@ export function createCanvasRunHandlers(deps) {
     }
     const dx = next.x - state.run.player.x;
     const dy = next.y - state.run.player.y;
-    const directionMap = {
-      "0:-1": "up",
-      "0:1": "down",
-      "-1:0": "left",
-      "1:0": "right",
-      "-1:-1": "up_left",
-      "1:-1": "up_right",
-      "-1:1": "down_left",
-      "1:1": "down_right",
-    };
-    const direction = directionMap[`${dx}:${dy}`];
+    const direction = resolveDirectionByDelta(dx, dy);
     if (!direction) {
       state.run.lastLog = "Автодвижение остановлено: маршрут устарел.";
       clearPathingState();
@@ -376,7 +370,14 @@ export function createCanvasRunHandlers(deps) {
     state.run = stepResult.run;
     state.playerSheet = stepResult.playerSheet;
     if (state.run && stepResult.motion) {
-      state.run.motion = stepResult.motion;
+      fx.motion = stepResult.motion;
+    }
+    const hpNowAfterStep = Number(state.playerSheet?.stats?.HP ?? state.playerSheet?.baseStats?.HP ?? 0);
+    state.uiHud.autoMoveLastHp = hpNowAfterStep;
+    if (stepResult.playerDamaged || stepResult.objectActivated) {
+      clearPathingState();
+      rerender();
+      return;
     }
     const movedToNextCell = state.run.player.x === next.x && state.run.player.y === next.y;
     if (movedToNextCell) {

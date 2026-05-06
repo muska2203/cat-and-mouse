@@ -1,3 +1,5 @@
+import { randomFloat } from "./game/rng.js?v=0.4.8-pre-alpha";
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(value, max));
 }
@@ -19,7 +21,7 @@ export function floorHpMax(value) {
 
 export function getDefaultUnarmedWeaponProfile() {
   return {
-    weaponDamage: roundStat(4),
+    weaponDamage: roundStat(0),
     weaponCritChance: roundStat(5),
     weaponCritMult: roundStat(1.5),
   };
@@ -65,14 +67,52 @@ export function buildDerivedStats(stats, weaponItem) {
   };
 }
 
-export function computeBasicMeleeDamage(playerSheet, runNextHitMult = 1) {
-  const wd = playerSheet?.derived?.WEAPON_DAMAGE ?? getDefaultUnarmedWeaponProfile().weaponDamage;
-  const str = playerSheet?.stats?.STR ?? 0;
-  const baseRaw = wd + str * 1;
-  const base = Math.max(1, Math.floor(roundStat(baseRaw)));
+const WEAPON_DAMAGE_CALCULATORS = {
+  sword: (baseDamage, stats) => {
+    const str = stats?.STR ?? 0;
+    const agi = stats?.AGI ?? 0;
+    return baseDamage * (1 + str / 10) + (agi * 0.3);
+  },
+  staff: (baseDamage, stats) => {
+    const str = stats?.STR ?? 0;
+    const intStat = stats?.INT ?? 0;
+    return baseDamage * (1 + str / 20) + (intStat * 0.5);
+  },
+  unarmed: (baseDamage, stats) => {
+    const str = stats?.STR ?? 0;
+    return baseDamage + str;
+  }
+};
+
+export function getWeaponDamageFormulaText(weaponItem) {
+  const subtype = weaponItem?.subtype || "unarmed";
+  if (subtype === "sword") {
+    return "База × (1 + СИЛ / 10) + ЛОВ × 0.3";
+  }
+  if (subtype === "staff") {
+    return "База × (1 + СИЛ / 20) + ИНТ × 0.5";
+  }
+  return "База + СИЛ";
+}
+
+export function calculateWeaponDamage(weaponItem, stats) {
+  const subtype = weaponItem?.subtype || "unarmed";
+  const baseDamage = weaponItem?.weaponDamage ?? getDefaultUnarmedWeaponProfile().weaponDamage;
+  
+  const calculator = WEAPON_DAMAGE_CALCULATORS[subtype] || WEAPON_DAMAGE_CALCULATORS.unarmed;
+  
+  return Math.max(1, Math.floor(roundStat(calculator(baseDamage, stats))));
+}
+
+export function computeBasicMeleeDamage(playerSheet, runNextHitMult = 1, rng = null) {
+  const weaponItem = playerSheet?.loadout?.find(item => item.type === "weapon");
+  const stats = playerSheet?.stats || {};
+  
+  const base = calculateWeaponDamage(weaponItem, stats);
+
   const critChance = clamp(playerSheet?.derived?.CRIT_CHANCE ?? 0, 0, 100);
   const critMult = Math.max(1, roundStat(playerSheet?.derived?.CRIT_MULT ?? 1));
-  const isCrit = Math.random() * 100 < critChance;
+  const isCrit = randomFloat(rng) * 100 < critChance;
   const totalMultiplier = (runNextHitMult || 1) * (isCrit ? critMult : 1);
   const damage = Math.max(1, Math.floor(base * totalMultiplier));
   return { damage, isCrit, baseBeforeCrit: base };
