@@ -33,6 +33,26 @@ export function createCanvasRunHandlers(deps) {
     isBlockingMotionActive,
   } = deps;
 
+  function isSameCell(a, b) {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return a.x === b.x && a.y === b.y;
+  }
+
+  function areSameCellLists(a, b) {
+    const left = Array.isArray(a) ? a : [];
+    const right = Array.isArray(b) ? b : [];
+    if (left.length !== right.length) {
+      return false;
+    }
+    for (let index = 0; index < left.length; index += 1) {
+      if (!isSameCell(left[index], right[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   function getEnemyAtCell(run, cell) {
     if (!run || !cell) {
       return null;
@@ -151,7 +171,6 @@ export function createCanvasRunHandlers(deps) {
       if (state.uiHud.pathHoverCell || (state.uiHud.pathPreviewCells || []).length > 0) {
         state.uiHud.pathHoverCell = null;
         state.uiHud.pathPreviewCells = [];
-        rerender();
       }
       return;
     }
@@ -171,7 +190,6 @@ export function createCanvasRunHandlers(deps) {
         state.uiHud.pathHoverCell = null;
         state.uiHud.pathHoverEnemy = null;
         state.uiHud.pathPreviewCells = [];
-        rerender();
       }
       return;
     }
@@ -180,7 +198,6 @@ export function createCanvasRunHandlers(deps) {
         state.uiHud.pathHoverCell = null;
         state.uiHud.pathHoverEnemy = null;
         state.uiHud.pathPreviewCells = [];
-        rerender();
       }
       return;
     }
@@ -194,11 +211,19 @@ export function createCanvasRunHandlers(deps) {
         blockObjects: true,
       }
     );
-    state.uiHud.pathHoverCell = { x: cell.x, y: cell.y };
+    const nextHoverCell = { x: cell.x, y: cell.y };
     const enemyAtCell = getEnemyAtCell(state.run, cell);
-    state.uiHud.pathHoverEnemy = enemyAtCell ? enemyAtCell.id : null;
-    state.uiHud.pathPreviewCells = path.length > 1 ? path.slice(1) : [];
-    rerender();
+    const nextHoverEnemy = enemyAtCell ? enemyAtCell.id : null;
+    const nextPreviewCells = path.length > 1 ? path.slice(1) : [];
+    const hoverCellChanged = !isSameCell(state.uiHud.pathHoverCell, nextHoverCell);
+    const hoverEnemyChanged = (state.uiHud.pathHoverEnemy || null) !== nextHoverEnemy;
+    const previewChanged = !areSameCellLists(state.uiHud.pathPreviewCells, nextPreviewCells);
+    if (!hoverCellChanged && !hoverEnemyChanged && !previewChanged) {
+      return;
+    }
+    state.uiHud.pathHoverCell = nextHoverCell;
+    state.uiHud.pathHoverEnemy = nextHoverEnemy;
+    state.uiHud.pathPreviewCells = nextPreviewCells;
   }
 
   function onCanvasMouseLeave() {
@@ -210,7 +235,6 @@ export function createCanvasRunHandlers(deps) {
       state.uiHud.pathHoverCell = null;
       state.uiHud.pathHoverEnemy = null;
       state.uiHud.pathPreviewCells = [];
-      rerender();
     }
   }
 

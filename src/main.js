@@ -705,6 +705,17 @@ function useSkillAtCellByKind(run, playerSheet, skillId, skillKind, targetX, tar
   return useSkillAtCell(run, playerSheet, skillId, targetX, targetY);
 }
 
+const DIRECTION_DELTA_BY_ID = {
+  up: { x: 0, y: -1 },
+  down: { x: 0, y: 1 },
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  up_left: { x: -1, y: -1 },
+  up_right: { x: 1, y: -1 },
+  down_left: { x: -1, y: 1 },
+  down_right: { x: 1, y: 1 },
+};
+
 function refreshSkillTargetingPreviewFromPointer() {
   if (
     state.screen !== "game"
@@ -714,10 +725,10 @@ function refreshSkillTargetingPreviewFromPointer() {
     || !Number.isFinite(lastPointerClientX)
     || !Number.isFinite(lastPointerClientY)
   ) {
-    return;
+    return false;
   }
   const canvas = document.getElementById("newGameCanvas");
-  if (!canvas) return;
+  if (!canvas) return false;
   const rect = canvas.getBoundingClientRect();
   const localX = lastPointerClientX - rect.left;
   const localY = lastPointerClientY - rect.top;
@@ -736,7 +747,13 @@ function refreshSkillTargetingPreviewFromPointer() {
     cell,
     getEquippedWeaponContext,
   );
+  const prevJson = JSON.stringify(state.uiHud.skillTargetingPreviews || []);
+  const nextJson = JSON.stringify(nextPreviews || []);
+  if (prevJson === nextJson) {
+    return false;
+  }
   state.uiHud.skillTargetingPreviews = nextPreviews;
+  return true;
 }
 
 function tickWeaponCooldownsAtPlayerTurnStart() {
@@ -1296,6 +1313,7 @@ function renderGameScreen() {
 
   const canvasOverlay = buildCanvasOverlayViewModel(state.uiHud);
   drawRunToCanvas(document.getElementById("newGameCanvas"), run, sheet, performance.now(), 1, canvasOverlay);
+  syncCanvasHoverFromPointer();
 }
 
 function renderEndingScreen() {
@@ -1674,6 +1692,100 @@ function tryCastPreparedSkillOnSelf() {
   if (result.actionConsumed) {
     consumeActionAndRunEnvironment();
   }
+}
+
+function findNearestPreparedSkillTargetInDirection(direction) {
+  const targeting = state.uiHud?.skillTargeting;
+  const run = state.run;
+  if (!targeting?.skillId || !run?.player) {
+    return null;
+  }
+  const directionDelta = DIRECTION_DELTA_BY_ID[direction];
+  if (!directionDelta) {
+    return null;
+  }
+  const targets = Array.isArray(targeting.targets) ? targeting.targets : [];
+  const px = Number(run.player.x || 0);
+  const py = Number(run.player.y || 0);
+  let best = null;
+  for (const cell of targets) {
+    if (!cell) continue;
+    if (cell.x === px && cell.y === py) continue;
+    const dx = Number(cell.x) - px;
+    const dy = Number(cell.y) - py;
+    const dot = dx * directionDelta.x + dy * directionDelta.y;
+    if (dot <= 0) continue;
+    const distance = Math.hypot(dx, dy);
+    const lateralDeviation = Math.abs(dx * directionDelta.y - dy * directionDelta.x);
+    if (
+      !best
+      || distance < best.distance
+      || (distance === best.distance && lateralDeviation < best.lateralDeviation)
+      || (distance === best.distance && lateralDeviation === best.lateralDeviation && dot > best.dot)
+    ) {
+      best = { cell, distance, lateralDeviation, dot };
+    }
+  }
+  return best?.cell || null;
+}
+
+function tryCastPreparedSkillByDirection(direction) {
+  const targeting = state.uiHud.skillTargeting;
+  if (!targeting?.skillId || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
+    return;
+  }
+  const targetCell = findNearestPreparedSkillTargetInDirection(direction);
+  if (!targetCell) {
+    state.run.lastLog = "В этом направлении нет доступной клетки для скилла.";
+    return;
+  }
+  const result = useSkillAtCellByKind(
+    state.run,
+    state.playerSheet,
+    targeting.skillId,
+    targeting.skillKind || "core",
+    targetCell.x,
+    targetCell.y,
+  );
+  state.run = result.run;
+  state.playerSheet = result.playerSheet;
+  if (!result.ok) {
+    if (result.log) {
+      state.run.lastLog = result.log;
+    }
+    return;
+  }
+  clearSkillTargeting();
+  if (result.actionConsumed) {
+    consumeActionAndRunEnvironment();
+  }
+}
+
+function syncCanvasHoverFromPointer() {
+  if (state.screen !== "game" || !state.run || !state.playerSheet) {
+    return;
+  }
+  if (!Number.isFinite(lastPointerClientX) || !Number.isFinite(lastPointerClientY)) {
+    return;
+  }
+  const pointedElement = document.elementFromPoint(lastPointerClientX, lastPointerClientY);
+  const canvas = pointedElement?.closest?.("#newGameCanvas");
+  if (!canvas) {
+    if ((state.uiHud.skillTargetingPreviews || []).length > 0) {
+      state.uiHud.skillTargetingPreviews = [];
+    }
+    canvasHandlers.onCanvasMouseLeave();
+    return;
+  }
+  if (state.uiHud.skillTargeting?.skillId) {
+    if (refreshSkillTargetingPreviewFromPointer()) {
+      return;
+    }
+  }
+  canvasHandlers.onCanvasMouseMove(
+    { clientX: lastPointerClientX, clientY: lastPointerClientY, target: canvas },
+    canvas,
+  );
 }
 
 function onRootClick(event) {
@@ -2217,29 +2329,7 @@ root.addEventListener("mousemove", (event) => {
   const canvas = event.target.closest("#newGameCanvas");
   if (!canvas) return;
   if (state.screen === "game" && state.run && state.playerSheet && state.uiHud.skillTargeting?.skillId) {
-    const rect = canvas.getBoundingClientRect();
-    const localX = event.clientX - rect.left;
-    const localY = event.clientY - rect.top;
-    const cell = screenPointToGrid(
-      state.run,
-      localX,
-      localY,
-      rect.width,
-      rect.height,
-      state.uiHud?.canvasZoom ?? 1,
-    );
-    const nextPreviews = buildSkillTargetingPreviews(
-      state.run,
-      state.playerSheet,
-      state.uiHud.skillTargeting,
-      cell,
-      getEquippedWeaponContext,
-    );
-    const prevJson = JSON.stringify(state.uiHud.skillTargetingPreviews || []);
-    const nextJson = JSON.stringify(nextPreviews);
-    if (prevJson !== nextJson) {
-      state.uiHud.skillTargetingPreviews = nextPreviews;
-      render();
+    if (refreshSkillTargetingPreviewFromPointer()) {
       return;
     }
   }
@@ -2249,7 +2339,6 @@ root.addEventListener("mouseout", (event) => {
   if (event.target.closest("#newGameCanvas") && !event.relatedTarget?.closest?.("#newGameCanvas")) {
     if ((state.uiHud.skillTargetingPreviews || []).length > 0) {
       state.uiHud.skillTargetingPreviews = [];
-      render();
     }
   }
   if (event.target.closest("[data-preview-item-id]") && !event.relatedTarget?.closest?.("[data-preview-item-id]")) {
@@ -2310,11 +2399,22 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
+  const direction = resolveMoveDirectionFromEvent(event);
+  if (direction && state.uiHud.skillTargeting?.skillId) {
+    event.preventDefault();
+    tryCastPreparedSkillByDirection(direction);
+    render();
+    return;
+  }
+  if (direction && state.uiHud.trapTargeting?.itemId) {
+    event.preventDefault();
+    state.run.lastLog = "Для установки ловушки выбери клетку мышью.";
+    render();
+    return;
+  }
   if (state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
     return;
   }
-
-  const direction = resolveMoveDirectionFromEvent(event);
   if (!direction) return;
   event.preventDefault();
   performStep(direction);

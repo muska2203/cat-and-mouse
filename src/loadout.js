@@ -392,7 +392,8 @@ export function chooseStarterLoadoutItem(currentLoadoutIds, itemToToggleId) {
   );
 
   if (selected.has(itemToToggleId)) {
-    selected.delete(itemToToggleId);
+    // Повторный клик по уже выбранному предмету ничего не меняет:
+    // на старте всегда должен оставаться выбранный предмет в слоте.
     return Array.from(selected);
   }
 
@@ -401,18 +402,21 @@ export function chooseStarterLoadoutItem(currentLoadoutIds, itemToToggleId) {
     return Array.from(selected);
   }
 
-  if (selected.size >= STARTER_LOADOUT_MAX) {
-    return Array.from(selected);
-  }
-
+  let replacedSameType = false;
   const equipSlots = new Set(["weapon", "armor", "amulet"]);
   if (equipSlots.has(nextItem.type)) {
     for (const pickedId of Array.from(selected)) {
       const picked = allowedItems.find((item) => item.id === pickedId);
       if (picked && picked.type === nextItem.type) {
         selected.delete(pickedId);
+        replacedSameType = true;
       }
     }
+  }
+
+  // Лимит проверяем только если это не замена существующего слота тем же типом.
+  if (!replacedSameType && selected.size >= STARTER_LOADOUT_MAX) {
+    return Array.from(selected);
   }
 
   selected.add(itemToToggleId);

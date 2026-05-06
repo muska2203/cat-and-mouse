@@ -3,6 +3,7 @@ import { syncPlayerHp } from "./game/syncHp.js?v=0.4.8-pre-alpha";
 import { getEnemyMaxHp as getEnemyMaxHpFromDefs } from "./game/enemyDefs.js?v=0.4.8-pre-alpha";
 import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.8-pre-alpha";
 import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.8-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.8-pre-alpha";
 
 import { getSkillManaCost } from "./skills.js?v=0.4.8-pre-alpha";
 
@@ -104,6 +105,18 @@ export function getWeaponSkillById(skillId) {
   return WEAPON_SKILL_DEFS[skillId] || null;
 }
 
+function getVisibleEnemyTargetCells(run) {
+  if (!run?.player || !Array.isArray(run?.objects) || !run?.grid) {
+    return [];
+  }
+  const fromX = Number(run.player.x);
+  const fromY = Number(run.player.y);
+  return run.objects
+    .filter((object) => object?.type === "enemy")
+    .filter((enemy) => hasLineOfSightOnGrid(run.grid, fromX, fromY, Number(enemy.x), Number(enemy.y)))
+    .map((enemy) => ({ x: enemy.x, y: enemy.y }));
+}
+
 export function getWeaponSkillIdsForItem(item) {
   if (!item || item.type !== "weapon") return [];
   return [...(SKILL_IDS_BY_WEAPON_SUBTYPE[item.subtype] || [])];
@@ -180,11 +193,7 @@ export const WEAPON_SKILLS_APPLY_BY_ID = {
   weapon_staff_life_drain: {
     getTargets: (run, playerSheet) => {
       const cells = [{ x: run.player.x, y: run.player.y }];
-      for (const object of run.objects || []) {
-        if (object?.type === "enemy") {
-          cells.push({ x: object.x, y: object.y });
-        }
-      }
+      cells.push(...getVisibleEnemyTargetCells(run));
       return cells;
     },
     getHoverData: (skill, item, playerSheet) => {
@@ -267,13 +276,7 @@ export const WEAPON_SKILLS_APPLY_BY_ID = {
   },
   weapon_staff_magic_slap: {
     getTargets: (run, playerSheet) => {
-      const cells = [];
-      for (const object of run.objects || []) {
-        if (object?.type === "enemy") {
-          cells.push({ x: object.x, y: object.y });
-        }
-      }
-      return cells;
+      return getVisibleEnemyTargetCells(run);
     },
     getHoverData: (skill, item, playerSheet) => {
       const damage = getMagicSlapDamage(skill?.level || 1, playerSheet);

@@ -77,7 +77,7 @@ export function buildGameScreenHtml({
         <main class="cm-col cm-col--center">
           <div class="cm-center-stack">
             <div class="cm-panel cm-panel--fill cm-center-panel"><span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
-              <h2 class="cm-panel__title">Поле</h2>
+              <h2 class="cm-panel__title">Уровень ${Math.max(1, Number(run?.level || 1))}</h2>
               <div class="cm-panel__body">
                 <div class="cm-field" role="img" aria-label="Игровое поле">
                   <div class="cm-phase cm-phase--field">${run?.turnPhase === "environment" ? "Ход окружения" : "Ход игрока"}</div>
