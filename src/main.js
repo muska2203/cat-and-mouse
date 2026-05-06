@@ -1,4 +1,4 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.6-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.7-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
@@ -9,42 +9,78 @@ import {
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.4.6-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.6-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.6-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.6-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.6-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.6-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.6-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.6-pre-alpha";
-import { normalizeFinishedAnimationsForRun, isBlockingMotionActive } from "./runtime/motionTiming.js?v=0.4.6-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.4.6-pre-alpha";
-import { getCoreSkillDefs } from "./skills.js?v=0.4.6-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.4.6-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.4.6-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.6-pre-alpha";
-import { useSkillAtCell, getSkillTargetCells } from "./game/runSkills.js?v=0.4.6-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.4.6-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.4.6-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.6-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.6-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.6-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.6-pre-alpha";
-import { buildDerivedStats } from "./rules.js?v=0.4.6-pre-alpha";
+} from "./loadout.js?v=0.4.7-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.7-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.7-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.7-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.7-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.7-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.7-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.7-pre-alpha";
+import { normalizeFinishedAnimationsForRun, isBlockingMotionActive } from "./runtime/motionTiming.js?v=0.4.7-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.4.7-pre-alpha";
+import { getCoreSkillDefs } from "./skills.js?v=0.4.7-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.4.7-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.4.7-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.7-pre-alpha";
+import { useSkillAtCell, getSkillTargetCells } from "./game/runSkills.js?v=0.4.7-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.4.7-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.4.7-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.7-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.7-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.7-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.7-pre-alpha";
+import { buildDerivedStats } from "./rules.js?v=0.4.7-pre-alpha";
 
 const root = document.getElementById("app");
 
 const PORTRAITS = [
-  { id: "portrait_1", name: "Серый бродяга", fill: "%235c4834", desc: "Обычная полевая мышь. Никаких ярко выраженных преимуществ, но и никаких слабостей. Готов к любым испытаниям." },
-  { id: "portrait_2", name: "Рыжий пройдоха", fill: "%23a45c30", desc: "Шустрый исследователь с азартом и любовью к риску." },
-  { id: "portrait_3", name: "Белый аристократ", fill: "%23e8e8e8", desc: "Сдержанный стратег, полагается на точность и расчет." },
-  { id: "portrait_4", name: "Черный ниндзя", fill: "%231a1a1a", desc: "Тихий охотник, привыкший действовать из тени." },
-  { id: "portrait_5", name: "Мышь-ученый", fill: "%234a5c68", desc: "Любит эксперименты и нестандартные решения в бою." },
-  { id: "portrait_6", name: "Толстяк", fill: "%238a7c64", desc: "Выносливый и упрямый: идет вперед, даже когда тяжело." },
+  {
+    id: "witcher",
+    name: "Белый Хвост",
+    imageSrc: "./src/assets/avatars/witcher-ready.png",
+    desc: "Охотник на чудовищ и мечник-алхимик.",
+  },
+  {
+    id: "halfling-mage",
+    name: "Сырный Мерлин",
+    imageSrc: "./src/assets/avatars/halfling-mage-ready.png",
+    desc: "Арканист поддержки и контроля.",
+  },
+  {
+    id: "paladin",
+    name: "Сир Чеддар",
+    imageSrc: "./src/assets/avatars/paladin-ready.png",
+    desc: "Паладин света и фронтовой защитник.",
+  },
+  {
+    id: "elven-ranger",
+    name: "Тонкоух",
+    imageSrc: "./src/assets/avatars/elven-ranger-ready.png",
+    desc: "Стрелок-разведчик с тропами между капканами.",
+  },
+  {
+    id: "orc-barbarian",
+    name: "Клыкохвост",
+    imageSrc: "./src/assets/avatars/orc-barbarian-ready.png",
+    desc: "Берсерк ближнего боя, проламывающий дорогу.",
+  },
+  {
+    id: "samurai",
+    name: "Усатый Сэнсэй",
+    imageSrc: "./src/assets/avatars/samurai-ready.png",
+    desc: "Дуэлянт дисциплины и одного точного удара.",
+  },
+  {
+    id: "necromancer",
+    name: "Мышь-Косторез",
+    imageSrc: "./src/assets/avatars/necromancer-ready.png",
+    desc: "Тёмный маг, повелитель порчи и проклятий.",
+  },
 ];
 
 const state = createInitialState();
-state.selectedPortraitId = "portrait_1";
+state.selectedPortraitId = "witcher";
 state.uiNewModal = null;
 state.uiSkillChoice = null;
 state.uiNewStartMessage = "";
@@ -491,10 +527,6 @@ function getPortraitById(id) {
   return PORTRAITS.find((p) => p.id === id) || PORTRAITS[0];
 }
 
-function buildPortraitDataUri(fillHexEscaped) {
-  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='g' cx='40%25' cy='35%25' r='70%25'%3E%3Cstop offset='0%25' stop-color='${fillHexEscaped}'/%3E%3Cstop offset='100%25' stop-color='%231a120e'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='48' fill='url(%23g)'/%3E%3Ccircle cx='38' cy='42' r='5' fill='%23e8d4a8'/%3E%3Ccircle cx='62' cy='42' r='5' fill='%23e8d4a8'/%3E%3Cellipse cx='50' cy='58' rx='10' ry='6' fill='%233d2c22'/%3E%3Cpath d='M30 55 Q50 72 70 55' stroke='%23c4a35a' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Cpath d='M22 48 L10 40 M78 48 L90 40' stroke='%23a89870' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E`;
-}
-
 function esc(text) {
   return String(text ?? "")
     .replaceAll("&", "&amp;")
@@ -848,7 +880,7 @@ function render() {
               <div class="cm-hero-portrait">
                 <div class="cm-portrait-ring">
                   <div class="cm-portrait-inner">
-                    <img src="${buildPortraitDataUri(portrait.fill)}" width="112" height="112" alt="${esc(portrait.name)}" />
+                    <img src="${portrait.imageSrc}" width="112" height="112" alt="${esc(portrait.name)}" />
                   </div>
                 </div>
                 <div class="cm-level-badge" aria-label="Уровень 1" title="Уровень 1">1</div>
@@ -896,7 +928,7 @@ function render() {
             <h2 class="cm-panel__title" id="portrait-title">Выбор внешности</h2>
             <div class="cm-panel__body cm-welcome-center">
               <div class="cm-welcome-preview">
-                <div class="cm-welcome-preview-img-wrap"><img src="${buildPortraitDataUri(portrait.fill)}" alt="Предпросмотр" /></div>
+                <div class="cm-welcome-preview-img-wrap"><img src="${portrait.imageSrc}" alt="Предпросмотр" /></div>
                 <h3 class="cm-welcome-preview-name">${esc(portrait.name)}</h3>
                 <p class="cm-welcome-preview-desc">${esc(portrait.desc)}</p>
               </div>
@@ -912,7 +944,7 @@ function render() {
                       aria-label="${esc(item.name)}"
                       title="${esc(item.name)}"
                     >
-                      <img src="${buildPortraitDataUri(item.fill)}" alt="" />
+                      <img src="${item.imageSrc}" alt="" />
                     </button>
                   `).join("")}
                 </div>
@@ -1063,7 +1095,7 @@ function renderGameScreen() {
             <span class="cm-rivet cm-rivet--tl" aria-hidden="true"></span><span class="cm-rivet cm-rivet--tr" aria-hidden="true"></span><span class="cm-rivet cm-rivet--bl" aria-hidden="true"></span><span class="cm-rivet cm-rivet--br" aria-hidden="true"></span>
             <h2 class="cm-panel__title" id="hero-title">Герой</h2>
             <div class="cm-panel__body">
-              <div class="cm-hero-portrait"><div class="cm-portrait-ring"><div class="cm-portrait-inner"><img src="${buildPortraitDataUri(portrait.fill)}" width="112" height="112" alt="${esc(portrait.name)}" /></div></div><button class="cm-level-badge" type="button" data-action="secret-level-up" aria-label="Скрытое повышение уровня">${sheet?.level || 1}</button></div>
+              <div class="cm-hero-portrait"><div class="cm-portrait-ring"><div class="cm-portrait-inner"><img src="${portrait.imageSrc}" width="112" height="112" alt="${esc(portrait.name)}" /></div></div><button class="cm-level-badge" type="button" data-action="secret-level-up" aria-label="Скрытое повышение уровня">${sheet?.level || 1}</button></div>
               <div class="cm-bar cm-bar--hp"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/hp.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>HP</span><span>${sheet?.stats?.HP || 0} / ${sheet?.stats?.HP_MAX || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.stats?.HP || 0) / Math.max(1, sheet?.stats?.HP_MAX || 1)) * 100)))}%"></div></div></div></div></div>
               <div class="cm-bar cm-bar--mana"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/mana.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>Мана</span><span>${sheet?.mana || 0} / ${sheet?.manaMax || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.mana || 0) / Math.max(1, sheet?.manaMax || 1)) * 100)))}%"></div></div></div></div></div>
               <div class="cm-bar cm-bar--xp"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/xp.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>Опыт</span><span>${sheet?.xp || 0} / ${sheet?.xpToNext || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.xp || 0) / Math.max(1, sheet?.xpToNext || 1)) * 100)))}%"></div></div></div></div></div>
@@ -1218,7 +1250,7 @@ function renderEndingScreen() {
             <span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span>
             <h2 class="cm-panel__title">Карточка героя</h2>
             <div class="cm-panel__body">
-              <div class="cm-hero-portrait"><div class="cm-portrait-ring"><div class="cm-portrait-inner"><img src="${buildPortraitDataUri(portrait.fill)}" width="112" height="112" alt="${esc(portrait.name)}" /></div></div><div class="cm-level-badge">${sheet?.level || 1}</div></div>
+              <div class="cm-hero-portrait"><div class="cm-portrait-ring"><div class="cm-portrait-inner"><img src="${portrait.imageSrc}" width="112" height="112" alt="${esc(portrait.name)}" /></div></div><div class="cm-level-badge">${sheet?.level || 1}</div></div>
               <div class="cm-bar cm-bar--hp"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/hp.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>HP</span><span>${sheet?.stats?.HP || 0} / ${sheet?.stats?.HP_MAX || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.stats?.HP || 0) / Math.max(1, sheet?.stats?.HP_MAX || 1)) * 100)))}%"></div></div></div></div></div>
               <div class="cm-bar cm-bar--mana"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/mana.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>Мана</span><span>${sheet?.mana || 0} / ${sheet?.manaMax || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.mana || 0) / Math.max(1, sheet?.manaMax || 1)) * 100)))}%"></div></div></div></div></div>
               <div class="cm-bar cm-bar--xp"><div class="cm-bar__row"><span class="cm-bar__icon-wrap"><img class="cm-bar__icon" src="./src/assets/icons/ui/xp.svg" width="22" height="22" alt="" /></span><div class="cm-bar__content"><div class="cm-bar__label"><span>Опыт</span><span>${sheet?.xp || 0} / ${sheet?.xpToNext || 1}</span></div><div class="cm-bar__track"><div class="cm-bar__fill" style="width:${Math.max(0, Math.min(100, Math.round(((sheet?.xp || 0) / Math.max(1, sheet?.xpToNext || 1)) * 100)))}%"></div></div></div></div></div>
@@ -1291,7 +1323,7 @@ function resetToWelcome() {
   state.playerSheet = null;
   state.starterLoadout = [];
   state.run = null;
-  state.selectedPortraitId = "portrait_1";
+  state.selectedPortraitId = "witcher";
   state.uiNewModal = null;
   state.uiNewStartMessage = "";
   state.uiNewRunStartedAtMs = null;

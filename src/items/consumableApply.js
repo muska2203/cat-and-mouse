@@ -1,9 +1,9 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.6-pre-alpha";
-import { getConsumableApplyLog } from "./itemPresentation.js?v=0.4.6-pre-alpha";
-import { removeObject } from "../game/cellObjects.js?v=0.4.6-pre-alpha";
-import { getXpForEnemy, applyXpGain } from "../game/xp.js?v=0.4.6-pre-alpha";
-import { findNearestEnemy } from "../game/enemies.js?v=0.4.6-pre-alpha";
-import { syncPlayerHp } from "../game/syncHp.js?v=0.4.6-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.4.7-pre-alpha";
+import { getConsumableApplyLog } from "./itemPresentation.js?v=0.4.7-pre-alpha";
+import { removeObject } from "../game/cellObjects.js?v=0.4.7-pre-alpha";
+import { getXpForEnemy, applyXpGain } from "../game/xp.js?v=0.4.7-pre-alpha";
+import { findNearestEnemy } from "../game/enemies.js?v=0.4.7-pre-alpha";
+import { syncPlayerHp } from "../game/syncHp.js?v=0.4.7-pre-alpha";
 
 /**
  * @typedef {{ run: object, playerSheet: object, item: object }} ConsumableApplyContext

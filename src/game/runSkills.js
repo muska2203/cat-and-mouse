@@ -1,7 +1,7 @@
-import { getSkillById } from "../skills.js?v=0.4.6-pre-alpha";
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.6-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.6-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.6-pre-alpha";
+import { getSkillById } from "../skills.js?v=0.4.7-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.4.7-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.7-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.4.7-pre-alpha";
 
 export function useSkill(run, playerSheet, skillId) {
   return useSkillAtCell(run, playerSheet, skillId, run?.player?.x, run?.player?.y);
