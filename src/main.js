@@ -890,21 +890,6 @@ function getSelectedSheet() {
   return applyLoadoutToSheet(createPlayerSheet(state.preGameStats), state.starterLoadout);
 }
 
-function addTestStarterSwords(playerSheet) {
-  const swordId = "common_splinter_blade";
-  let nextSheet = playerSheet;
-  for (let i = 0; i < 12; i += 1) {
-    const created = createRuntimeItemInstance(nextSheet, swordId);
-    const nextBag = [...(nextSheet?.bag || []), { instanceId: created.instanceId, itemId: swordId }];
-    nextSheet = {
-      ...nextSheet,
-      itemInstances: created.itemInstances,
-      bag: nextBag,
-    };
-  }
-  return nextSheet;
-}
-
 function getValueDeltaClass(baseValue, previewValue) {
   const base = Number.parseFloat(String(baseValue).replace(",", "."));
   const next = Number.parseFloat(String(previewValue).replace(",", "."));
@@ -2319,7 +2304,6 @@ function onRootClick(event) {
     }
     state.playerSheet = applyLoadoutToSheet(createPlayerSheet(state.preGameStats), state.starterLoadout);
     state.playerSheet = initializeInventoryForRun(state.playerSheet);
-    state.playerSheet = addTestStarterSwords(state.playerSheet);
     state.run = createRunState(state.playerSheet, 1);
     state.run.analyticsRunId = createRunAnalyticsId();
     state.run.analyticsRunEndTracked = false;
