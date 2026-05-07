@@ -15,6 +15,8 @@ export function buildGameScreenHtml({
   getUiStatName,
   getValueDeltaClass,
   renderModal,
+  anvilOverlayHtml = "",
+  descendOverlayHtml = "",
 }) {
   return `
     <div class="cm-app cm-app--game">
@@ -80,7 +82,12 @@ export function buildGameScreenHtml({
               <h2 class="cm-panel__title">Уровень ${Math.max(1, Number(run?.level || 1))}</h2>
               <div class="cm-panel__body">
                 <div class="cm-field" role="img" aria-label="Игровое поле">
-                  <div class="cm-phase cm-phase--field">${run?.turnPhase === "environment" ? "Ход окружения" : "Ход игрока"}</div>
+                  ${run?.turnPhase === "environment"
+    ? `<div class="cm-phase cm-phase--field">Ход окружения</div>`
+    : `<button type="button" class="cm-phase cm-phase--field cm-phase--skip-turn" data-action="skip-turn">
+                      <span class="cm-phase__default">Ход игрока</span>
+                      <span class="cm-phase__hover">Пропустить ход</span>
+                    </button>`}
                   <div class="cm-field__main"><canvas id="newGameCanvas" width="800" height="500" style="width:100%;height:100%;"></canvas></div>
                   <footer class="cm-hotbar-wrap cm-panel cm-hotbar-wrap--in-field cm-hotbar-wrap--recessed"><span class="cm-rivet cm-rivet--tl"></span><span class="cm-rivet cm-rivet--tr"></span><span class="cm-rivet cm-rivet--bl"></span><span class="cm-rivet cm-rivet--br"></span><div class="cm-hotbar">${quickbarHtml}</div></footer>
                 </div>
@@ -114,5 +121,7 @@ export function buildGameScreenHtml({
       </div>
     </div>
     ${renderModal()}
+    ${descendOverlayHtml}
+    ${anvilOverlayHtml}
   `;
 }
