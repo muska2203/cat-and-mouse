@@ -1,7 +1,7 @@
 /**
  * Единый источник текстов для расходников: тултипы и сообщения применения (consumables.js + items/consumableApply.js).
  */
-import { localizeStatText } from "../strings/ru.js?v=0.4.9-pre-alpha";
+import { localizeStatText } from "../strings/ru.js?v=0.4.10-pre-alpha";
 
 const HOVER_BY_ID = {
   common_hp_recover_10: "лечит 12 HP (не выше HP МАКС).",

@@ -1,5 +1,5 @@
-import { buildSkillHoverData } from "../skillsRuntime.js?v=0.4.9-pre-alpha";
-import { getSkillManaCost } from "../skills.js?v=0.4.9-pre-alpha";
+import { buildSkillHoverData } from "../skillsRuntime.js?v=0.4.10-pre-alpha";
+import { getSkillManaCost } from "../skills.js?v=0.4.10-pre-alpha";
 
 function escapeHtml(str) {
   return String(str)
@@ -13,8 +13,6 @@ function escapeHtml(str) {
 export function buildSkillDetailHtml(skill, skillState, options = {}) {
   if (!skill) return "";
   const manaCost = options.playerSheet ? getSkillManaCost(skill, options.playerSheet) : Math.max(0, Number(skill.manaCost || 0));
-  const cooldownBase = Math.max(0, Number(options.cooldownBase ?? skill.cooldownTurns ?? 0));
-  const cooldownLeft = Math.max(0, Number(options.cooldownLeft || 0));
   const rawDescription = String(skill.description || "").trim();
   const description = rawDescription
     .replace(/^Выбери клетку персонажа\.\s*/i, "")
@@ -43,5 +41,5 @@ export function buildSkillDetailHtml(skill, skillState, options = {}) {
   if (rawDescription.toLowerCase().includes("клетку персонажа")) {
     targets = "Своя клетка";
   }
-  return `<div class="item-detail-card item-detail-rarity-common"><div class="skill-detail-topline"><span class="item-detail-icon" aria-hidden="true">${escapeHtml(skill.icon || "✨")}</span><span class="item-detail-name">${escapeHtml(skill.name)}</span><div class="skill-detail-badges">${badgesHtml}</div></div><div class="item-detail-section"><h4 class="item-detail-section-title">Описание</h4><p class="item-detail-desc">${escapeHtml(description).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Формула</h4><p class="item-detail-desc">${escapeHtml(formula).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Доступные цели</h4><p class="item-detail-desc">${escapeHtml(targets)}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Кулдаун</h4><p class="item-detail-desc">Базовый: ${cooldownBase} х. Текущий: ${cooldownLeft} х.</p></div></div>`;
+  return `<div class="item-detail-card item-detail-rarity-common"><div class="skill-detail-topline"><span class="item-detail-icon" aria-hidden="true">${escapeHtml(skill.icon || "✨")}</span><span class="item-detail-name">${escapeHtml(skill.name)}</span><div class="skill-detail-badges">${badgesHtml}</div></div><div class="item-detail-section"><h4 class="item-detail-section-title">Описание</h4><p class="item-detail-desc">${escapeHtml(description).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Формула</h4><p class="item-detail-desc">${escapeHtml(formula).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Доступные цели</h4><p class="item-detail-desc">${escapeHtml(targets)}</p></div></div>`;
 }

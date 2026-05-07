@@ -8,6 +8,10 @@
  */
 export const DEVLOG_ENTRIES = [
   {
+    version: "0.4.10-pre-alpha",
+    changes: ["Убрали кулдаун скилов"],
+  },
+  {
     version: "0.4.9-pre-alpha",
     changes: ["Архитектурные доработки скилов"],
   },

@@ -1,4 +1,4 @@
-import { getSkillTargetCells, getSkillsForEquippedItem } from "../skillsRuntime.js?v=0.4.9-pre-alpha";
+import { getSkillTargetCells, getSkillsForEquippedItem } from "../skillsRuntime.js?v=0.4.10-pre-alpha";
 
 export function getSkillTargetsByKind(run, playerSheet, skillId, getItemContext = null) {
   const context = typeof getItemContext === "function" ? getItemContext(playerSheet, skillId) : null;
@@ -6,6 +6,5 @@ export function getSkillTargetsByKind(run, playerSheet, skillId, getItemContext 
   const activeSkills = getSkillsForEquippedItem(context.item, context.instanceEntry.skill || null);
   const activeSkill = activeSkills.find((skill) => skill.id === skillId) || null;
   if (!activeSkill) return [];
-  if (Math.max(0, Number(activeSkill.cooldownLeft || 0)) > 0) return [];
   return getSkillTargetCells(run, playerSheet, skillId);
 }

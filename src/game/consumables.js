@@ -1,7 +1,7 @@
-import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.9-pre-alpha";
-import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.9-pre-alpha";
-import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.9-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.9-pre-alpha";
+import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.10-pre-alpha";
+import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.10-pre-alpha";
+import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.10-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.10-pre-alpha";
 
 export function useConsumable(run, playerSheet, item) {
   if (!run || !playerSheet || !item?.isConsumable) {

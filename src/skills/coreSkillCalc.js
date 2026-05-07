@@ -1,4 +1,4 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.9-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.4.10-pre-alpha";
 
 export function getRegenHealPerTurn(skillLevel, playerSheet) {
   const level = Math.max(1, Number(skillLevel || 1));

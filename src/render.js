@@ -1,6 +1,6 @@
-import { roundStat } from "./rules.js?v=0.4.9-pre-alpha";
-import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.4.9-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.9-pre-alpha";
+import { roundStat } from "./rules.js?v=0.4.10-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.4.10-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.10-pre-alpha";
 
 export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1, overlay = null) {
   if (!canvas || !run) {

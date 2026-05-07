@@ -1,19 +1,19 @@
-import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.9-pre-alpha";
-import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.4.9-pre-alpha";
-import { rollChestLootItems } from "./chestLoot.js?v=0.4.9-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.9-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.9-pre-alpha";
+import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.10-pre-alpha";
+import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.4.10-pre-alpha";
+import { rollChestLootItems } from "./chestLoot.js?v=0.4.10-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.10-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.10-pre-alpha";
 import {
   ACTOR_KIND,
   getObjectsAt,
   canObjectBeActivatedBy,
   removeObject,
-} from "./cellObjects.js?v=0.4.9-pre-alpha";
+} from "./cellObjects.js?v=0.4.10-pre-alpha";
 import {
   applyTrapEffectToEnemy,
   applyTrapEffectToPlayer,
   spawnPoisonCloudObjects,
-} from "./trapsAndClouds.js?v=0.4.9-pre-alpha";
+} from "./trapsAndClouds.js?v=0.4.10-pre-alpha";
 
 function collectChestDropCells(run, x, y) {
   const cells = [];

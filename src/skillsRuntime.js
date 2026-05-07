@@ -1,11 +1,11 @@
-import { floorHp, floorHpMax } from "./rules.js?v=0.4.9-pre-alpha";
-import { syncPlayerHp } from "./game/syncHp.js?v=0.4.9-pre-alpha";
-import { getEnemyMaxHp as getEnemyMaxHpFromDefs } from "./game/enemyDefs.js?v=0.4.9-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.9-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.9-pre-alpha";
-import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.9-pre-alpha";
+import { floorHp, floorHpMax } from "./rules.js?v=0.4.10-pre-alpha";
+import { syncPlayerHp } from "./game/syncHp.js?v=0.4.10-pre-alpha";
+import { getEnemyMaxHp as getEnemyMaxHpFromDefs } from "./game/enemyDefs.js?v=0.4.10-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.10-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.10-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.10-pre-alpha";
 
-import { getSkillManaCost } from "./skills.js?v=0.4.9-pre-alpha";
+import { getSkillManaCost } from "./skills.js?v=0.4.10-pre-alpha";
 
 const SKILL_DEFS = {
   mystic_ritual: {
@@ -13,7 +13,6 @@ const SKILL_DEFS = {
     name: "Мистический ритуал",
     icon: "🩸",
     manaCost: 0,
-    cooldownTurns: 5,
     rarity: "rare",
     target: "single_unit",
     description: "Выбери клетку с противником или персонажем.",
@@ -24,7 +23,6 @@ const SKILL_DEFS = {
     name: "Магический шлепок",
     icon: "💫",
     manaCost: 15,
-    cooldownTurns: 2,
     rarity: "common",
     target: "single_unit",
     description: "Сгусток магической энергии, бьющий врага по лицу.",
@@ -159,7 +157,6 @@ export function createSkillInstanceDataForItem(item, rng = Math.random) {
   return {
     skillIds,
     skillLevels,
-    skillCooldowns: {},
   };
 }
 
@@ -171,17 +168,11 @@ export function normalizeSkillInstanceData(item, instanceData, rng = Math.random
     ? base.skillIds.filter((id) => SKILL_DEFS[id] && rolledIds.includes(id))
     : [];
   const skillIds = existingIds.length > 0 ? existingIds.slice(0, 2) : rolledIds;
-  const skillCooldowns = {};
-  const sourceCooldowns = base.skillCooldowns && typeof base.skillCooldowns === "object"
-    ? base.skillCooldowns
-    : {};
   const sourceLevels = base.skillLevels && typeof base.skillLevels === "object"
     ? base.skillLevels
     : {};
   const skillLevels = {};
   for (const skillId of skillIds) {
-    const value = Number(sourceCooldowns[skillId] || 0);
-    skillCooldowns[skillId] = Math.max(0, Math.floor(value));
     const sourceLevel = Number(sourceLevels[skillId] || 0);
     const maxLevel = getMaxSkillLevelForEquip(item);
     if (sourceLevel >= 1 && sourceLevel <= maxLevel) {
@@ -190,7 +181,7 @@ export function normalizeSkillInstanceData(item, instanceData, rng = Math.random
       skillLevels[skillId] = rollSkillLevelForItem(item, rng);
     }
   }
-  return { skillIds, skillLevels, skillCooldowns };
+  return { skillIds, skillLevels };
 }
 
 export function getSkillsForEquippedItem(item, instanceData) {
@@ -203,7 +194,6 @@ export function getSkillsForEquippedItem(item, instanceData) {
       return {
         ...def,
         level: Math.max(1, Number(normalized.skillLevels?.[skillId] || 1)),
-        cooldownLeft: Math.max(0, Number(normalized.skillCooldowns?.[skillId] || 0)),
       };
     })
     .filter(Boolean);
@@ -221,7 +211,6 @@ export const SKILLS_APPLY_BY_ID = {
       return {
         formula: `Урон = HP МАКС цели x ${Math.round(lifeDrain.damagePercent * 100)}%. Восстановление маны = МП МАКС персонажа x ${Math.round(lifeDrain.manaPercent * 100)}%.`,
         targets: "Одна клетка с противником или персонажем.",
-        cooldownBase: skill.cooldownTurns,
         skillLevel: lifeDrain.skillLevel,
         damagePercent: Math.round(lifeDrain.damagePercent * 100),
         manaPercent: Math.round(lifeDrain.manaPercent * 100),
@@ -303,7 +292,6 @@ export const SKILLS_APPLY_BY_ID = {
       return {
         formula: `Урон = (5 + ИНТ x 1.2) x (1 + 20% за каждый уровень после первого).`,
         targets: "Одна клетка с противником.",
-        cooldownBase: skill.cooldownTurns,
         skillLevel: skill?.level || 1,
         damage: damage,
       };
@@ -358,19 +346,6 @@ export function getSkillTargetCells(run, playerSheet, skillId) {
   return [];
 }
 
-export function tickSkillCooldowns(instanceData) {
-  if (!instanceData || typeof instanceData !== "object") return instanceData;
-  const cooldowns = instanceData.skillCooldowns || {};
-  const next = {};
-  for (const [skillId, turnsLeft] of Object.entries(cooldowns)) {
-    next[skillId] = Math.max(0, Math.floor(Number(turnsLeft || 0)) - 1);
-  }
-  return {
-    ...instanceData,
-    skillCooldowns: next,
-  };
-}
-
 export function buildSkillHoverData(skill, item, playerSheet) {
   if (!skill) return null;
   const resolver = SKILLS_APPLY_BY_ID[skill.id];
@@ -387,17 +362,6 @@ export function useSkillAtCell(run, playerSheet, item, instanceData, skillId, ta
   const skill = getSkillById(skillId);
   if (!skill) {
     return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: "Неизвестный скилл." };
-  }
-  const cooldownLeft = Math.max(0, Number(instanceData.skillCooldowns?.[skillId] || 0));
-  if (cooldownLeft > 0) {
-    return {
-      run,
-      playerSheet,
-      instanceData,
-      ok: false,
-      actionConsumed: false,
-      log: `${skill.name}: перезарядка ${cooldownLeft} х.`,
-    };
   }
   const targetCells = getSkillTargetCells(run, playerSheet, skillId);
   const isValidTarget = targetCells.some((cell) => cell.x === targetX && cell.y === targetY);
@@ -416,20 +380,11 @@ export function useSkillAtCell(run, playerSheet, item, instanceData, skillId, ta
     return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: result.log };
   }
 
-  const nextCooldowns = {
-    ...(instanceData.skillCooldowns || {}),
-    [skillId]: Math.max(0, Math.floor(skill.cooldownTurns || 0)),
-  };
-  const nextInstanceData = {
-    ...instanceData,
-    skillCooldowns: nextCooldowns,
-  };
-  
   run.lastLog = result.log;
   return {
     run,
     playerSheet,
-    instanceData: nextInstanceData,
+    instanceData,
     ok: true,
     actionConsumed: true,
     log: result.log,

@@ -1,4 +1,4 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.9-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.10-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
@@ -10,59 +10,58 @@ import {
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.4.9-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.9-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.9-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.9-pre-alpha";
-import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.9-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.9-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.9-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.9-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.9-pre-alpha";
+} from "./loadout.js?v=0.4.10-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.10-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.10-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.10-pre-alpha";
+import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.10-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.10-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.10-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.10-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.10-pre-alpha";
 import {
   advanceRunAnimationState,
   isBlockingMotionActive,
   normalizeFinishedAnimationsForRun,
-} from "./runtime/motionTiming.js?v=0.4.9-pre-alpha";
-import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.9-pre-alpha";
-import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.9-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.9-pre-alpha";
+} from "./runtime/motionTiming.js?v=0.4.10-pre-alpha";
+import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.10-pre-alpha";
+import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.10-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.10-pre-alpha";
 import {
   isEnvironmentTurnStepReady,
   isLevelTransitionReady,
   isPlayerInputBlockedByMotion,
-} from "./runtime/runFlow.js?v=0.4.9-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.4.9-pre-alpha";
-import { getSkillManaCost } from "./skills.js?v=0.4.9-pre-alpha";
-import { randomInt } from "./game/rng.js?v=0.4.9-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.4.9-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.4.9-pre-alpha";
-import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.9-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.9-pre-alpha";
-import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.9-pre-alpha";
-import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.9-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.4.9-pre-alpha";
+} from "./runtime/runFlow.js?v=0.4.10-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.4.10-pre-alpha";
+import { getSkillManaCost } from "./skills.js?v=0.4.10-pre-alpha";
+import { randomInt } from "./game/rng.js?v=0.4.10-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.4.10-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.4.10-pre-alpha";
+import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.10-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.10-pre-alpha";
+import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.10-pre-alpha";
+import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.10-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.4.10-pre-alpha";
 import {
   getSkillsForEquippedItem,
   getSkillById,
   getSkillIdsForItem,
   useSkillAtCell,
-  tickSkillCooldowns,
-} from "./skillsRuntime.js?v=0.4.9-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.4.9-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.9-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.9-pre-alpha";
-import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.9-pre-alpha";
-import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.9-pre-alpha";
-import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.9-pre-alpha";
-import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.9-pre-alpha";
-import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.9-pre-alpha";
-import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.9-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.9-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.9-pre-alpha";
-import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.9-pre-alpha";
+} from "./skillsRuntime.js?v=0.4.10-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.4.10-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.10-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.10-pre-alpha";
+import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.10-pre-alpha";
+import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.10-pre-alpha";
+import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.10-pre-alpha";
+import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.10-pre-alpha";
+import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.10-pre-alpha";
+import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.10-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.10-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.10-pre-alpha";
+import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.10-pre-alpha";
 
-import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.9-pre-alpha";
+import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.10-pre-alpha";
 
 const root = document.getElementById("app");
 
@@ -257,9 +256,7 @@ function formatSkillsDetailSection(item, instanceEntry) {
       const skill = getSkillById(skillId);
       if (!skill) return null;
       const level = Math.max(1, Number(skillData?.skillLevels?.[skillId] || 1));
-      const cooldownLeft = Math.max(0, Number(skillData?.skillCooldowns?.[skillId] || 0));
-      const cooldownText = cooldownLeft > 0 ? ` (CD ${cooldownLeft})` : "";
-      return `<li>${escapeHtml(skill.icon || "✨")} ${escapeHtml(skill.name)} [ур. ${level}]${escapeHtml(cooldownText)}</li>`;
+      return `<li>${escapeHtml(skill.icon || "✨")} ${escapeHtml(skill.name)} [ур. ${level}]</li>`;
     })
     .filter(Boolean)
     .join("");
@@ -270,7 +267,7 @@ function formatSkillsDetailSection(item, instanceEntry) {
   return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы предмета</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
 }
 
-import { getConsumableDescription } from "./items/itemPresentation.js?v=0.4.9-pre-alpha";
+import { getConsumableDescription } from "./items/itemPresentation.js?v=0.4.10-pre-alpha";
 
 function formatItemDetailDescriptionSection(item, stackCount) {
   const id = STRINGS_RU.itemDetail;
@@ -384,13 +381,10 @@ function createSkillPopoverController() {
       return;
     }
     const skillState = { learned: true, level: 1 };
-    const cooldownLeft = Math.max(0, Number(activeSkill?.cooldownLeft || 0));
-    const key = `${skill.id}:${Number(skillState?.level || 1)}:${cooldownLeft}`;
+    const key = `${skill.id}:${Number(skillState?.level || 1)}`;
     const pop = ensureEl();
     if (popoverKey !== key) {
       pop.innerHTML = buildSkillDetailHtml(skill, skillState, {
-        cooldownBase: skill.cooldownTurns || 0,
-        cooldownLeft,
         item: getEquippedItemContextBySkill(state.playerSheet, skill.id)?.item || null,
         playerSheet: state.playerSheet,
       });
@@ -597,12 +591,6 @@ function getActiveSkills(playerSheet) {
   return merged;
 }
 
-function getSkillCooldownLeft(playerSheet, skillId) {
-  const skills = getActiveSkills(playerSheet);
-  const skill = skills.find((entry) => entry.id === skillId) || null;
-  return Math.max(0, Number(skill?.cooldownLeft || 0));
-}
-
 function getEquippedItemContextBySkill(playerSheet, skillId) {
   const activeSkill = getActiveSkills(playerSheet).find((entry) => entry.id === skillId) || null;
   if (!activeSkill) return null;
@@ -689,30 +677,6 @@ function refreshSkillTargetingPreviewFromPointer() {
   }
   state.uiHud.skillTargetingPreviews = nextPreviews;
   return true;
-}
-
-function tickSkillCooldownsAtPlayerTurnStart() {
-  if (!state.run || !state.playerSheet || state.run.turnPhase !== "player") {
-    return;
-  }
-  const tickTurn = Number(state.run.turns || 0);
-  if (state.run.weaponCooldownsTickedAtTurn === tickTurn) {
-    return;
-  }
-  const equippedContexts = getAllEquippedItemContexts(state.playerSheet);
-  if (equippedContexts.length > 0) {
-    if (!state.playerSheet.itemInstances) state.playerSheet.itemInstances = {};
-    for (const equippedContext of equippedContexts) {
-      const nextSkillData = tickSkillCooldowns(equippedContext.instanceEntry.skill || null);
-      state.playerSheet.itemInstances[equippedContext.instanceId] = {
-        ...(state.playerSheet.itemInstances[equippedContext.instanceId] || {}),
-        instanceId: equippedContext.instanceId,
-        itemId: equippedContext.item.id,
-        skill: nextSkillData,
-      };
-    }
-  }
-  state.run.weaponCooldownsTickedAtTurn = tickTurn;
 }
 
 function buildPreGamePreviewStats(hoverPreview) {
@@ -1413,11 +1377,6 @@ function useQuickbarSlot(slotIndex) {
       state.run.lastLog = "Недостаточно маны.";
       return;
     }
-    const cooldownLeft = getSkillCooldownLeft(state.playerSheet, slotPayload.skillId);
-    if (cooldownLeft > 0) {
-      state.run.lastLog = `Скилл на перезарядке: ${cooldownLeft} х.`;
-      return;
-    }
     clearPathingState();
     const skillTargets = getSkillTargetsByKind(state.run, state.playerSheet, slotPayload.skillId, getEquippedItemContextBySkill);
     if (skillTargets.length === 0) {
@@ -1679,12 +1638,6 @@ function onRootClick(event) {
       return;
     }
 
-    const cooldownLeft = getSkillCooldownLeft(state.playerSheet, skillId);
-    if (cooldownLeft > 0) {
-      state.run.lastLog = `Скилл на перезарядке: ${cooldownLeft} х.`;
-      render();
-      return;
-    }
     clearPathingState();
     const targets = getSkillTargetsByKind(state.run, state.playerSheet, skillId, getEquippedItemContextBySkill);
     if (!targets.length) {
@@ -2142,10 +2095,6 @@ startAnimationLoop((nowMs) => {
     maybeTrackRunEnd();
     const canvas = document.getElementById("newGameCanvas");
     if (canvas && state.run && state.playerSheet) {
-      if (state.run.turnPhase === "player" && state.run.status === "running") {
-        tickSkillCooldownsAtPlayerTurnStart();
-      }
-
       if (isEnvironmentTurnStepReady(state.run)) {
         const envResult = stepEnvironmentTurn(state.run, state.playerSheet);
         state.run = envResult.run;
@@ -2157,9 +2106,6 @@ startAnimationLoop((nowMs) => {
           return;
         }
         if (envResult.finished) {
-          if (state.run.turnPhase === "player" && state.run.status === "running") {
-            tickSkillCooldownsAtPlayerTurnStart();
-          }
           render();
           return;
         }
