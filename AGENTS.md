@@ -33,6 +33,7 @@ Compact rules for AI agents working in this repository.
 - For commits/pushes to `main`, run:
   - `node scripts/set-app-version.mjs --suggest`
   - `node scripts/set-app-version.mjs <new_version>`
+- IMPORTANT: version update before commit/push and devlog update are mandatory and must never be skipped.
 - This must sync version in `src/app-config.js`, `index.html`, and `?v=` suffixes in `src/*` imports.
-- After version bump, prepend a new user-visible entry to `src/devlog.js` for that version.
+- After version bump, prepend a new user-visible entry to `src/devlog.js` for that version (mandatory; do not skip).
 

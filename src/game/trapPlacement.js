@@ -1,5 +1,5 @@
-import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.8-pre-alpha";
-import { getObjectsAt } from "./cellObjects.js?v=0.4.8-pre-alpha";
+import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.9-pre-alpha";
+import { getObjectsAt } from "./cellObjects.js?v=0.4.9-pre-alpha";
 
 export function getTrapPlacementCells(run) {
   if (!run?.player) {

@@ -1,9 +1,9 @@
-import { getSkillById, getSkillManaCost } from "../skills.js?v=0.4.8-pre-alpha";
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.8-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.8-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.8-pre-alpha";
-import { getHealSkillRawValue, getRegenHealPerTurn } from "../skills/coreSkillCalc.js?v=0.4.8-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.8-pre-alpha";
+import { getSkillById, getSkillManaCost } from "../skills.js?v=0.4.9-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.4.9-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.9-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.4.9-pre-alpha";
+import { getHealSkillRawValue, getRegenHealPerTurn } from "../skills/coreSkillCalc.js?v=0.4.9-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.9-pre-alpha";
 
 export function useSkill(run, playerSheet, skillId) {
   return useSkillAtCell(run, playerSheet, skillId, run?.player?.x, run?.player?.y);

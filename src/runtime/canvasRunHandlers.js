@@ -2,8 +2,8 @@
  * Клик / hover по игровому canvas и автопоход по залоченному пути.
  * Зависимости передаются снаружи (состояние живёт в main.js).
  */
-import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.4.8-pre-alpha";
-import { ensureRunFxState } from "./runFxState.js?v=0.4.8-pre-alpha";
+import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.4.9-pre-alpha";
+import { ensureRunFxState } from "./runFxState.js?v=0.4.9-pre-alpha";
 
 export function createCanvasRunHandlers(deps) {
   const {
@@ -149,7 +149,7 @@ export function createCanvasRunHandlers(deps) {
       pulseQuickbarSlot(targeting.slotIndex);
     }
     clearSkillTargeting();
-    maybeOpenSkillsOnNewPoint(progressBefore.skillPoints);
+    maybeOpenSkillsOnNewPoint();
     maybeTriggerLevelUpPulse(progressBefore);
     if (result.actionConsumed) {
       trackSkillUse(targeting.skillId);

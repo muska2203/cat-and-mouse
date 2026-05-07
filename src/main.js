@@ -1,4 +1,4 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.8-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.9-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
@@ -10,62 +10,59 @@ import {
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.4.8-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.8-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.8-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.8-pre-alpha";
-import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.8-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.8-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.8-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.8-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.8-pre-alpha";
+} from "./loadout.js?v=0.4.9-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.9-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.9-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.9-pre-alpha";
+import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.9-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.9-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.9-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.9-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.9-pre-alpha";
 import {
   advanceRunAnimationState,
   isBlockingMotionActive,
   normalizeFinishedAnimationsForRun,
-} from "./runtime/motionTiming.js?v=0.4.8-pre-alpha";
-import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.8-pre-alpha";
-import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.8-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.8-pre-alpha";
+} from "./runtime/motionTiming.js?v=0.4.9-pre-alpha";
+import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.9-pre-alpha";
+import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.9-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.9-pre-alpha";
 import {
   isEnvironmentTurnStepReady,
   isLevelTransitionReady,
   isPlayerInputBlockedByMotion,
-} from "./runtime/runFlow.js?v=0.4.8-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.4.8-pre-alpha";
-import { getCoreSkillDefs, getSkillManaCost } from "./skills.js?v=0.4.8-pre-alpha";
-import { getCoreSkillFormulaText, getHealSkillRawValue, getRegenHealPerTurn, getRegenTotalHeal } from "./skills/coreSkillCalc.js?v=0.4.8-pre-alpha";
-import { randomInt, randomPick } from "./game/rng.js?v=0.4.8-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.4.8-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.4.8-pre-alpha";
-import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.8-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.8-pre-alpha";
-import { useSkillAtCell } from "./game/runSkills.js?v=0.4.8-pre-alpha";
-import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.8-pre-alpha";
-import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.8-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.4.8-pre-alpha";
+} from "./runtime/runFlow.js?v=0.4.9-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.4.9-pre-alpha";
+import { getSkillManaCost } from "./skills.js?v=0.4.9-pre-alpha";
+import { randomInt } from "./game/rng.js?v=0.4.9-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.4.9-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.4.9-pre-alpha";
+import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.9-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.9-pre-alpha";
+import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.9-pre-alpha";
+import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.9-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.4.9-pre-alpha";
 import {
-  getWeaponSkillsForEquippedWeapon,
-  getWeaponSkillById,
-  getWeaponSkillIdsForItem,
-  useWeaponSkillAtCell,
-  tickWeaponSkillCooldowns,
-  buildWeaponSkillHoverData,
-} from "./weaponSkills.js?v=0.4.8-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.4.8-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.8-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.8-pre-alpha";
-import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.8-pre-alpha";
-import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.8-pre-alpha";
-import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.8-pre-alpha";
-import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.8-pre-alpha";
-import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.8-pre-alpha";
-import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.8-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.8-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.8-pre-alpha";
-import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.8-pre-alpha";
+  getSkillsForEquippedItem,
+  getSkillById,
+  getSkillIdsForItem,
+  useSkillAtCell,
+  tickSkillCooldowns,
+} from "./skillsRuntime.js?v=0.4.9-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.4.9-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.9-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.9-pre-alpha";
+import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.9-pre-alpha";
+import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.9-pre-alpha";
+import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.9-pre-alpha";
+import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.9-pre-alpha";
+import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.9-pre-alpha";
+import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.9-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.9-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.9-pre-alpha";
+import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.9-pre-alpha";
 
-import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.8-pre-alpha";
+import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.9-pre-alpha";
 
 const root = document.getElementById("app");
 
@@ -117,7 +114,6 @@ const PORTRAITS = [
 const state = createInitialState();
 state.selectedPortraitId = "witcher";
 state.uiNewModal = null;
-state.uiSkillChoice = null;
 state.uiNewStartMessage = "";
 state.screen = "welcome";
 state.uiNewRunStartedAtMs = null;
@@ -249,19 +245,19 @@ function formatWeaponCombatDetailSection(item) {
   return `<div class="item-detail-section"><h4 class="item-detail-section-title">${id.combatTitle}</h4><ul class="item-detail-list item-detail-list-plain"><li>${id.baseDamage} <strong>${escapeHtml(String(wd))}</strong></li><li>${id.critChanceBase} <strong>${escapeHtml(String(cc))}%</strong></li><li>${id.critMultBase} <strong>×${escapeHtml(String(cm))}</strong></li><li>Формула: <span class="item-detail-muted">${escapeHtml(formulaText)}</span></li></ul></div>`;
 }
 
-function formatWeaponSkillsDetailSection(item, instanceEntry) {
-  if (item?.type !== "weapon") return "";
-  const weaponData = instanceEntry?.weapon || null;
-  const assignedSkillIds = Array.isArray(weaponData?.weaponSkillIds) ? weaponData.weaponSkillIds : [];
-  const fallbackSkillIds = getWeaponSkillIdsForItem(item);
+function formatSkillsDetailSection(item, instanceEntry) {
+  if (!item || !["weapon", "armor", "amulet"].includes(item.type)) return "";
+  const skillData = instanceEntry?.skill || null;
+  const assignedSkillIds = Array.isArray(skillData?.skillIds) ? skillData.skillIds : [];
+  const fallbackSkillIds = getSkillIdsForItem(item);
   const skillIds = assignedSkillIds.length > 0 ? assignedSkillIds : fallbackSkillIds;
   if (skillIds.length === 0) return "";
   const rows = skillIds
     .map((skillId) => {
-      const skill = getWeaponSkillById(skillId);
+      const skill = getSkillById(skillId);
       if (!skill) return null;
-      const level = Math.max(1, Number(weaponData?.weaponSkillLevels?.[skillId] || 1));
-      const cooldownLeft = Math.max(0, Number(weaponData?.weaponSkillCooldowns?.[skillId] || 0));
+      const level = Math.max(1, Number(skillData?.skillLevels?.[skillId] || 1));
+      const cooldownLeft = Math.max(0, Number(skillData?.skillCooldowns?.[skillId] || 0));
       const cooldownText = cooldownLeft > 0 ? ` (CD ${cooldownLeft})` : "";
       return `<li>${escapeHtml(skill.icon || "✨")} ${escapeHtml(skill.name)} [ур. ${level}]${escapeHtml(cooldownText)}</li>`;
     })
@@ -271,10 +267,10 @@ function formatWeaponSkillsDetailSection(item, instanceEntry) {
   const note = assignedSkillIds.length === 0
     ? `<p class="item-detail-muted">При создании экземпляра выдаются случайные 2 скилла.</p>`
     : "";
-  return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы оружия</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
+  return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы предмета</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
 }
 
-import { getConsumableDescription } from "./items/itemPresentation.js?v=0.4.8-pre-alpha";
+import { getConsumableDescription } from "./items/itemPresentation.js?v=0.4.9-pre-alpha";
 
 function formatItemDetailDescriptionSection(item, stackCount) {
   const id = STRINGS_RU.itemDetail;
@@ -307,7 +303,7 @@ function buildInventoryItemDetailHtml(item, options = {}) {
   const sections = [
     formatItemStatBonusesDetailSection(item),
     formatWeaponCombatDetailSection(item),
-    formatWeaponSkillsDetailSection(item, options.instanceEntry || null),
+    formatSkillsDetailSection(item, options.instanceEntry || null),
     formatItemDetailDescriptionSection(item, stackCount),
   ].filter(Boolean).join("");
   const emptyHint = sections === "" ? `<p class="item-detail-muted item-detail-empty">${STRINGS_RU.itemDetail.emptyHint}</p>` : "";
@@ -380,30 +376,22 @@ function createSkillPopoverController() {
       return;
     }
     const skillId = trigger.dataset.skillDetailId;
-    const skillKind = trigger.dataset.skillDetailKind || "core";
-    const weaponSkills = getActiveWeaponSkills(state.playerSheet);
-    const weaponSkill = skillKind === "weapon"
-      ? weaponSkills.find((skill) => skill.id === skillId) || null
-      : null;
-    const skill = skillKind === "weapon"
-      ? (weaponSkill ? { ...getWeaponSkillById(weaponSkill.id), level: weaponSkill.level } : null)
-      : getCoreSkillDefs().find((s) => s.id === skillId) || null;
+    const skills = getActiveSkills(state.playerSheet);
+    const activeSkill = skills.find((skill) => skill.id === skillId) || null;
+    const skill = activeSkill ? { ...getSkillById(activeSkill.id), level: activeSkill.level } : null;
     if (!skill) {
       hide();
       return;
     }
-    const skillState = skillKind === "weapon"
-      ? { learned: true, level: 1 }
-      : (state.playerSheet?.skills?.[skill.id] || { learned: true, level: 1 });
-    const cooldownLeft = skillKind === "weapon" ? Math.max(0, Number(weaponSkill?.cooldownLeft || 0)) : 0;
-    const key = `${skillKind}:${skill.id}:${Number(skillState?.level || 1)}:${cooldownLeft}`;
+    const skillState = { learned: true, level: 1 };
+    const cooldownLeft = Math.max(0, Number(activeSkill?.cooldownLeft || 0));
+    const key = `${skill.id}:${Number(skillState?.level || 1)}:${cooldownLeft}`;
     const pop = ensureEl();
     if (popoverKey !== key) {
       pop.innerHTML = buildSkillDetailHtml(skill, skillState, {
-        skillKind,
         cooldownBase: skill.cooldownTurns || 0,
         cooldownLeft,
-        weaponItem: getEquippedWeaponContext(state.playerSheet)?.item || null,
+        item: getEquippedItemContextBySkill(state.playerSheet, skill.id)?.item || null,
         playerSheet: state.playerSheet,
       });
       popoverKey = key;
@@ -454,81 +442,15 @@ function clearPathingState() {
 }
 
 function snapshotProgress() {
-  return { skillPoints: state.playerSheet?.skillPoints || 0 };
+  return {};
 }
 
 function maybeOpenSkillsOnNewPoint() {}
 function maybeTriggerLevelUpPulse() {}
 function pulseQuickbarSlot() {}
 
-function pickRandom(list) {
-  if (!Array.isArray(list) || list.length === 0) return null;
-  return randomPick(list, state.run?.rng || null) || null;
-}
-
-function getSkillLevelLabel(skillDef, skillState) {
-  const currentLevel = Math.max(0, Number(skillState?.level || 0));
-  const nextLevel = Math.min(currentLevel + 1, Number(skillDef?.maxLevel || 1));
-  return `${currentLevel} -> ${nextLevel}`;
-}
-
-function buildSkillChoiceOptions(playerSheet) {
-  const skillDefs = getCoreSkillDefs(); // Core skill pool only; weapon skills are separate.
-  const unknown = [];
-  const upgradable = [];
-  for (const def of skillDefs) {
-    const stateRef = playerSheet?.skills?.[def.id] || { learned: false, level: 0 };
-    const level = Math.max(0, Number(stateRef.level || 0));
-    const maxLevel = Math.max(1, Number(def.maxLevel || 1));
-    if (!stateRef.learned) {
-      unknown.push(def);
-    } else if (level < maxLevel) {
-      upgradable.push(def);
-    }
-  }
-
-  const options = [];
-  const left = upgradable.length > 0 ? pickRandom(upgradable) : pickRandom(unknown);
-  if (left) options.push(left);
-
-  if (upgradable.length > 0) {
-    const right = pickRandom(unknown);
-    if (right && !options.some((s) => s.id === right.id)) options.push(right);
-  } else {
-    const restUnknown = unknown.filter((s) => !options.some((o) => o.id === s.id));
-    const right = pickRandom(restUnknown);
-    if (right) options.push(right);
-  }
-
-  return options;
-}
-
 function shouldAutoOpenSkillChoiceModal() {
-  if (state.screen !== "game" || !state.playerSheet) return false;
-  if (state.uiNewModal === "skills") return false;
-  if ((state.playerSheet.skillPoints || 0) <= 0) return false;
-  const level = Number(state.playerSheet.level || 1);
-  if (level < 2 || level % 2 !== 0) return false;
-
-  const coreDefs = getCoreSkillDefs(); // Core skills only.
-  const maxedCount = coreDefs.filter((def) => {
-    const s = state.playerSheet.skills?.[def.id];
-    return Boolean(s?.learned) && Number(s.level || 0) >= Math.max(1, Number(def.maxLevel || 1));
-  }).length;
-  if (maxedCount >= 3) return false;
-
-  const options = buildSkillChoiceOptions(state.playerSheet);
-  if (options.length === 0) return false;
-  const marker = `${level}:${options.map((s) => s.id).join("|")}`;
-  if (state.uiSkillChoice?.marker === marker) return false;
-
-  state.uiSkillChoice = {
-    marker,
-    optionIds: options.map((s) => s.id),
-    selectedSkillId: options.length === 1 ? options[0].id : null,
-  };
-  state.uiNewModal = "skills";
-  return true;
+  return false;
 }
 function trackSkillUse(skillId = null) {
   if (!state.run) return;
@@ -644,65 +566,78 @@ function getHoveredItemPreview() {
   };
 }
 
-function getEquippedWeaponContext(playerSheet) {
-  const itemId = playerSheet?.equippedByType?.weapon || null;
-  const instanceId = playerSheet?.equippedInstanceByType?.weapon || null;
-  if (!itemId || !instanceId) {
-    return null;
+function getAllEquippedItemContexts(playerSheet) {
+  if (!playerSheet) return [];
+  const contexts = [];
+  for (const type of ["weapon", "armor", "amulet"]) {
+    const itemId = playerSheet?.equippedByType?.[type] || null;
+    const instanceId = playerSheet?.equippedInstanceByType?.[type] || null;
+    if (!itemId || !instanceId) continue;
+    const item = getItemById(itemId);
+    const instanceEntry = playerSheet?.itemInstances?.[instanceId] || null;
+    if (!item || !instanceEntry) continue;
+    contexts.push({ item, instanceId, instanceEntry });
   }
-  const item = getItemById(itemId);
-  const instanceEntry = playerSheet?.itemInstances?.[instanceId] || null;
-  if (!item || !instanceEntry) {
-    return null;
-  }
-  return { item, instanceId, instanceEntry };
+  return contexts;
 }
 
-function getActiveWeaponSkills(playerSheet) {
-  const context = getEquippedWeaponContext(playerSheet);
-  if (!context) return [];
-  const skills = getWeaponSkillsForEquippedWeapon(context.item, context.instanceEntry.weapon || null);
-  return skills.map((skill) => ({
-    ...skill,
-    sourceWeaponInstanceId: context.instanceId,
-  }));
+function getActiveSkills(playerSheet) {
+  const merged = [];
+  for (const context of getAllEquippedItemContexts(playerSheet)) {
+    const skills = getSkillsForEquippedItem(context.item, context.instanceEntry.skill || null);
+    for (const skill of skills) {
+      merged.push({
+        ...skill,
+        sourceSkillInstanceId: context.instanceId,
+        sourceItemId: context.item.id,
+        sourceItemName: context.item.name,
+      });
+    }
+  }
+  return merged;
 }
 
-function getWeaponSkillCooldownLeft(playerSheet, skillId) {
-  const skills = getActiveWeaponSkills(playerSheet);
+function getSkillCooldownLeft(playerSheet, skillId) {
+  const skills = getActiveSkills(playerSheet);
   const skill = skills.find((entry) => entry.id === skillId) || null;
   return Math.max(0, Number(skill?.cooldownLeft || 0));
 }
 
-function useSkillAtCellByKind(run, playerSheet, skillId, skillKind, targetX, targetY) {
-  if (skillKind === "weapon") {
-    const context = getEquippedWeaponContext(playerSheet);
-    if (!context) {
-      return { run, playerSheet, ok: false, log: "Оружие не экипировано.", actionConsumed: false };
-    }
-    const result = useWeaponSkillAtCell(
-      run,
-      playerSheet,
-      context.item,
-      context.instanceEntry.weapon || null,
-      skillId,
-      targetX,
-      targetY,
-    );
-    if (result.instanceData) {
-      if (!playerSheet.itemInstances) {
-        playerSheet.itemInstances = {};
-      }
-      playerSheet.itemInstances[context.instanceId] = {
-        ...(playerSheet.itemInstances[context.instanceId] || {}),
-        instanceId: context.instanceId,
-        itemId: context.item.id,
-        weapon: result.instanceData,
-      };
-    }
-    return result;
+function getEquippedItemContextBySkill(playerSheet, skillId) {
+  const activeSkill = getActiveSkills(playerSheet).find((entry) => entry.id === skillId) || null;
+  if (!activeSkill) return null;
+  return getAllEquippedItemContexts(playerSheet)
+    .find((entry) => entry.instanceId === activeSkill.sourceSkillInstanceId) || null;
+}
+
+function useSkillAtCellFromContext(run, playerSheet, skillId, targetX, targetY) {
+  const activeSkill = getActiveSkills(playerSheet).find((entry) => entry.id === skillId) || null;
+  const context = getAllEquippedItemContexts(playerSheet)
+    .find((entry) => entry.instanceId === activeSkill?.sourceSkillInstanceId) || null;
+  if (!context) {
+    return { run, playerSheet, ok: false, log: "Источник скилла не экипирован.", actionConsumed: false };
   }
-  return useSkillAtCell(run, playerSheet, skillId, targetX, targetY);
+  const result = useSkillAtCell(
+    run,
+    playerSheet,
+    context.item,
+    context.instanceEntry.skill || null,
+    skillId,
+    targetX,
+    targetY,
+  );
+  if (result.instanceData) {
+    if (!playerSheet.itemInstances) {
+      playerSheet.itemInstances = {};
+    }
+    playerSheet.itemInstances[context.instanceId] = {
+      ...(playerSheet.itemInstances[context.instanceId] || {}),
+      instanceId: context.instanceId,
+      itemId: context.item.id,
+      skill: result.instanceData,
+    };
+  }
+  return result;
 }
 
 const DIRECTION_DELTA_BY_ID = {
@@ -745,7 +680,7 @@ function refreshSkillTargetingPreviewFromPointer() {
     state.playerSheet,
     state.uiHud.skillTargeting,
     cell,
-    getEquippedWeaponContext,
+    getEquippedItemContextBySkill,
   );
   const prevJson = JSON.stringify(state.uiHud.skillTargetingPreviews || []);
   const nextJson = JSON.stringify(nextPreviews || []);
@@ -756,7 +691,7 @@ function refreshSkillTargetingPreviewFromPointer() {
   return true;
 }
 
-function tickWeaponCooldownsAtPlayerTurnStart() {
+function tickSkillCooldownsAtPlayerTurnStart() {
   if (!state.run || !state.playerSheet || state.run.turnPhase !== "player") {
     return;
   }
@@ -764,18 +699,18 @@ function tickWeaponCooldownsAtPlayerTurnStart() {
   if (state.run.weaponCooldownsTickedAtTurn === tickTurn) {
     return;
   }
-  const weaponContext = getEquippedWeaponContext(state.playerSheet);
-  if (weaponContext) {
-    const nextWeaponData = tickWeaponSkillCooldowns(weaponContext.instanceEntry.weapon || null);
-    if (!state.playerSheet.itemInstances) {
-      state.playerSheet.itemInstances = {};
+  const equippedContexts = getAllEquippedItemContexts(state.playerSheet);
+  if (equippedContexts.length > 0) {
+    if (!state.playerSheet.itemInstances) state.playerSheet.itemInstances = {};
+    for (const equippedContext of equippedContexts) {
+      const nextSkillData = tickSkillCooldowns(equippedContext.instanceEntry.skill || null);
+      state.playerSheet.itemInstances[equippedContext.instanceId] = {
+        ...(state.playerSheet.itemInstances[equippedContext.instanceId] || {}),
+        instanceId: equippedContext.instanceId,
+        itemId: equippedContext.item.id,
+        skill: nextSkillData,
+      };
     }
-    state.playerSheet.itemInstances[weaponContext.instanceId] = {
-      ...(state.playerSheet.itemInstances[weaponContext.instanceId] || {}),
-      instanceId: weaponContext.instanceId,
-      itemId: weaponContext.item.id,
-      weapon: nextWeaponData,
-    };
   }
   state.run.weaponCooldownsTickedAtTurn = tickTurn;
 }
@@ -858,43 +793,6 @@ function renderStarterGroup(type, options, baseActorStats = null, previewActorSt
   `;
 }
 
-function formatSkillDeltaHtml(fromValue, toValue) {
-  return `<span class="cm-skill-choice-card__delta"><s>${fromValue}</s><strong>${toValue}</strong></span>`;
-}
-
-function getSkillChoiceCardContent(skillDef, skillState, playerSheet) {
-  const isLearned = Boolean(skillState?.learned);
-  const currentLevel = Math.max(0, Number(skillState?.level || 0));
-  const nextLevel = Math.min(currentLevel + 1, Math.max(1, Number(skillDef?.maxLevel || 1)));
-  if (skillDef?.id === "skill_support_regen") {
-    const currentPerTurn = getRegenHealPerTurn(Math.max(1, currentLevel), playerSheet);
-    const nextPerTurn = getRegenHealPerTurn(nextLevel, playerSheet);
-    return {
-      lines: isLearned
-        ? [
-            `Лечение за ход: ${formatSkillDeltaHtml(currentPerTurn, nextPerTurn)} HP`,
-            `Суммарно за 3 хода: ${formatSkillDeltaHtml(getRegenTotalHeal(Math.max(1, currentLevel), playerSheet, 3), getRegenTotalHeal(nextLevel, playerSheet, 3))} HP`,
-          ]
-        : [
-            `Лечение за ход: ${nextPerTurn} HP`,
-            `Суммарно за 3 хода: ${getRegenTotalHeal(nextLevel, playerSheet, 3)} HP`,
-          ],
-    };
-  }
-  if (skillDef?.id === "skill_support_heal") {
-    const currentValue = getHealSkillRawValue(Math.max(1, currentLevel), playerSheet);
-    const nextValue = getHealSkillRawValue(nextLevel, playerSheet);
-    return {
-      lines: isLearned
-        ? [`Мгновенное лечение: ${formatSkillDeltaHtml(currentValue, nextValue)} HP`]
-        : [`Мгновенное лечение: ${nextValue} HP`],
-    };
-  }
-  return {
-    lines: [esc(skillDef?.property || "Эффект зависит от уровня скилла.")],
-  };
-}
-
 function getWeaponDamageForActorStats(actorStats, item) {
   if (!item || item.type !== "weapon") return null;
   const safeStats = {
@@ -935,8 +833,7 @@ function buildWelcomePreviewSheetFromItem(itemPreview) {
 function renderModal() {
   if (!state.uiNewModal) return "";
   const isDevlog = state.uiNewModal === "devlog";
-  const isSkills = state.uiNewModal === "skills";
-  const title = isDevlog ? "Devlog" : (isSkills ? "Прокачка скиллов" : STRINGS_RU.helpModal.title);
+  const title = isDevlog ? "Devlog" : STRINGS_RU.helpModal.title;
   const content = isDevlog
     ? `
       <div class="cm-modal-devlog">
@@ -950,52 +847,7 @@ function renderModal() {
         `).join("")}
       </div>
     `
-    : isSkills
-      ? (() => {
-        const allDefs = getCoreSkillDefs();
-        const optionIds = state.uiSkillChoice?.optionIds || buildSkillChoiceOptions(state.playerSheet).map((s) => s.id);
-        const options = optionIds
-          .map((id) => allDefs.find((def) => def.id === id))
-          .filter(Boolean);
-        const selectedSkillId = state.uiSkillChoice?.selectedSkillId
-          || (options.length === 1 ? options[0].id : null);
-        const selectedSkill = options.find((skill) => skill.id === selectedSkillId) || null;
-        const selectedState = selectedSkill ? (state.playerSheet?.skills?.[selectedSkill.id] || { learned: false, level: 0 }) : null;
-        const selectedActionLabel = selectedState?.learned ? "Прокачать" : "Изучить";
-        const canConfirm = Boolean(selectedSkill) && Number(state.playerSheet?.skillPoints || 0) > 0;
-        const cards = options.map((skill) => {
-          const skillState = state.playerSheet?.skills?.[skill.id] || { learned: false, level: 0 };
-          const isSelected = selectedSkillId === skill.id;
-          const levelLabel = getSkillLevelLabel(skill, skillState);
-          const manaCost = getSkillManaCost(skill, state.playerSheet);
-          const cardContent = getSkillChoiceCardContent(skill, skillState, state.playerSheet);
-          return `
-            <button class="cm-skill-choice-card ${isSelected ? "is-selected" : ""}" type="button" data-action="select-skill-choice" data-skill-id="${skill.id}" data-skill-detail-id="${skill.id}">
-              <div class="cm-skill-choice-card__head">
-                <div class="cm-skill-choice-card__head-main">
-                  <h4>${esc(skill.icon || "✨")} ${esc(skill.name)}</h4>
-                  <span class="cm-skill-choice-card__lvl">ур. ${esc(levelLabel)}</span>
-                </div>
-                <div class="cm-skill-choice-card__mana-badge">Мана: ${manaCost}</div>
-              </div>
-              <div class="cm-skill-choice-card__copy">
-                ${cardContent.lines.map((line) => `<p>${line}</p>`).join("")}
-              </div>
-            </button>
-          `;
-        }).join("");
-        return `
-          <div class="cm-skill-choice">
-            <div class="cm-skill-choice__grid ${options.length === 1 ? "is-single" : ""}">
-              ${cards}
-            </div>
-            <div class="cm-modal__actions">
-              <button class="cm-btn cm-btn--secondary" type="button" data-action="confirm-skill-choice" ${canConfirm ? "" : "disabled"}>${selectedActionLabel}</button>
-            </div>
-          </div>
-        `;
-      })()
-      : `
+    : `
       <div class="cm-modal-help">
         <p><strong>${esc(STRINGS_RU.helpModal.move)}</strong> ${esc(STRINGS_RU.helpModal.moveBody)}</p>
         <p><strong>${esc(STRINGS_RU.helpModal.mouse)}</strong> ${esc(STRINGS_RU.helpModal.mouseBody)}</p>
@@ -1007,11 +859,11 @@ function renderModal() {
     `;
   return `
     <div class="cm-modal-backdrop is-open" data-action="close-modal">
-      <section class="cm-panel cm-modal ${isSkills ? "cm-modal--skills" : ""}" role="dialog" aria-modal="true" aria-label="${title}">
-        <h2 class="cm-panel__title">${isSkills ? "Выбери Скилл" : title}</h2>
+      <section class="cm-panel cm-modal" role="dialog" aria-modal="true" aria-label="${title}">
+        <h2 class="cm-panel__title">${title}</h2>
         <div class="cm-panel__body">
           ${content}
-          ${isSkills ? "" : `<div class="cm-modal__actions"><button class="cm-btn cm-btn--secondary" type="button" data-action="close-modal">${STRINGS_RU.helpModal.close}</button></div>`}
+          <div class="cm-modal__actions"><button class="cm-btn cm-btn--secondary" type="button" data-action="close-modal">${STRINGS_RU.helpModal.close}</button></div>
         </div>
       </section>
     </div>
@@ -1171,10 +1023,10 @@ function render() {
   `;
 }
 
-function syncQuickbarWeaponSkills() {
+function syncQuickbarSkills() {
   if (!state.playerSheet || !state.uiHud) return;
-  const activeWeaponSkills = getActiveWeaponSkills(state.playerSheet);
-  const activeIds = activeWeaponSkills.map(s => s.id);
+  const activeSkills = getActiveSkills(state.playerSheet);
+  const activeIds = activeSkills.map((s) => s.id);
   
   const slots = [...(state.uiHud.quickbarSlots || [])];
   while (slots.length < 9) slots.push(null);
@@ -1183,8 +1035,8 @@ function syncQuickbarWeaponSkills() {
 
   for (let i = 0; i < slots.length; i++) {
     const slot = slots[i];
-    if (slot && slot.kind === "weapon-skill") {
-      if (!activeIds.includes(slot.weaponSkillId)) {
+    if (slot && slot.kind === "skill") {
+      if (!activeIds.includes(slot.skillId)) {
         slots[i] = null;
         changed = true;
       }
@@ -1192,11 +1044,11 @@ function syncQuickbarWeaponSkills() {
   }
 
   for (const skillId of activeIds) {
-    const isAlreadyInQuickbar = slots.some(s => s && s.kind === "weapon-skill" && s.weaponSkillId === skillId);
+    const isAlreadyInQuickbar = slots.some((s) => s && s.kind === "skill" && s.skillId === skillId);
     if (!isAlreadyInQuickbar) {
       const emptyIndex = slots.findIndex(s => !s);
       if (emptyIndex !== -1) {
-        slots[emptyIndex] = { kind: "weapon-skill", weaponSkillId: skillId };
+        slots[emptyIndex] = { kind: "skill", skillId };
         changed = true;
       }
     }
@@ -1208,8 +1060,7 @@ function syncQuickbarWeaponSkills() {
 }
 
 function renderGameScreen() {
-  syncQuickbarWeaponSkills();
-  shouldAutoOpenSkillChoiceModal();
+  syncQuickbarSkills();
   const portrait = getPortraitById(state.selectedPortraitId);
   const run = state.run;
   const sheet = state.playerSheet;
@@ -1258,11 +1109,7 @@ function renderGameScreen() {
     .sort((a, b) => compareItemsByRarityThenId(a.item, b.item));
   const consumables = Array.from(consumablesById.values())
     .sort((a, b) => compareConsumablesForInventory(a.item, b.item));
-  const learnedSkills = getCoreSkillDefs().filter((skill) => {
-    const skillState = sheet?.skills?.[skill.id];
-    return Boolean(skillState?.learned);
-  });
-  const weaponSkills = getActiveWeaponSkills(sheet);
+  const skills = getActiveSkills(sheet);
 
   const effects = buildActiveEffectsViewModel(run, sheet);
 
@@ -1281,13 +1128,12 @@ function renderGameScreen() {
     getItemRarity,
     esc,
   });
-  const skillsHtml = buildSkillsListHtml({ learnedSkills, weaponSkills, sheet, esc });
+  const skillsHtml = buildSkillsListHtml({ skills, sheet, esc });
   const quickbarHtml = buildQuickbarHtml({
     quickSlots,
     sheet,
-    weaponSkills,
+    skills,
     getItemById,
-    getCoreSkillDefs,
     activeSlotIndex: state.uiHud?.skillTargeting?.slotIndex ?? null,
     esc,
   });
@@ -1457,7 +1303,7 @@ const canvasHandlers = createCanvasRunHandlers({
   consumePlayerActionAndStartEnvironment: consumeActionAndRunEnvironment,
   clearSkillTargeting,
   useSkillAtCell: (run, playerSheet, skillId, x, y) =>
-    useSkillAtCellByKind(run, playerSheet, skillId, state.uiHud?.skillTargeting?.skillKind || "core", x, y),
+    useSkillAtCellFromContext(run, playerSheet, skillId, x, y),
   snapshotProgress,
   maybeOpenSkillsOnNewPoint,
   maybeTriggerLevelUpPulse,
@@ -1486,16 +1332,10 @@ function initQuickbarForNewRun() {
     slotIndex += 1;
   }
 
-  const learnedSkills = getCoreSkillDefs().filter((skill) => state.playerSheet?.skills?.[skill.id]?.learned);
-  for (const skill of learnedSkills) {
+  const skills = getActiveSkills(state.playerSheet);
+  for (const skill of skills) {
     if (slotIndex >= 9) break;
     slots[slotIndex] = { kind: "skill", skillId: skill.id };
-    slotIndex += 1;
-  }
-  const weaponSkills = getActiveWeaponSkills(state.playerSheet);
-  for (const skill of weaponSkills) {
-    if (slotIndex >= 9) break;
-    slots[slotIndex] = { kind: "weapon-skill", weaponSkillId: skill.id };
     slotIndex += 1;
   }
   state.uiHud.quickbarSlots = slots;
@@ -1505,38 +1345,7 @@ function normalizeQuickbarSlot(value) {
   if (!value) return null;
   if (value.kind === "consumable" && value.itemId) return value;
   if (value.kind === "skill" && value.skillId) return value;
-  if (value.kind === "weapon-skill" && value.weaponSkillId) return value;
   return null;
-}
-
-function findNearestEmptyQuickbarSlotIndex() {
-  const slots = state.uiHud.quickbarSlots || [];
-  for (let index = 0; index < 9; index += 1) {
-    if (!slots[index]) return index;
-  }
-  return -1;
-}
-
-function isQuickbarPayloadAssigned(targetPayload) {
-  const slots = state.uiHud.quickbarSlots || [];
-  for (const slotValue of slots) {
-    const slotPayload = normalizeQuickbarSlot(slotValue);
-    if (!slotPayload || slotPayload.kind !== targetPayload.kind) continue;
-    if (slotPayload.kind === "consumable" && slotPayload.itemId === targetPayload.itemId) return true;
-    if (slotPayload.kind === "skill" && slotPayload.skillId === targetPayload.skillId) return true;
-    if (slotPayload.kind === "weapon-skill" && slotPayload.weaponSkillId === targetPayload.weaponSkillId) return true;
-  }
-  return false;
-}
-
-function assignQuickbarSlotIfAvailable(payload) {
-  if (!payload || isQuickbarPayloadAssigned(payload)) return false;
-  const slotIndex = findNearestEmptyQuickbarSlotIndex();
-  if (slotIndex < 0) return false;
-  const slots = [...(state.uiHud.quickbarSlots || [])];
-  slots[slotIndex] = payload;
-  state.uiHud.quickbarSlots = slots;
-  return true;
 }
 
 function useConsumableById(itemId, bagInstanceId = null, bagIndex = -1) {
@@ -1598,24 +1407,26 @@ function useQuickbarSlot(slotIndex) {
     return;
   }
   if (slotPayload.kind === "skill") {
-    const skillDef = getCoreSkillDefs().find(s => s.id === slotPayload.skillId);
+    const skillDef = getSkillById(slotPayload.skillId);
     const manaCost = getSkillManaCost(skillDef, state.playerSheet);
     if ((state.playerSheet.mana || 0) < manaCost) {
       state.run.lastLog = "Недостаточно маны.";
       return;
     }
+    const cooldownLeft = getSkillCooldownLeft(state.playerSheet, slotPayload.skillId);
+    if (cooldownLeft > 0) {
+      state.run.lastLog = `Скилл на перезарядке: ${cooldownLeft} х.`;
+      return;
+    }
     clearPathingState();
-    const skillTargets = getSkillTargetsByKind(state.run, state.playerSheet, slotPayload.skillId, "core", getEquippedWeaponContext);
+    const skillTargets = getSkillTargetsByKind(state.run, state.playerSheet, slotPayload.skillId, getEquippedItemContextBySkill);
     if (skillTargets.length === 0) {
       state.run.lastLog = "Нет доступной цели для скилла.";
       return;
     }
     const alreadyActive = (
       state.uiHud.skillTargeting?.slotIndex === slotIndex
-      || (
-        state.uiHud.skillTargeting?.skillKind === "core"
-        && state.uiHud.skillTargeting?.skillId === slotPayload.skillId
-      )
+      || state.uiHud.skillTargeting?.skillId === slotPayload.skillId
     );
     if (alreadyActive) {
       clearSkillTargeting();
@@ -1623,51 +1434,9 @@ function useQuickbarSlot(slotIndex) {
       state.uiHud.skillTargeting = {
         slotIndex,
         skillId: slotPayload.skillId,
-        skillKind: "core",
-        previousSkillPoints: state.playerSheet.skillPoints || 0,
         targets: skillTargets,
       };
       trackSkillUse(slotPayload.skillId);
-      refreshSkillTargetingPreviewFromPointer();
-    }
-    return;
-  }
-  if (slotPayload.kind === "weapon-skill") {
-    const skillDef = getWeaponSkillById(slotPayload.weaponSkillId);
-    const manaCost = getSkillManaCost(skillDef, state.playerSheet);
-    if ((state.playerSheet.mana || 0) < manaCost) {
-      state.run.lastLog = "Недостаточно маны.";
-      return;
-    }
-    const cooldownLeft = getWeaponSkillCooldownLeft(state.playerSheet, slotPayload.weaponSkillId);
-    if (cooldownLeft > 0) {
-      state.run.lastLog = `Скилл на перезарядке: ${cooldownLeft} х.`;
-      return;
-    }
-    clearPathingState();
-    const skillTargets = getSkillTargetsByKind(state.run, state.playerSheet, slotPayload.weaponSkillId, "weapon", getEquippedWeaponContext);
-    if (skillTargets.length === 0) {
-      state.run.lastLog = "Нет доступной цели для оружейного скилла.";
-      return;
-    }
-    const alreadyActive = (
-      state.uiHud.skillTargeting?.slotIndex === slotIndex
-      || (
-        state.uiHud.skillTargeting?.skillKind === "weapon"
-        && state.uiHud.skillTargeting?.skillId === slotPayload.weaponSkillId
-      )
-    );
-    if (alreadyActive) {
-      clearSkillTargeting();
-    } else {
-      state.uiHud.skillTargeting = {
-        slotIndex,
-        skillId: slotPayload.weaponSkillId,
-        skillKind: "weapon",
-        previousSkillPoints: state.playerSheet.skillPoints || 0,
-        targets: skillTargets,
-      };
-      trackSkillUse(slotPayload.weaponSkillId);
       refreshSkillTargetingPreviewFromPointer();
     }
   }
@@ -1678,11 +1447,10 @@ function tryCastPreparedSkillOnSelf() {
   if (!targeting?.skillId || !state.run || !state.playerSheet || state.run.turnPhase !== "player") {
     return;
   }
-  const result = useSkillAtCellByKind(
+  const result = useSkillAtCellFromContext(
     state.run,
     state.playerSheet,
     targeting.skillId,
-    targeting.skillKind || "core",
     state.run.player.x,
     state.run.player.y,
   );
@@ -1739,11 +1507,10 @@ function tryCastPreparedSkillByDirection(direction) {
     state.run.lastLog = "В этом направлении нет доступной клетки для скилла.";
     return;
   }
-  const result = useSkillAtCellByKind(
+  const result = useSkillAtCellFromContext(
     state.run,
     state.playerSheet,
     targeting.skillId,
-    targeting.skillKind || "core",
     targetCell.x,
     targetCell.y,
   );
@@ -1837,24 +1604,7 @@ function onRootClick(event) {
     return;
   }
 
-  if (action === "open-skills-modal" && state.screen === "game") {
-    state.uiNewModal = "skills";
-    if (!state.uiSkillChoice) {
-      const options = buildSkillChoiceOptions(state.playerSheet);
-      state.uiSkillChoice = {
-        marker: `manual:${Date.now()}`,
-        optionIds: options.map((s) => s.id),
-        selectedSkillId: options.length === 1 ? options[0]?.id || null : null,
-      };
-    }
-    render();
-    return;
-  }
-
   if (action === "close-modal") {
-    if (state.uiNewModal === "skills") {
-      return;
-    }
     state.uiNewModal = null;
     render();
     return;
@@ -1919,12 +1669,9 @@ function onRootClick(event) {
 
   if (action === "left-skill-use" && state.screen === "game" && state.run?.turnPhase === "player") {
     const skillId = actionEl.dataset.skillId;
-    const skillKind = actionEl.dataset.skillKind || "core";
     if (!skillId) return;
 
-    const manaCost = skillKind === "weapon"
-      ? getSkillManaCost(getWeaponSkillById(skillId), state.playerSheet)
-      : getSkillManaCost(getCoreSkillDefs().find(s => s.id === skillId), state.playerSheet);
+    const manaCost = getSkillManaCost(getSkillById(skillId), state.playerSheet);
     
     if ((state.playerSheet.mana || 0) < manaCost) {
       state.run.lastLog = "Недостаточно маны.";
@@ -1932,16 +1679,14 @@ function onRootClick(event) {
       return;
     }
 
-    if (skillKind === "weapon") {
-      const cooldownLeft = getWeaponSkillCooldownLeft(state.playerSheet, skillId);
-      if (cooldownLeft > 0) {
-        state.run.lastLog = `Скилл на перезарядке: ${cooldownLeft} х.`;
-        render();
-        return;
-      }
+    const cooldownLeft = getSkillCooldownLeft(state.playerSheet, skillId);
+    if (cooldownLeft > 0) {
+      state.run.lastLog = `Скилл на перезарядке: ${cooldownLeft} х.`;
+      render();
+      return;
     }
     clearPathingState();
-    const targets = getSkillTargetsByKind(state.run, state.playerSheet, skillId, skillKind, getEquippedWeaponContext);
+    const targets = getSkillTargetsByKind(state.run, state.playerSheet, skillId, getEquippedItemContextBySkill);
     if (!targets.length) {
       state.run.lastLog = "Нет доступных клеток для применения.";
       render();
@@ -1950,8 +1695,6 @@ function onRootClick(event) {
     state.uiHud.skillTargeting = {
       slotIndex: null,
       skillId,
-      skillKind,
-      previousSkillPoints: state.playerSheet.skillPoints || 0,
       targets,
     };
     trackSkillUse(skillId);
@@ -1964,41 +1707,6 @@ function onRootClick(event) {
     const slotIndex = Number(actionEl.dataset.slotIndex);
     if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 8) return;
     useQuickbarSlot(slotIndex);
-    render();
-    return;
-  }
-
-  if (action === "select-skill-choice" && state.screen === "game") {
-    const skillId = actionEl.dataset.skillId;
-    if (!skillId) return;
-    if (!state.uiSkillChoice) {
-      const options = buildSkillChoiceOptions(state.playerSheet);
-      state.uiSkillChoice = {
-        marker: `manual:${Date.now()}`,
-        optionIds: options.map((s) => s.id),
-        selectedSkillId: null,
-      };
-    }
-    state.uiSkillChoice.selectedSkillId = skillId;
-    render();
-    return;
-  }
-
-  if (action === "confirm-skill-choice" && state.screen === "game") {
-    const skillId = state.uiSkillChoice?.selectedSkillId;
-    const skillDef = getCoreSkillDefs().find((skill) => skill.id === skillId);
-    const skillState = state.playerSheet?.skills?.[skillId];
-    if (!skillDef || !skillState || (state.playerSheet.skillPoints || 0) <= 0) return;
-    if ((skillState.level || 0) >= (skillDef.maxLevel || 1)) return;
-    const wasLearned = Boolean(skillState.learned);
-    skillState.learned = true;
-    skillState.level = Number(skillState.level || 0) + 1;
-    state.playerSheet.skillPoints -= 1;
-    if (!wasLearned) {
-      assignQuickbarSlotIfAvailable({ kind: "skill", skillId });
-    }
-    state.uiNewModal = null;
-    state.uiSkillChoice = null;
     render();
     return;
   }
@@ -2183,14 +1891,13 @@ function onRootDragStart(event) {
   const skill = event.target.closest("[data-drag-kind='skill']");
   if (!skill) return;
   const skillId = skill.dataset.dragSkillId;
-  const skillKind = skill.dataset.dragSkillKind || "core";
   if (!skillId) {
     event.preventDefault();
     return;
   }
-  state.uiHud.dragPayload = { kind: "skill", skillId, skillKind };
+  state.uiHud.dragPayload = { kind: "skill", skillId };
   event.dataTransfer.effectAllowed = "copyMove";
-  event.dataTransfer.setData("text/plain", `skill:${skillKind}:${skillId}`);
+  event.dataTransfer.setData("text/plain", `skill:${skillId}`);
 }
 
 function onRootDragOver(event) {
@@ -2261,11 +1968,7 @@ function onRootDrop(event) {
   const payload = state.uiHud.dragPayload;
   if (payload.kind === "consumable" && payload.itemId) slots[targetSlot] = { kind: "consumable", itemId: payload.itemId };
   if (payload.kind === "skill" && payload.skillId) {
-    if (payload.skillKind === "weapon") {
-      slots[targetSlot] = { kind: "weapon-skill", weaponSkillId: payload.skillId };
-    } else {
-      slots[targetSlot] = { kind: "skill", skillId: payload.skillId };
-    }
+    slots[targetSlot] = { kind: "skill", skillId: payload.skillId };
   }
   if (payload.kind === "quick-slot" && Number.isInteger(payload.slotIndex)) {
     const sourceSlot = payload.slotIndex;
@@ -2440,7 +2143,7 @@ startAnimationLoop((nowMs) => {
     const canvas = document.getElementById("newGameCanvas");
     if (canvas && state.run && state.playerSheet) {
       if (state.run.turnPhase === "player" && state.run.status === "running") {
-        tickWeaponCooldownsAtPlayerTurnStart();
+        tickSkillCooldownsAtPlayerTurnStart();
       }
 
       if (isEnvironmentTurnStepReady(state.run)) {
@@ -2455,7 +2158,7 @@ startAnimationLoop((nowMs) => {
         }
         if (envResult.finished) {
           if (state.run.turnPhase === "player" && state.run.status === "running") {
-            tickWeaponCooldownsAtPlayerTurnStart();
+            tickSkillCooldownsAtPlayerTurnStart();
           }
           render();
           return;

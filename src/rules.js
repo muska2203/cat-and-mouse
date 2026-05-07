@@ -1,4 +1,4 @@
-import { randomFloat } from "./game/rng.js?v=0.4.8-pre-alpha";
+import { randomFloat } from "./game/rng.js?v=0.4.9-pre-alpha";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(value, max));

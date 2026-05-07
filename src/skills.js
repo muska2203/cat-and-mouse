@@ -1,4 +1,4 @@
-import { getHealSkillRawValue, getRegenHealPerTurn, getRegenTotalHeal } from "./skills/coreSkillCalc.js?v=0.4.8-pre-alpha";
+import { getHealSkillRawValue, getRegenHealPerTurn, getRegenTotalHeal } from "./skills/coreSkillCalc.js?v=0.4.9-pre-alpha";
 
 export const SKILL_DEFS = {
   skill_support_regen: {

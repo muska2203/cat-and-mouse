@@ -1,5 +1,4 @@
-import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.8-pre-alpha";
-import { getCoreSkillDefs } from "./skills.js?v=0.4.8-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.9-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -62,12 +61,6 @@ export function createPlayerSheet(preGameStats) {
   };
 
   const derived = buildDerivedStats(stats, null);
-  const coreSkills = getCoreSkillDefs();
-  const skills = {};
-  for (const skill of coreSkills) {
-    skills[skill.id] = { learned: false, level: 0 };
-  }
-
   const manaMax = roundStat(30 + (stats.INT || 0) * 6);
 
   return {
@@ -87,8 +80,6 @@ export function createPlayerSheet(preGameStats) {
     unspentPoints: 0,
     mana: manaMax,
     manaMax,
-    skillPoints: 0,
-    skills,
     effectStacks: {
       hp_max_plus_5: 0,
       hp_max_plus_4: 0,

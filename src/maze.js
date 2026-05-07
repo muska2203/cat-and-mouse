@@ -1,4 +1,4 @@
-import { randomFloat, randomInt, randomPick } from "./game/rng.js?v=0.4.8-pre-alpha";
+import { randomFloat, randomInt, randomPick } from "./game/rng.js?v=0.4.9-pre-alpha";
 
 function createGrid(width, height, value) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => value));

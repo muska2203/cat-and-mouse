@@ -1,5 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.8-pre-alpha";
-import { normalizeWeaponInstanceData } from "./weaponSkills.js?v=0.4.8-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.9-pre-alpha";
+import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.4.9-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
@@ -510,7 +510,6 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, 
     itemInstances: normalizedItemInstances,
     inventory: equipped.filter((item) => item.isConsumable),
     bag: normalizedBag,
-    skills: { ...(playerSheet.skills || {}) },
   };
 }
 
@@ -767,8 +766,8 @@ function buildNormalizedItemInstance(source, instanceId, itemId) {
     instanceId,
     itemId,
   };
-  if (item?.type === "weapon") {
-    entry.weapon = normalizeWeaponInstanceData(item, base.weapon || null);
+  if (item?.type === "weapon" || item?.type === "armor" || item?.type === "amulet") {
+    entry.skill = normalizeSkillInstanceData(item, base.skill || null);
   }
   return entry;
 }

@@ -1,6 +1,6 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.8-pre-alpha";
-import { getConsumableApplyLog } from "./itemPresentation.js?v=0.4.8-pre-alpha";
-import { syncPlayerHp } from "../game/syncHp.js?v=0.4.8-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.4.9-pre-alpha";
+import { getConsumableApplyLog } from "./itemPresentation.js?v=0.4.9-pre-alpha";
+import { syncPlayerHp } from "../game/syncHp.js?v=0.4.9-pre-alpha";
 
 /**
  * @typedef {{ run: object, playerSheet: object, item: object }} ConsumableApplyContext

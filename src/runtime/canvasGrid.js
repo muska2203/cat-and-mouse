@@ -2,7 +2,7 @@
  * Тот же расчёт тайла/камеры, что при отрисовке canvas (см. drawRunToCanvas):
  * локальные координаты клика → клетка сетки.
  */
-import { getCanvasCameraOffset, getCanvasTileSize } from "./canvasCamera.js?v=0.4.8-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./canvasCamera.js?v=0.4.9-pre-alpha";
 
 export function screenPointToGrid(run, localX, localY, viewWidth, viewHeight, zoomScale = 1) {
   if (!run) {

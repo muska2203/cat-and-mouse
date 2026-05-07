@@ -1,15 +1,15 @@
-import { floorHp, floorHpMax } from "./rules.js?v=0.4.8-pre-alpha";
-import { syncPlayerHp } from "./game/syncHp.js?v=0.4.8-pre-alpha";
-import { getEnemyMaxHp as getEnemyMaxHpFromDefs } from "./game/enemyDefs.js?v=0.4.8-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.8-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.8-pre-alpha";
-import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.8-pre-alpha";
+import { floorHp, floorHpMax } from "./rules.js?v=0.4.9-pre-alpha";
+import { syncPlayerHp } from "./game/syncHp.js?v=0.4.9-pre-alpha";
+import { getEnemyMaxHp as getEnemyMaxHpFromDefs } from "./game/enemyDefs.js?v=0.4.9-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.9-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.9-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.9-pre-alpha";
 
-import { getSkillManaCost } from "./skills.js?v=0.4.8-pre-alpha";
+import { getSkillManaCost } from "./skills.js?v=0.4.9-pre-alpha";
 
-const WEAPON_SKILL_DEFS = {
-  weapon_staff_life_drain: {
-    id: "weapon_staff_life_drain",
+const SKILL_DEFS = {
+  mystic_ritual: {
+    id: "mystic_ritual",
     name: "Мистический ритуал",
     icon: "🩸",
     manaCost: 0,
@@ -17,9 +17,10 @@ const WEAPON_SKILL_DEFS = {
     rarity: "rare",
     target: "single_unit",
     description: "Выбери клетку с противником или персонажем.",
+    compatibleItems: [{ type: "weapon", subtype: "staff" }],
   },
-  weapon_staff_magic_slap: {
-    id: "weapon_staff_magic_slap",
+  magic_slap: {
+    id: "magic_slap",
     name: "Магический шлепок",
     icon: "💫",
     manaCost: 15,
@@ -27,11 +28,8 @@ const WEAPON_SKILL_DEFS = {
     rarity: "common",
     target: "single_unit",
     description: "Сгусток магической энергии, бьющий врага по лицу.",
+    compatibleItems: [{ type: "weapon", subtype: "staff" }],
   },
-};
-
-const SKILL_IDS_BY_WEAPON_SUBTYPE = {
-  staff: ["weapon_staff_life_drain", "weapon_staff_magic_slap"],
 };
 
 function getLifeDrainParams(skillLevel, playerSheet) {
@@ -83,7 +81,7 @@ function getItemRarity(item) {
   return "common";
 }
 
-function getMaxSkillLevelForWeapon(item) {
+function getMaxSkillLevelForEquip(item) {
   const rarity = getItemRarity(item);
   if (rarity === "unique") return 3;
   if (rarity === "rare") return 2;
@@ -101,8 +99,8 @@ function pickNRandomUnique(values, count, rng) {
   return out;
 }
 
-export function getWeaponSkillById(skillId) {
-  return WEAPON_SKILL_DEFS[skillId] || null;
+export function getSkillById(skillId) {
+  return SKILL_DEFS[skillId] || null;
 }
 
 function getVisibleEnemyTargetCells(run) {
@@ -117,80 +115,102 @@ function getVisibleEnemyTargetCells(run) {
     .map((enemy) => ({ x: enemy.x, y: enemy.y }));
 }
 
-export function getWeaponSkillIdsForItem(item) {
-  if (!item || item.type !== "weapon") return [];
-  return [...(SKILL_IDS_BY_WEAPON_SUBTYPE[item.subtype] || [])];
+function isEquipItem(item) {
+  const type = String(item?.type || "");
+  return type === "weapon" || type === "armor" || type === "amulet";
 }
 
-export function rollWeaponSkillIdsForItem(item, rng = Math.random) {
-  const candidates = getWeaponSkillIdsForItem(item);
+function isSkillCompatibleWithItem(skillDef, item) {
+  const rules = Array.isArray(skillDef?.compatibleItems) ? skillDef.compatibleItems : [];
+  if (rules.length === 0 || !item) return false;
+  const itemType = String(item.type || "");
+  const itemSubtype = String(item.subtype || "");
+  return rules.some((rule) => {
+    const ruleType = String(rule?.type || "");
+    const ruleSubtype = String(rule?.subtype || "");
+    if (!ruleType) return false;
+    if (ruleType !== itemType) return false;
+    // Пустой subtype или "*" означает "любой подтип этого типа".
+    if (!ruleSubtype || ruleSubtype === "*") return true;
+    return ruleSubtype === itemSubtype;
+  });
+}
+
+export function getSkillIdsForItem(item) {
+  if (!isEquipItem(item)) return [];
+  return Object.values(SKILL_DEFS)
+    .filter((skillDef) => isSkillCompatibleWithItem(skillDef, item))
+    .map((skillDef) => skillDef.id);
+}
+
+export function rollSkillIdsForItem(item, rng = Math.random) {
+  const candidates = getSkillIdsForItem(item);
   if (candidates.length <= 2) return candidates;
   return pickNRandomUnique(candidates, 2, rng);
 }
 
-export function createWeaponInstanceDataForItem(item, rng = Math.random) {
-  if (!item || item.type !== "weapon") return null;
-  const weaponSkillIds = rollWeaponSkillIdsForItem(item, rng);
-  const weaponSkillLevels = {};
-  for (const skillId of weaponSkillIds) {
-    weaponSkillLevels[skillId] = rollWeaponSkillLevelForItem(item, rng);
+export function createSkillInstanceDataForItem(item, rng = Math.random) {
+  if (!isEquipItem(item)) return null;
+  const skillIds = rollSkillIdsForItem(item, rng);
+  const skillLevels = {};
+  for (const skillId of skillIds) {
+    skillLevels[skillId] = rollSkillLevelForItem(item, rng);
   }
   return {
-    weaponSkillIds,
-    weaponSkillLevels,
-    weaponSkillCooldowns: {},
+    skillIds,
+    skillLevels,
+    skillCooldowns: {},
   };
 }
 
-export function normalizeWeaponInstanceData(item, instanceData, rng = Math.random) {
-  if (!item || item.type !== "weapon") return null;
+export function normalizeSkillInstanceData(item, instanceData, rng = Math.random) {
+  if (!isEquipItem(item)) return null;
   const base = instanceData && typeof instanceData === "object" ? instanceData : {};
-  const rolledIds = rollWeaponSkillIdsForItem(item, rng);
-  const existingIds = Array.isArray(base.weaponSkillIds)
-    ? base.weaponSkillIds.filter((id) => WEAPON_SKILL_DEFS[id] && rolledIds.includes(id))
+  const rolledIds = rollSkillIdsForItem(item, rng);
+  const existingIds = Array.isArray(base.skillIds)
+    ? base.skillIds.filter((id) => SKILL_DEFS[id] && rolledIds.includes(id))
     : [];
-  const weaponSkillIds = existingIds.length > 0 ? existingIds.slice(0, 2) : rolledIds;
-  const weaponSkillCooldowns = {};
-  const sourceCooldowns = base.weaponSkillCooldowns && typeof base.weaponSkillCooldowns === "object"
-    ? base.weaponSkillCooldowns
+  const skillIds = existingIds.length > 0 ? existingIds.slice(0, 2) : rolledIds;
+  const skillCooldowns = {};
+  const sourceCooldowns = base.skillCooldowns && typeof base.skillCooldowns === "object"
+    ? base.skillCooldowns
     : {};
-  const sourceLevels = base.weaponSkillLevels && typeof base.weaponSkillLevels === "object"
-    ? base.weaponSkillLevels
+  const sourceLevels = base.skillLevels && typeof base.skillLevels === "object"
+    ? base.skillLevels
     : {};
-  const weaponSkillLevels = {};
-  for (const skillId of weaponSkillIds) {
+  const skillLevels = {};
+  for (const skillId of skillIds) {
     const value = Number(sourceCooldowns[skillId] || 0);
-    weaponSkillCooldowns[skillId] = Math.max(0, Math.floor(value));
+    skillCooldowns[skillId] = Math.max(0, Math.floor(value));
     const sourceLevel = Number(sourceLevels[skillId] || 0);
-    const maxLevel = getMaxSkillLevelForWeapon(item);
+    const maxLevel = getMaxSkillLevelForEquip(item);
     if (sourceLevel >= 1 && sourceLevel <= maxLevel) {
-      weaponSkillLevels[skillId] = Math.floor(sourceLevel);
+      skillLevels[skillId] = Math.floor(sourceLevel);
     } else {
-      weaponSkillLevels[skillId] = rollWeaponSkillLevelForItem(item, rng);
+      skillLevels[skillId] = rollSkillLevelForItem(item, rng);
     }
   }
-  return { weaponSkillIds, weaponSkillLevels, weaponSkillCooldowns };
+  return { skillIds, skillLevels, skillCooldowns };
 }
 
-export function getWeaponSkillsForEquippedWeapon(item, instanceData) {
-  if (!item || item.type !== "weapon" || !instanceData) return [];
-  const normalized = normalizeWeaponInstanceData(item, instanceData);
-  return normalized.weaponSkillIds
+export function getSkillsForEquippedItem(item, instanceData) {
+  if (!isEquipItem(item) || !instanceData) return [];
+  const normalized = normalizeSkillInstanceData(item, instanceData);
+  return normalized.skillIds
     .map((skillId) => {
-      const def = getWeaponSkillById(skillId);
+      const def = getSkillById(skillId);
       if (!def) return null;
       return {
         ...def,
-        skillKind: "weapon",
-        level: Math.max(1, Number(normalized.weaponSkillLevels?.[skillId] || 1)),
-        cooldownLeft: Math.max(0, Number(normalized.weaponSkillCooldowns?.[skillId] || 0)),
+        level: Math.max(1, Number(normalized.skillLevels?.[skillId] || 1)),
+        cooldownLeft: Math.max(0, Number(normalized.skillCooldowns?.[skillId] || 0)),
       };
     })
     .filter(Boolean);
 }
 
-export const WEAPON_SKILLS_APPLY_BY_ID = {
-  weapon_staff_life_drain: {
+export const SKILLS_APPLY_BY_ID = {
+  mystic_ritual: {
     getTargets: (run, playerSheet) => {
       const cells = [{ x: run.player.x, y: run.player.y }];
       cells.push(...getVisibleEnemyTargetCells(run));
@@ -208,7 +228,7 @@ export const WEAPON_SKILLS_APPLY_BY_ID = {
       };
     },
     getEffects: (run, playerSheet, skill, instanceData, targetX, targetY) => {
-      const lifeDrain = getLifeDrainParams(instanceData?.weaponSkillLevels?.[skill.id] || 1, playerSheet);
+      const lifeDrain = getLifeDrainParams(instanceData?.skillLevels?.[skill.id] || 1, playerSheet);
       const manaRestore = getLifeDrainManaRestore(playerSheet, lifeDrain.manaPercent);
       
       let targetDamage = 0;
@@ -229,7 +249,7 @@ export const WEAPON_SKILLS_APPLY_BY_ID = {
       };
     },
     apply: (run, playerSheet, skill, instanceData, targetX, targetY) => {
-      const effects = WEAPON_SKILLS_APPLY_BY_ID[skill.id].getEffects(run, playerSheet, skill, instanceData, targetX, targetY);
+      const effects = SKILLS_APPLY_BY_ID[skill.id].getEffects(run, playerSheet, skill, instanceData, targetX, targetY);
       const damage = effects.targetDamage || 0;
       const restoredMana = effects.playerManaRestore || 0;
       let log = "";
@@ -274,7 +294,7 @@ export const WEAPON_SKILLS_APPLY_BY_ID = {
       return { ok: true, log };
     }
   },
-  weapon_staff_magic_slap: {
+  magic_slap: {
     getTargets: (run, playerSheet) => {
       return getVisibleEnemyTargetCells(run);
     },
@@ -289,7 +309,7 @@ export const WEAPON_SKILLS_APPLY_BY_ID = {
       };
     },
     getEffects: (run, playerSheet, skill, instanceData, targetX, targetY) => {
-      const damage = getMagicSlapDamage(instanceData?.weaponSkillLevels?.[skill.id] || 1, playerSheet);
+      const damage = getMagicSlapDamage(instanceData?.skillLevels?.[skill.id] || 1, playerSheet);
       return { targetDamage: damage };
     },
     apply: (run, playerSheet, skill, instanceData, targetX, targetY) => {
@@ -304,7 +324,7 @@ export const WEAPON_SKILLS_APPLY_BY_ID = {
       }
       playerSheet.mana -= actualManaCost;
 
-      const effects = WEAPON_SKILLS_APPLY_BY_ID[skill.id].getEffects(run, playerSheet, skill, instanceData, targetX, targetY);
+      const effects = SKILLS_APPLY_BY_ID[skill.id].getEffects(run, playerSheet, skill, instanceData, targetX, targetY);
       const damage = effects.targetDamage || 0;
       
       const combatResult = applyDamageToEnemyAndResolveDefeat(run, playerSheet, enemy, damage);
@@ -329,46 +349,46 @@ export const WEAPON_SKILLS_APPLY_BY_ID = {
   }
 };
 
-export function getWeaponSkillTargetCells(run, playerSheet, skillId) {
+export function getSkillTargetCells(run, playerSheet, skillId) {
   if (!run || !playerSheet || !skillId) return [];
-  const resolver = WEAPON_SKILLS_APPLY_BY_ID[skillId];
+  const resolver = SKILLS_APPLY_BY_ID[skillId];
   if (resolver && resolver.getTargets) {
     return resolver.getTargets(run, playerSheet);
   }
   return [];
 }
 
-export function tickWeaponSkillCooldowns(instanceData) {
+export function tickSkillCooldowns(instanceData) {
   if (!instanceData || typeof instanceData !== "object") return instanceData;
-  const cooldowns = instanceData.weaponSkillCooldowns || {};
+  const cooldowns = instanceData.skillCooldowns || {};
   const next = {};
   for (const [skillId, turnsLeft] of Object.entries(cooldowns)) {
     next[skillId] = Math.max(0, Math.floor(Number(turnsLeft || 0)) - 1);
   }
   return {
     ...instanceData,
-    weaponSkillCooldowns: next,
+    skillCooldowns: next,
   };
 }
 
-export function buildWeaponSkillHoverData(skill, item, playerSheet) {
+export function buildSkillHoverData(skill, item, playerSheet) {
   if (!skill) return null;
-  const resolver = WEAPON_SKILLS_APPLY_BY_ID[skill.id];
+  const resolver = SKILLS_APPLY_BY_ID[skill.id];
   if (resolver && resolver.getHoverData) {
     return resolver.getHoverData(skill, item, playerSheet);
   }
   return null;
 }
 
-export function useWeaponSkillAtCell(run, playerSheet, item, instanceData, skillId, targetX, targetY) {
+export function useSkillAtCell(run, playerSheet, item, instanceData, skillId, targetX, targetY) {
   if (!run || !playerSheet || !item || !instanceData || !skillId) {
     return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: "" };
   }
-  const skill = getWeaponSkillById(skillId);
+  const skill = getSkillById(skillId);
   if (!skill) {
-    return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: "Неизвестный оружейный скилл." };
+    return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: "Неизвестный скилл." };
   }
-  const cooldownLeft = Math.max(0, Number(instanceData.weaponSkillCooldowns?.[skillId] || 0));
+  const cooldownLeft = Math.max(0, Number(instanceData.skillCooldowns?.[skillId] || 0));
   if (cooldownLeft > 0) {
     return {
       run,
@@ -379,13 +399,13 @@ export function useWeaponSkillAtCell(run, playerSheet, item, instanceData, skill
       log: `${skill.name}: перезарядка ${cooldownLeft} х.`,
     };
   }
-  const targetCells = getWeaponSkillTargetCells(run, playerSheet, skillId);
+  const targetCells = getSkillTargetCells(run, playerSheet, skillId);
   const isValidTarget = targetCells.some((cell) => cell.x === targetX && cell.y === targetY);
   if (!isValidTarget) {
     return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: "Неверная клетка для скилла." };
   }
 
-  const resolver = WEAPON_SKILLS_APPLY_BY_ID[skillId];
+  const resolver = SKILLS_APPLY_BY_ID[skillId];
   if (!resolver || !resolver.apply) {
     return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: "Скилл пока не поддержан." };
   }
@@ -397,12 +417,12 @@ export function useWeaponSkillAtCell(run, playerSheet, item, instanceData, skill
   }
 
   const nextCooldowns = {
-    ...(instanceData.weaponSkillCooldowns || {}),
+    ...(instanceData.skillCooldowns || {}),
     [skillId]: Math.max(0, Math.floor(skill.cooldownTurns || 0)),
   };
   const nextInstanceData = {
     ...instanceData,
-    weaponSkillCooldowns: nextCooldowns,
+    skillCooldowns: nextCooldowns,
   };
   
   run.lastLog = result.log;
@@ -416,20 +436,20 @@ export function useWeaponSkillAtCell(run, playerSheet, item, instanceData, skill
   };
 }
 
-export function getWeaponSkillPreviewAtCell(run, playerSheet, item, instanceData, skillId, targetX, targetY) {
+export function getSkillPreviewAtCell(run, playerSheet, item, instanceData, skillId, targetX, targetY) {
   if (!run || !playerSheet || !item || !instanceData || !skillId) {
     return null;
   }
-  const skill = getWeaponSkillById(skillId);
+  const skill = getSkillById(skillId);
   if (!skill) return null;
 
-  const targetCells = getWeaponSkillTargetCells(run, playerSheet, skillId);
+  const targetCells = getSkillTargetCells(run, playerSheet, skillId);
   const isValidTarget = targetCells.some((cell) => cell.x === targetX && cell.y === targetY);
   if (!isValidTarget) {
     return null;
   }
   
-  const resolver = WEAPON_SKILLS_APPLY_BY_ID[skillId];
+  const resolver = SKILLS_APPLY_BY_ID[skillId];
   if (resolver && resolver.getEffects) {
     const effects = resolver.getEffects(run, playerSheet, skill, instanceData, targetX, targetY);
     if (!effects) return null;
@@ -457,8 +477,8 @@ export function getWeaponSkillPreviewAtCell(run, playerSheet, item, instanceData
   return null;
 }
 
-function rollWeaponSkillLevelForItem(item, rng = Math.random) {
-  const maxLevel = Math.max(1, getMaxSkillLevelForWeapon(item));
+function rollSkillLevelForItem(item, rng = Math.random) {
+  const maxLevel = Math.max(1, getMaxSkillLevelForEquip(item));
   const level = 1 + Math.floor(Math.max(0, Math.min(0.999999, rng())) * maxLevel);
   return Math.max(1, Math.min(maxLevel, level));
 }
