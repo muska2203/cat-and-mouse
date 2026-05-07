@@ -1,6 +1,6 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.11-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.11-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.11-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.4.12-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.12-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.12-pre-alpha";
 
 export function processTurnEffects(run, playerSheet) {
   const fx = ensureRunFxState(run);
@@ -43,9 +43,9 @@ export function processTurnEffects(run, playerSheet) {
         startMs: null,
       });
     } else if (effect.type === "burning_player") {
-      const burnPercent = Math.max(0, Number(effect.burnPercent || 0.03));
+      const burnPercent = Math.max(0, Number(effect.burnPercent || 0.1));
       const hpMax = floorHpMax(playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1);
-      const burnDamage = Math.max(1, floorHp(hpMax * burnPercent));
+      const burnDamage = Math.max(2, floorHp(hpMax * burnPercent));
       const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
       const nextHp = floorHp(hpNow - burnDamage);
       syncPlayerHp(playerSheet, nextHp);

@@ -39,3 +39,6 @@ alwaysApply: true
 - IMPORTANT: version update before commit/push and devlog update are mandatory and must never be skipped.
 - This must sync version in `src/app-config.js`, `index.html`, and `?v=` suffixes in `src/*` imports.
 - After version bump, prepend a new user-visible entry to `src/devlog.js` for that version (mandatory; do not skip).
+- Devlog entry style: each version entry must contain at least 3 meaningful, player-facing, abstract changes (avoid low-level technical noise).
+  - Good examples: "Переработка баланса мечей.", "Доработка UI в части отображения инвентаря.", "Исправлены баги: ...".
+- Devlog size policy: `src/devlog.js` must contain at most 10 latest versions; when adding a new one, remove entries older than top 10.

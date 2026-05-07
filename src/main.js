@@ -1,4 +1,4 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.11-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.12-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
@@ -10,38 +10,38 @@ import {
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.4.11-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.11-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.11-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.11-pre-alpha";
-import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.11-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.11-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.11-pre-alpha";
-import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.4.11-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.11-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.11-pre-alpha";
+} from "./loadout.js?v=0.4.12-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.12-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.12-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.12-pre-alpha";
+import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.12-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.12-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.12-pre-alpha";
+import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.4.12-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.12-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.12-pre-alpha";
 import {
   advanceRunAnimationState,
   isBlockingMotionActive,
   normalizeFinishedAnimationsForRun,
-} from "./runtime/motionTiming.js?v=0.4.11-pre-alpha";
-import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.11-pre-alpha";
-import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.11-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.11-pre-alpha";
+} from "./runtime/motionTiming.js?v=0.4.12-pre-alpha";
+import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.12-pre-alpha";
+import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.12-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.12-pre-alpha";
 import {
   isEnvironmentTurnStepReady,
   isLevelTransitionReady,
   isPlayerInputBlockedByMotion,
-} from "./runtime/runFlow.js?v=0.4.11-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.4.11-pre-alpha";
-import { randomInt } from "./game/rng.js?v=0.4.11-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.4.11-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.4.11-pre-alpha";
-import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.11-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.11-pre-alpha";
-import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.11-pre-alpha";
-import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.11-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.4.11-pre-alpha";
+} from "./runtime/runFlow.js?v=0.4.12-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.4.12-pre-alpha";
+import { randomInt } from "./game/rng.js?v=0.4.12-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.4.12-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.4.12-pre-alpha";
+import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.12-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.12-pre-alpha";
+import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.12-pre-alpha";
+import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.12-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.4.12-pre-alpha";
 import {
   getSkillsForEquippedItem,
   getSkillById,
@@ -52,21 +52,21 @@ import {
   getSkillTargetingProfile,
   getSkillAffectedCellsForRoot,
   getSkillPreviewForPreparedSelections,
-} from "./skillsRuntime.js?v=0.4.11-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.4.11-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.11-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.11-pre-alpha";
-import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.11-pre-alpha";
-import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.11-pre-alpha";
-import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.11-pre-alpha";
-import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.11-pre-alpha";
-import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.11-pre-alpha";
-import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.11-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.11-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.11-pre-alpha";
-import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.11-pre-alpha";
+} from "./skillsRuntime.js?v=0.4.12-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.4.12-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.12-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.12-pre-alpha";
+import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.12-pre-alpha";
+import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.12-pre-alpha";
+import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.12-pre-alpha";
+import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.12-pre-alpha";
+import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.12-pre-alpha";
+import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.12-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.12-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.12-pre-alpha";
+import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.12-pre-alpha";
 
-import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.11-pre-alpha";
+import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.12-pre-alpha";
 
 const root = document.getElementById("app");
 
@@ -272,7 +272,7 @@ function formatSkillsDetailSection(item, instanceEntry) {
   return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы предмета</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
 }
 
-import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.4.11-pre-alpha";
+import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.4.12-pre-alpha";
 
 function formatItemDetailDescriptionSection(item, stackCount) {
   const id = STRINGS_RU.itemDetail;
@@ -1127,14 +1127,31 @@ function renderGameScreen() {
 
   const equipablesById = new Map();
   const consumablesById = new Map();
+  const itemInstances = sheet?.itemInstances || {};
+  function getEquipableStackKey(item, bagEntry) {
+    if (!item || !bagEntry?.instanceId) {
+      return item?.id || "";
+    }
+    const instanceEntry = itemInstances?.[bagEntry.instanceId] || null;
+    const skillData = instanceEntry?.skill || null;
+    const skillIds = Array.isArray(skillData?.skillIds) ? [...skillData.skillIds].sort() : [];
+    const skillLevels = (skillData?.skillLevels && typeof skillData.skillLevels === "object")
+      ? skillData.skillLevels
+      : {};
+    const skillSignature = skillIds
+      .map((skillId) => `${skillId}:${Math.max(1, Number(skillLevels[skillId] || 1))}`)
+      .join("|");
+    return `${item.id}::${skillSignature || "no-skill-signature"}`;
+  }
   for (const entry of bag) {
     const item = getItemById(entry.itemId);
     if (!item) continue;
     if (["weapon", "armor", "amulet"].includes(item.type)) {
-      const cur = equipablesById.get(item.id) || { item, count: 0, entries: [] };
+      const stackKey = getEquipableStackKey(item, entry);
+      const cur = equipablesById.get(stackKey) || { item, count: 0, entries: [] };
       cur.count += 1;
       cur.entries.push(entry);
-      equipablesById.set(item.id, cur);
+      equipablesById.set(stackKey, cur);
       continue;
     }
     if (item.type === "consumable") {

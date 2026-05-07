@@ -31,7 +31,7 @@ export function buildActiveEffectsViewModel(run, sheet) {
     effects.push({
       icon: "🔥",
       name: "Горение",
-      desc: "Каждый ход теряет 3% от МАКС HP (минимум 1).",
+      desc: "Каждый ход теряет 10% от МАКС HP (минимум 2).",
       turnsLeft: Number(burning.turnsLeft),
       turns: toTurnsLabel(burning.turnsLeft),
     });

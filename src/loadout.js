@@ -1,5 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.11-pre-alpha";
-import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.4.11-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.12-pre-alpha";
+import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.4.12-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
@@ -448,8 +448,10 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, 
   const baseStats = { ...playerSheet.baseStats };
   const previousHp = floorHp(playerSheet?.stats?.HP ?? baseStats.HP ?? 0);
   const previousHpMax = floorHpMax(playerSheet?.stats?.HP_MAX ?? baseStats.HP_MAX ?? 1);
-  const previousMana = roundStat(playerSheet?.mana ?? playerSheet?.manaMax ?? 0);
-  const previousManaMax = roundStat(playerSheet?.manaMax ?? 1);
+  const previousHpMissing = Math.max(0, previousHpMax - previousHp);
+  const previousMana = Math.max(0, Math.round(Number(playerSheet?.mana ?? playerSheet?.manaMax ?? 0)));
+  const previousManaMax = Math.max(1, Math.round(Number(playerSheet?.manaMax ?? 1)));
+  const previousManaMissing = Math.max(0, previousManaMax - previousMana);
   const equippedIds = Object.values(equippedByType).filter(Boolean);
   const equipped = equippedIds.map((id) => getItemById(id)).filter(Boolean);
 
@@ -475,17 +477,16 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, 
   baseStats.HP_MAX = floorHpMax(100 + strTotal * 8 + bonusHpMaxFromEffects);
 
   const hpCap = baseStats.HP_MAX;
-  const previousHpRatio = previousHpMax > 0 ? previousHp / previousHpMax : 0;
-  const scaledHp = floorHp(previousHpRatio * hpCap);
-  baseStats.HP = floorHp(Math.min(scaledHp, hpCap));
+  // При смене экипировки сохраняем "дефицит HP", чтобы избежать накопительной
+  // потери из-за округления при повторных пересчётах туда-сюда.
+  baseStats.HP = floorHp(Math.max(0, Math.min(hpCap, hpCap - previousHpMissing)));
 
   const weaponItem = equipped.find((item) => item.type === "weapon") || null;
   const derived = buildDerivedStats(baseStats, weaponItem);
 
   const manaMax = roundStat(30 + intTotal * 6);
-  const previousManaRatio = previousManaMax > 0 ? previousMana / previousManaMax : 0;
-  const scaledMana = roundStat(previousManaRatio * manaMax);
-  const nextMana = roundStat(Math.min(scaledMana, manaMax));
+  const manaCap = Math.max(1, Math.round(Number(manaMax || 1)));
+  const nextMana = Math.max(0, Math.min(manaCap, manaCap - previousManaMissing));
   const normalizedEquippedInstances = buildEquippedInstanceMap(
     equippedByType,
     equippedInstanceByType || playerSheet.equippedInstanceByType || {},
@@ -502,8 +503,8 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, 
     ...playerSheet,
     stats: baseStats,
     derived,
-    manaMax,
-    mana: Math.max(0, nextMana),
+    manaMax: manaCap,
+    mana: nextMana,
     loadout: equipped,
     equippedByType: buildEquippedMap(equipped),
     equippedInstanceByType: normalizedEquippedInstances,

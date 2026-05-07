@@ -1,4 +1,4 @@
-import { getSkillTargetCells, getSkillsForEquippedItem } from "../skillsRuntime.js?v=0.4.11-pre-alpha";
+import { getSkillTargetCells, getSkillsForEquippedItem } from "../skillsRuntime.js?v=0.4.12-pre-alpha";
 
 export function getSkillTargetsByKind(run, playerSheet, skillId, getItemContext = null) {
   const context = typeof getItemContext === "function" ? getItemContext(playerSheet, skillId) : null;

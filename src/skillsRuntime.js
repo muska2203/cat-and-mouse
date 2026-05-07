@@ -1,10 +1,10 @@
-import { floorHp, floorHpMax } from "./rules.js?v=0.4.11-pre-alpha";
-import { syncPlayerHp } from "./game/syncHp.js?v=0.4.11-pre-alpha";
-import { getEnemyMaxHp as getEnemyMaxHpFromDefs } from "./game/enemyDefs.js?v=0.4.11-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.11-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.11-pre-alpha";
-import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.11-pre-alpha";
-import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.4.11-pre-alpha";
+import { floorHp, floorHpMax } from "./rules.js?v=0.4.12-pre-alpha";
+import { syncPlayerHp } from "./game/syncHp.js?v=0.4.12-pre-alpha";
+import { getEnemyMaxHp as getEnemyMaxHpFromDefs } from "./game/enemyDefs.js?v=0.4.12-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.12-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.12-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.12-pre-alpha";
+import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.4.12-pre-alpha";
 
 const SKILL_DEFS = {
   fireball: {
@@ -62,7 +62,7 @@ const SKILL_TEMPLATE_DEFS = {
 };
 
 const BURNING_TURNS = 3;
-const BURNING_PERCENT = 0.03;
+const BURNING_PERCENT = 0.10;
 
 function getLifeDrainParams(skillLevel, playerSheet) {
   const normalizedLevel = Math.max(1, Number(skillLevel || 1));
@@ -84,7 +84,7 @@ function getLifeDrainParams(skillLevel, playerSheet) {
 function getFireballDamage(skillLevel, playerSheet, role = "epicenter") {
   const level = Math.max(1, Number(skillLevel || 1));
   const intStat = playerSheet?.stats?.INT ?? playerSheet?.baseStats?.INT ?? 0;
-  const base = 18 + (intStat * 2.2);
+  const base = 9 + (intStat * 1.1);
   const levelMultiplier = 1 + ((level - 1) * 0.25);
   const centerDamage = Math.max(1, Math.floor(base * levelMultiplier));
   if (role === "splash") {
@@ -440,7 +440,7 @@ export const SKILLS_APPLY_BY_ID = {
       const centerDamage = getFireballDamage(skill?.level || 1, playerSheet, "epicenter");
       const splashDamage = getFireballDamage(skill?.level || 1, playerSheet, "splash");
       return {
-        formula: `Урон в центре = (18 + ИНТ x 2.2) x (1 + 25% за уровень после первого). По соседним 8 клеткам: 45% урона центра. Горение: 3 хода, каждый ход снимает 3% МАКС HP (минимум 1).`,
+        formula: `Урон в центре = (9 + ИНТ x 1.1) x (1 + 25% за уровень после первого). По соседним 8 клеткам: 45% урона центра. Горение: 3 хода, каждый ход снимает 10% МАКС HP (минимум 2).`,
         targets: "Любая видимая клетка в пределах 6 клеток. Затрагивается квадрат 3x3.",
         skillLevel: skill?.level || 1,
         damageCenter: centerDamage,
@@ -668,7 +668,7 @@ function applyAggregatedEffects(run, playerSheet, skill, aggregated, options = {
     });
   }
   if (aggregated.byCell.some((target) => (target.statusEffects || []).some((effect) => effect?.type === "burning"))) {
-    logs.push(`Горение: ${Math.round(BURNING_PERCENT * 100)}% МАКС HP на ${BURNING_TURNS} хода.`);
+    logs.push(`Горение: ${Math.round(BURNING_PERCENT * 100)}% МАКС HP на ${BURNING_TURNS} хода (минимум 2).`);
   }
   const restoredMana = roundManaValue(aggregated.playerManaRestore || 0);
   if (restoredMana > 0) {
