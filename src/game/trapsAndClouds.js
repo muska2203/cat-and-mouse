@@ -1,14 +1,16 @@
-import { floorHp } from "../rules.js?v=0.4.10-pre-alpha";
-import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.10-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.10-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.10-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.10-pre-alpha";
+import { floorHp } from "../rules.js?v=0.4.11-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.11-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.11-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.11-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.11-pre-alpha";
 
 export function ensureEnemyStatus(enemy) {
-  if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0 };
+  if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0, burnTurns: 0, burnPercent: 0 };
   if (!enemy.data.status) {
-    enemy.data.status = { stunTurns: 0, poisonTurns: 0, poisonDamage: 0 };
+    enemy.data.status = { stunTurns: 0, poisonTurns: 0, poisonDamage: 0, burnTurns: 0, burnPercent: 0 };
   }
+  if (!Number.isFinite(enemy.data.status.burnTurns)) enemy.data.status.burnTurns = 0;
+  if (!Number.isFinite(enemy.data.status.burnPercent)) enemy.data.status.burnPercent = 0;
   return enemy.data.status;
 }
 

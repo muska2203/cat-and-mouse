@@ -1,12 +1,13 @@
 /**
  * Единый источник текстов для расходников: тултипы и сообщения применения (consumables.js + items/consumableApply.js).
  */
-import { localizeStatText } from "../strings/ru.js?v=0.4.10-pre-alpha";
+import { localizeStatText } from "../strings/ru.js?v=0.4.11-pre-alpha";
+import { floorHp } from "../rules.js?v=0.4.11-pre-alpha";
 
 const HOVER_BY_ID = {
-  common_hp_recover_10: "лечит 12 HP (не выше HP МАКС).",
-  common_mana_recover_10: "восстанавливает 12 маны (не выше максимума).",
-  common_hp_mana_recover_6: "лечит 8 HP и восстанавливает 8 маны.",
+  common_hp_recover_10: "лечит 50% HP МАКС.",
+  common_mana_recover_10: "восстанавливает 50% маны МАКС.",
+  common_hp_mana_recover_6: "лечит 30% HP МАКС и восстанавливает 30% маны МАКС.",
   common_next_hit_mult_1_5: "следующая атака персонажа получает множитель x1.5.",
   common_trap_damage_8_stun_1:
     "установка в соседнюю свободную клетку. При срабатывании наносит 8 урона и оглушает на 1 ход.",
@@ -51,7 +52,7 @@ export function getConsumableApplyLog(item, kind, ctx = {}) {
     return `${name} применен.`;
   }
   if (kind === "heal_hp_12") {
-    return `${name}: восстановлено 12 HP.`;
+    return `${name}: восстановлено ${ctx.restoredHp ?? 0} HP.`;
   }
   if (kind === "heal_mana") {
     return `${name}: восстановлено ${ctx.restored} маны.`;
@@ -76,4 +77,59 @@ export function appendManaToLog(log, deltaMana) {
     return `${log} Маны: +${deltaMana}.`;
   }
   return log;
+}
+
+function roundMana(value) {
+  return Math.max(0, Math.round(Number(value || 0)));
+}
+
+function calculateRestoreValue(currentValue, maxValue, percent, roundValue) {
+  const normalizedCurrent = Math.max(0, roundValue(currentValue));
+  const normalizedMax = Math.max(1, roundValue(maxValue));
+  const plannedRestore = Math.max(0, roundValue(normalizedMax * percent));
+  const nextValue = Math.min(normalizedMax, normalizedCurrent + plannedRestore);
+  const restored = Math.max(0, roundValue(nextValue - normalizedCurrent));
+  return {
+    current: normalizedCurrent,
+    max: normalizedMax,
+    plannedRestore,
+    restored,
+    cappedByMax: restored < plannedRestore,
+  };
+}
+
+export function getConsumableRecoveryPreview(item, playerSheet) {
+  if (!item?.isConsumable || item?.isTrapItem || !playerSheet) {
+    return null;
+  }
+  const hpCurrent = playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0;
+  const hpMax = playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1;
+  const manaCurrent = playerSheet.mana ?? 0;
+  const manaMax = playerSheet.manaMax ?? 0;
+
+  if (item.id === "common_hp_recover_10") {
+    return {
+      hpPercent: 0.5,
+      hp: calculateRestoreValue(hpCurrent, hpMax, 0.5, floorHp),
+      manaPercent: 0,
+      mana: null,
+    };
+  }
+  if (item.id === "common_mana_recover_10") {
+    return {
+      hpPercent: 0,
+      hp: null,
+      manaPercent: 0.5,
+      mana: calculateRestoreValue(manaCurrent, manaMax, 0.5, roundMana),
+    };
+  }
+  if (item.id === "common_hp_mana_recover_6") {
+    return {
+      hpPercent: 0.3,
+      hp: calculateRestoreValue(hpCurrent, hpMax, 0.3, floorHp),
+      manaPercent: 0.3,
+      mana: calculateRestoreValue(manaCurrent, manaMax, 0.3, roundMana),
+    };
+  }
+  return null;
 }

@@ -370,6 +370,10 @@
   margin-left: auto;
 }
 
+.skill-detail-badges--item {
+  margin-bottom: 8px;
+}
+
 .item-detail-section + .item-detail-section {
   margin-top: 8px;
 }

@@ -1,5 +1,5 @@
-import { buildSkillHoverData } from "../skillsRuntime.js?v=0.4.10-pre-alpha";
-import { getSkillManaCost } from "../skills.js?v=0.4.10-pre-alpha";
+import { buildSkillHoverData } from "../skillsRuntime.js?v=0.4.11-pre-alpha";
+import { getSkillManaCost } from "../skillsRuntime.js?v=0.4.11-pre-alpha";
 
 function escapeHtml(str) {
   return String(str)
@@ -13,6 +13,7 @@ function escapeHtml(str) {
 export function buildSkillDetailHtml(skill, skillState, options = {}) {
   if (!skill) return "";
   const manaCost = options.playerSheet ? getSkillManaCost(skill, options.playerSheet) : Math.max(0, Number(skill.manaCost || 0));
+  const chargesTotal = Math.max(1, Number(skill?.targeting?.charges || 1));
   const rawDescription = String(skill.description || "").trim();
   const description = rawDescription
     .replace(/^Выбери клетку персонажа\.\s*/i, "")
@@ -32,11 +33,20 @@ export function buildSkillDetailHtml(skill, skillState, options = {}) {
   if (hoverData?.damage) {
     badgesHtml += `<span class="cm-skill-choice-card__damage-badge">Урон: ${hoverData.damage}</span>`;
   }
+  if (hoverData?.damageCenter) {
+    badgesHtml += `<span class="cm-skill-choice-card__damage-badge">Центр: ${hoverData.damageCenter}</span>`;
+  }
+  if (hoverData?.damageSplash) {
+    badgesHtml += `<span class="cm-skill-choice-card__damage-badge">Край: ${hoverData.damageSplash}</span>`;
+  }
   if (hoverData?.damagePercent) {
     badgesHtml += `<span class="cm-skill-choice-card__damage-badge">Урон: ${hoverData.damagePercent}% HP МАКС</span>`;
   }
   if (hoverData?.manaPercent) {
     badgesHtml += `<span class="cm-skill-choice-card__mana-badge">Мана: +${hoverData.manaPercent}% МАКС</span>`;
+  }
+  if (chargesTotal > 1) {
+    badgesHtml += `<span class="cm-skill-choice-card__mana-badge">Целей: ${chargesTotal}</span>`;
   }
   if (rawDescription.toLowerCase().includes("клетку персонажа")) {
     targets = "Своя клетка";

@@ -1,7 +1,11 @@
-import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.10-pre-alpha";
-import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.10-pre-alpha";
-import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.10-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.10-pre-alpha";
+import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.11-pre-alpha";
+import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.11-pre-alpha";
+import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.11-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.11-pre-alpha";
+
+function roundMana(value) {
+  return Math.max(0, Math.round(Number(value || 0)));
+}
 
 export function useConsumable(run, playerSheet, item) {
   if (!run || !playerSheet || !item?.isConsumable) {
@@ -18,13 +22,14 @@ export function useConsumable(run, playerSheet, item) {
     return { run, playerSheet, log, actionConsumed: true };
   }
 
-  const currentMana = playerSheet.mana ?? 0;
-  const currentManaMax = playerSheet.manaMax ?? 0;
+  const currentMana = roundMana(playerSheet.mana ?? 0);
+  const currentManaMax = roundMana(playerSheet.manaMax ?? 0);
+  playerSheet.mana = currentMana;
   const { log: rawLog, restoredMana = 0 } = apply({ run, playerSheet, item });
   let log = rawLog;
   if (restoredMana > 0) {
-    const nextMana = Math.min(currentManaMax, currentMana + restoredMana);
-    const deltaMana = nextMana - currentMana;
+    const nextMana = roundMana(Math.min(currentManaMax, currentMana + roundMana(restoredMana)));
+    const deltaMana = roundMana(nextMana - currentMana);
     playerSheet.mana = nextMana;
     log = appendManaToLog(log, deltaMana);
   }

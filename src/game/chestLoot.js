@@ -1,5 +1,5 @@
-import { getLootPool } from "../loadout.js?v=0.4.10-pre-alpha";
-import { randomFloat, randomInt, randomPick, weightedPick } from "./rng.js?v=0.4.10-pre-alpha";
+import { getLootPool } from "../loadout.js?v=0.4.11-pre-alpha";
+import { randomFloat, randomInt, randomPick, weightedPick } from "./rng.js?v=0.4.11-pre-alpha";
 
 function getChestSpawnWeights(level) {
   const levelShift = Math.max(0, level - 1);

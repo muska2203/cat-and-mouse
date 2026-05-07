@@ -1,6 +1,6 @@
-import { roundStat } from "./rules.js?v=0.4.10-pre-alpha";
-import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.4.10-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.10-pre-alpha";
+import { roundStat } from "./rules.js?v=0.4.11-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.4.11-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.11-pre-alpha";
 
 export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1, overlay = null) {
   if (!canvas || !run) {
@@ -80,6 +80,9 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
 
     for (const enemy of enemies) {
       const enemyVisual = getObjectVisualPosition(run, enemy, nowMs);
+      if (isEnemyBurning(enemy)) {
+        drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, enemyVisual.x, enemyVisual.y, nowMs);
+      }
       const cx = cameraOffsetX + enemyVisual.x * tile + tile / 2;
       const cy = cameraOffsetY + enemyVisual.y * tile + tile / 2;
 
@@ -117,6 +120,39 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
       ctx.strokeRect(px + 2, py + 2, tile - 4, tile - 4);
     }
   }
+  const skillTargetAffectedCells = Array.isArray(overlay?.skillTargetAffectedCells) ? overlay.skillTargetAffectedCells : [];
+  if (skillTargetAffectedCells.length > 0) {
+    for (const cell of skillTargetAffectedCells) {
+      if (!run.discovered?.[cell.y]?.[cell.x]) continue;
+      const px = Math.floor(cameraOffsetX + cell.x * tile);
+      const py = Math.floor(cameraOffsetY + cell.y * tile);
+      const isEpicenter = cell.role === "epicenter";
+      ctx.fillStyle = isEpicenter ? "rgba(251, 113, 133, 0.28)" : "rgba(253, 186, 116, 0.2)";
+      ctx.fillRect(px + 3, py + 3, tile - 6, tile - 6);
+      ctx.strokeStyle = isEpicenter ? "rgba(244, 63, 94, 0.95)" : "rgba(251, 146, 60, 0.8)";
+      ctx.lineWidth = isEpicenter ? 2.5 : 1.5;
+      ctx.strokeRect(px + 3, py + 3, tile - 6, tile - 6);
+    }
+  }
+  const targetingLines = Array.isArray(overlay?.targetingLines) ? overlay.targetingLines : [];
+  if (targetingLines.length > 0) {
+    ctx.save();
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 2;
+    const fromX = cameraOffsetX + run.player.x * tile + tile / 2;
+    const fromY = cameraOffsetY + run.player.y * tile + tile / 2;
+    for (const line of targetingLines) {
+      if (!run.discovered?.[line.y]?.[line.x]) continue;
+      const toX = cameraOffsetX + line.x * tile + tile / 2;
+      const toY = cameraOffsetY + line.y * tile + tile / 2;
+      ctx.beginPath();
+      ctx.strokeStyle = line.color || "rgba(147, 197, 253, 0.85)";
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 
   if (run.discovered?.[run.goal.y]?.[run.goal.x]) {
     ctx.textAlign = "center";
@@ -134,6 +170,9 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   const mouseScreenX = cameraOffsetX + playerVisual.x * tile + tile / 2;
   const mouseScreenY = cameraOffsetY + playerVisual.y * tile + tile / 2;
 
+  if (isPlayerBurning(run)) {
+    drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, playerVisual.x, playerVisual.y, nowMs);
+  }
   ctx.fillText(
     "🐭",
     mouseScreenX,
@@ -187,8 +226,71 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     }
   }
 
+  drawSkillCastMotion(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs);
+  const targetingCursorCell = overlay?.skillTargetingCursorCell || null;
+  const chargeBadgeValue = Number(overlay?.skillTargetingChargeBadge);
+  if (targetingCursorCell && Number.isFinite(chargeBadgeValue) && chargeBadgeValue > 0) {
+    const cx = cameraOffsetX + targetingCursorCell.x * tile + tile * 0.78;
+    const cy = cameraOffsetY + targetingCursorCell.y * tile + tile * 0.22;
+    const text = `${chargeBadgeValue}`;
+    const fontSize = Math.max(11, Math.floor(tile * 0.33));
+    ctx.font = `700 ${fontSize}px Arial`;
+    const textWidth = ctx.measureText(text).width;
+    const widthBadge = Math.max(18, Math.floor(textWidth + tile * 0.24));
+    const heightBadge = Math.max(16, Math.floor(fontSize * 1.15));
+    const bx = Math.floor(cx - widthBadge / 2);
+    const by = Math.floor(cy - heightBadge / 2);
+    ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+    ctx.fillRect(bx, by, widthBadge, heightBadge);
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.8)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, by, widthBadge, heightBadge);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillText(text, bx + widthBadge / 2, by + heightBadge / 2);
+  }
+
   drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs);
   drawLevelTransitionOverlay(ctx, run, width, height, nowMs);
+}
+
+function isPlayerBurning(run) {
+  const effects = Array.isArray(run?.overTimeEffects) ? run.overTimeEffects : [];
+  return effects.some((effect) => effect?.type === "burning_player" && Number(effect?.turnsLeft || 0) > 0);
+}
+
+function isEnemyBurning(enemy) {
+  return Number(enemy?.data?.status?.burnTurns || 0) > 0;
+}
+
+function drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, x, y, nowMs) {
+  const px = cameraOffsetX + x * tile;
+  const py = cameraOffsetY + y * tile;
+  const cx = px + tile / 2;
+  const cy = py + tile / 2;
+  const pulse = (Math.sin(nowMs * 0.012 + x * 0.9 + y * 0.7) + 1) / 2;
+  const alpha = 0.2 + pulse * 0.14;
+  const radius = tile * (0.34 + pulse * 0.08);
+
+  ctx.save();
+  ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + tile * 0.12, radius, radius * 0.62, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const sparks = 3;
+  for (let index = 0; index < sparks; index += 1) {
+    const phase = nowMs * 0.008 + index * 1.9 + x * 0.5 + y * 0.3;
+    const sx = cx + Math.sin(phase) * tile * 0.24;
+    const sy = cy + tile * 0.12 - Math.abs(Math.cos(phase * 1.2)) * tile * 0.28;
+    const sr = tile * (0.05 + ((Math.sin(phase * 1.6) + 1) / 2) * 0.025);
+    ctx.fillStyle = "rgba(251, 146, 60, 0.82)";
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, overlay = null) {
@@ -443,6 +545,7 @@ function drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) 
 
   for (const text of floatingTexts) {
     if (text.startMs == null) continue;
+    if (nowMs < text.startMs) continue;
     const t = (nowMs - text.startMs) / text.durationMs;
     if (t >= 1) {
       continue;
@@ -461,6 +564,178 @@ function drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) 
     ctx.textBaseline = "middle";
     ctx.fillText(text.value, baseX, y);
   }
+}
+
+function drawSkillCastMotion(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) {
+  const motion = run?.fx?.motion;
+  const segmentGroups = Array.isArray(motion?.segmentGroups) ? motion.segmentGroups : [];
+  if (!motion || motion.kind !== "skill_cast" || segmentGroups.length === 0) {
+    return;
+  }
+  const startMs = Number(motion.startMs ?? nowMs);
+  const elapsedMs = Math.max(0, nowMs - startMs);
+
+  for (const group of segmentGroups) {
+    const groupStart = Math.max(0, Number(group?.startOffsetMs || 0));
+    const groupElapsed = elapsedMs - groupStart;
+    if (groupElapsed < 0) continue;
+    const segments = Array.isArray(group?.segments) ? group.segments : [];
+    let segmentStart = 0;
+    for (const segment of segments) {
+      const durationMs = Math.max(1, Number(segment.durationMs || 0));
+      const segmentEnd = segmentStart + durationMs;
+      if (groupElapsed <= segmentEnd) {
+        const progress = Math.max(0, Math.min(1, (groupElapsed - segmentStart) / durationMs));
+        if (segment.kind === "projectile") {
+          drawSkillProjectileSegment(ctx, cameraOffsetX, cameraOffsetY, tile, segment, progress);
+        } else if (segment.kind === "impact") {
+          drawSkillImpactSegment(ctx, cameraOffsetX, cameraOffsetY, tile, segment, progress);
+        }
+        break;
+      }
+      segmentStart = segmentEnd;
+    }
+  }
+}
+
+function drawSkillProjectileSegment(ctx, cameraOffsetX, cameraOffsetY, tile, segment, progress) {
+  const from = segment.from || { x: 0, y: 0 };
+  const to = segment.to || from;
+  const x = Number(from.x) + (Number(to.x) - Number(from.x)) * progress;
+  const y = Number(from.y) + (Number(to.y) - Number(from.y)) * progress;
+  const cx = cameraOffsetX + x * tile + tile / 2;
+  const cy = cameraOffsetY + y * tile + tile / 2;
+
+  ctx.save();
+  if (segment.style === "fireball") {
+    const pulse = 0.75 + Math.sin(progress * Math.PI * 4) * 0.12;
+    const radius = tile * (0.2 * pulse);
+    ctx.fillStyle = "rgba(251, 146, 60, 0.92)";
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(254, 240, 138, 0.86)";
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.52, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "magic_hand") {
+    ctx.font = `${Math.max(8, Math.floor(tile * 0.17))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillText("✋", cx, cy);
+  }
+  ctx.restore();
+}
+
+function drawSkillImpactSegment(ctx, cameraOffsetX, cameraOffsetY, tile, segment, progress) {
+  const center = segment.center || { x: 0, y: 0 };
+  const cx = cameraOffsetX + Number(center.x) * tile + tile / 2;
+  const cy = cameraOffsetY + Number(center.y) * tile + tile / 2;
+  ctx.save();
+  if (segment.style === "fireball_blast_3x3") {
+    const alpha = 1 - progress;
+    const cells = Array.isArray(segment.affectedCells) ? segment.affectedCells : [];
+    for (const cell of cells) {
+      const px = cameraOffsetX + Number(cell.x) * tile;
+      const py = cameraOffsetY + Number(cell.y) * tile;
+      ctx.fillStyle = `rgba(251, 146, 60, ${0.38 * alpha})`;
+      ctx.fillRect(px + 1, py + 1, tile - 2, tile - 2);
+    }
+    const radius = tile * (0.5 + progress * 1.6);
+    ctx.fillStyle = `rgba(249, 115, 22, ${0.5 * alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(254, 240, 138, ${0.58 * alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "magic_slap_hit") {
+    // Размашистый удар: траектория гарантированно проходит через центр цели.
+    const p0x = cx - tile * 0.9;
+    const p0y = cy + tile * 0.45;
+    const p1x = cx;
+    const p1y = cy;
+    const p2x = cx + tile * 0.62;
+    const p2y = cy + tile * 0.06;
+    const t = Math.max(0, Math.min(1, progress));
+    let handX = p1x;
+    let handY = p1y;
+    if (t <= 0.5) {
+      const lt = t / 0.5;
+      const inv = 1 - lt;
+      const c1x = cx - tile * 0.18;
+      const c1y = cy - tile * 1.1;
+      handX = (inv * inv * p0x) + (2 * inv * lt * c1x) + (lt * lt * p1x);
+      handY = (inv * inv * p0y) + (2 * inv * lt * c1y) + (lt * lt * p1y);
+    } else {
+      const lt = (t - 0.5) / 0.5;
+      const inv = 1 - lt;
+      const c2x = cx + tile * 0.28;
+      const c2y = cy - tile * 0.24;
+      handX = (inv * inv * p1x) + (2 * inv * lt * c2x) + (lt * lt * p2x);
+      handY = (inv * inv * p1y) + (2 * inv * lt * c2y) + (lt * lt * p2y);
+    }
+
+    ctx.font = `${Math.max(8, Math.floor(tile * 0.17))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillText("✋", handX, handY);
+
+    // След дуги для читаемости траектории.
+    ctx.strokeStyle = `rgba(241, 245, 249, ${0.55 * (1 - progress)})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(p0x, p0y);
+    if (t <= 0.5) {
+      const c1x = cx - tile * 0.18;
+      const c1y = cy - tile * 1.1;
+      ctx.quadraticCurveTo(c1x, c1y, handX, handY);
+    } else {
+      const c1x = cx - tile * 0.18;
+      const c1y = cy - tile * 1.1;
+      const c2x = cx + tile * 0.28;
+      const c2y = cy - tile * 0.24;
+      ctx.quadraticCurveTo(c1x, c1y, p1x, p1y);
+      ctx.quadraticCurveTo(c2x, c2y, handX, handY);
+    }
+    ctx.stroke();
+
+    // Акцент попадания в конце взмаха.
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * (1 - progress)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - tile * 0.2, cy - tile * 0.2);
+    ctx.lineTo(cx + tile * 0.34, cy + tile * 0.12);
+    ctx.stroke();
+
+    // Короткий маркер центра цели в момент "контакта" (примерно середина удара).
+    const contactPhase = 1 - Math.min(1, Math.abs(progress - 0.5) / 0.12);
+    if (contactPhase > 0) {
+      const alpha = 0.65 * contactPhase;
+      const radius = tile * (0.08 + 0.08 * (1 - contactPhase));
+      ctx.strokeStyle = `rgba(226, 232, 240, ${alpha})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - radius * 0.9, cy);
+      ctx.lineTo(cx + radius * 0.9, cy);
+      ctx.moveTo(cx, cy - radius * 0.9);
+      ctx.lineTo(cx, cy + radius * 0.9);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 function getScreenShakeOffset(run, nowMs) {

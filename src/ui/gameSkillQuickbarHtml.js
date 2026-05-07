@@ -1,4 +1,4 @@
-import { getSkillManaCost } from "../skills.js?v=0.4.10-pre-alpha";
+import { getSkillManaCost } from "../skillsRuntime.js?v=0.4.11-pre-alpha";
 
 export function buildSkillsListHtml({ skills, sheet, esc }) {
   const skillsHtml = (skills || [])

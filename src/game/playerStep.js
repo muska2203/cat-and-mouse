@@ -1,18 +1,18 @@
-import { computeBasicMeleeDamage } from "../rules.js?v=0.4.10-pre-alpha";
+import { computeBasicMeleeDamage } from "../rules.js?v=0.4.11-pre-alpha";
 import {
   inBounds,
   isWall,
   isDiagonalCutBlocked,
-} from "../nav/pathfinding.js?v=0.4.10-pre-alpha";
+} from "../nav/pathfinding.js?v=0.4.11-pre-alpha";
 import {
   ACTOR_KIND,
   getObjectsAt,
   getBlockingObjectAt,
-} from "./cellObjects.js?v=0.4.10-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./enemyCombat.js?v=0.4.10-pre-alpha";
-import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.10-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.10-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.10-pre-alpha";
+} from "./cellObjects.js?v=0.4.11-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./enemyCombat.js?v=0.4.11-pre-alpha";
+import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.11-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.4.11-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.11-pre-alpha";
 
 export function tryStep(run, playerSheet, direction) {
   if (!run || run.status !== "running") {

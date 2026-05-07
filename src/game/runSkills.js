@@ -1,72 +1,12 @@
-import { getSkillById, getSkillManaCost } from "../skills.js?v=0.4.10-pre-alpha";
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.10-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.10-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.10-pre-alpha";
-import { getHealSkillRawValue, getRegenHealPerTurn } from "../skills/coreSkillCalc.js?v=0.4.10-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.10-pre-alpha";
+import { getSkillById, getSkillManaCost } from "../skillsRuntime.js?v=0.4.11-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.4.11-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.11-pre-alpha";
 
 export function useSkill(run, playerSheet, skillId) {
   return useSkillAtCell(run, playerSheet, skillId, run?.player?.x, run?.player?.y);
 }
 
-export const CORE_SKILLS_APPLY_BY_ID = {
-  skill_support_regen: {
-    getTargets: (run, playerSheet) => {
-      const hasBandageActive = (run.overTimeEffects || []).some((effect) => effect.type === "bandage_regen");
-      return hasBandageActive ? [] : [{ x: run.player.x, y: run.player.y }];
-    },
-    apply: (run, playerSheet, skillDef, skillLevel) => {
-      const hasBandageActive = (run.overTimeEffects || []).some((effect) => effect.type === "bandage_regen");
-      if (hasBandageActive) {
-        return { ok: false, log: `${skillDef.name}: эффект уже активен.` };
-      }
-      
-      const actualManaCost = getSkillManaCost(skillDef, playerSheet);
-      if ((playerSheet.mana || 0) < actualManaCost) {
-        return { ok: false, log: "Недостаточно маны." };
-      }
-      playerSheet.mana -= actualManaCost;
-
-      const healPerTurn = getRegenHealPerTurn(skillLevel, playerSheet);
-      run.overTimeEffects = [...(run.overTimeEffects || []), {
-        type: "bandage_regen",
-        turnsLeft: 3,
-        healPerTurn,
-        sourceSkillId: skillDef.id,
-      }];
-      return { ok: true, log: `${skillDef.name}: восстановление ${healPerTurn} HP на 3 хода.` };
-    }
-  },
-  skill_support_heal: {
-    getTargets: (run, playerSheet) => {
-      return [{ x: run.player.x, y: run.player.y }];
-    },
-    apply: (run, playerSheet, skillDef, skillLevel, fx) => {
-      const actualManaCost = getSkillManaCost(skillDef, playerSheet);
-      if ((playerSheet.mana || 0) < actualManaCost) {
-        return { ok: false, log: "Недостаточно маны." };
-      }
-      playerSheet.mana -= actualManaCost;
-
-      const healValue = getHealSkillRawValue(skillLevel, playerSheet);
-      const hpMax = floorHpMax(playerSheet.stats?.HP_MAX ?? playerSheet.baseStats?.HP_MAX ?? 1);
-      const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
-      const nextHp = floorHp(Math.min(hpMax, hpNow + healValue));
-      const healed = floorHp(nextHp - hpNow);
-      syncPlayerHp(playerSheet, nextHp);
-      fx.floatingTexts.push({
-        x: run.player.x,
-        y: run.player.y,
-        value: `+${healed}`,
-        color: "#4ade80",
-        durationMs: 680,
-        scale: 1.15,
-        startMs: null,
-      });
-      return { ok: true, log: `${skillDef.name}: восстановлено ${healed} HP.` };
-    }
-  }
-};
+export const CORE_SKILLS_APPLY_BY_ID = {};
 
 export function getSkillTargetCells(run, playerSheet, skillId) {
   if (!run || !playerSheet || !skillId) {

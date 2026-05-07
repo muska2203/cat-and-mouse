@@ -1,4 +1,4 @@
-import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.10-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.11-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -32,6 +32,11 @@ export function createInitialState() {
       dragPayload: null,
       skillTargeting: null,
       trapTargeting: null,
+      skillTargetingPreviews: [],
+      skillTargetingCursorCell: null,
+      skillTargetingChargeBadge: null,
+      skillTargetingAffectedCells: [],
+      targetingLines: [],
       pathHoverCell: null,
       pathHoverEnemy: null,
       pathPreviewCells: [],
@@ -40,6 +45,7 @@ export function createInitialState() {
       pathLockedEnemyId: null,
       autoMoveActive: false,
       autoMoveLastHp: null,
+      autoMoveStopOnEnemySight: false,
       canvasZoom: 1,
       skillsPanelOpen: false,
       helpOpen: false,

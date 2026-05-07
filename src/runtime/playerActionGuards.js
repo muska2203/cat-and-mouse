@@ -6,6 +6,7 @@ export function canAcceptPlayerAction(state) {
     && state.playerSheet
     && state.run.status === "running"
     && state.run.turnPhase === "player"
+    && !state.run.pendingEnvironmentTurn
   );
 }
 

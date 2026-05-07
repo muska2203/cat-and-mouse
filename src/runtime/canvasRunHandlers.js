@@ -2,8 +2,8 @@
  * Клик / hover по игровому canvas и автопоход по залоченному пути.
  * Зависимости передаются снаружи (состояние живёт в main.js).
  */
-import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.4.10-pre-alpha";
-import { ensureRunFxState } from "./runFxState.js?v=0.4.10-pre-alpha";
+import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.4.11-pre-alpha";
+import { ensureRunFxState } from "./runFxState.js?v=0.4.11-pre-alpha";
 
 export function createCanvasRunHandlers(deps) {
   const {
@@ -58,6 +58,19 @@ export function createCanvasRunHandlers(deps) {
       return null;
     }
     return run.objects.find((object) => object.type === "enemy" && object.x === cell.x && object.y === cell.y) || null;
+  }
+
+  function countDiscoveredEnemies(run) {
+    if (!run?.player || !Array.isArray(run?.objects)) {
+      return 0;
+    }
+    let visibleCount = 0;
+    for (const object of run.objects) {
+      if (!object || object.type !== "enemy") continue;
+      if (!run.discovered?.[object.y]?.[object.x]) continue;
+      visibleCount += 1;
+    }
+    return visibleCount;
   }
 
   function onCanvasClick(event, canvas) {
@@ -145,12 +158,16 @@ export function createCanvasRunHandlers(deps) {
       rerender();
       return;
     }
-    if (Number.isInteger(targeting.slotIndex)) {
+    if (result.actionConsumed && Number.isInteger(targeting.slotIndex)) {
       pulseQuickbarSlot(targeting.slotIndex);
     }
-    clearSkillTargeting();
-    maybeOpenSkillsOnNewPoint();
-    maybeTriggerLevelUpPulse(progressBefore);
+    if (!result.keepTargeting) {
+      clearSkillTargeting();
+    }
+    if (result.actionConsumed) {
+      maybeOpenSkillsOnNewPoint();
+      maybeTriggerLevelUpPulse(progressBefore);
+    }
     if (result.actionConsumed) {
       trackSkillUse(targeting.skillId);
       consumePlayerActionAndStartEnvironment();
@@ -268,6 +285,7 @@ export function createCanvasRunHandlers(deps) {
     state.uiHud.pathLockedCells = path.slice(1).map((cell) => ({ x: cell.x, y: cell.y }));
     state.uiHud.autoMoveActive = true;
     state.uiHud.autoMoveLastHp = state.playerSheet?.stats?.HP ?? 0;
+    state.uiHud.autoMoveStopOnEnemySight = countDiscoveredEnemies(state.run) === 0;
   }
 
   function lockAutoPathToEnemy(enemyId) {
@@ -302,6 +320,7 @@ export function createCanvasRunHandlers(deps) {
     state.uiHud.pathLockedCells = path.slice(1).map((cell) => ({ x: cell.x, y: cell.y }));
     state.uiHud.autoMoveActive = true;
     state.uiHud.autoMoveLastHp = state.playerSheet?.stats?.HP ?? 0;
+    state.uiHud.autoMoveStopOnEnemySight = false;
   }
 
   function advanceLockedPathAfterStep() {
@@ -340,6 +359,15 @@ export function createCanvasRunHandlers(deps) {
       clearPathingState();
       rerender();
       return;
+    }
+    if (!state.uiHud.pathLockedEnemyId && state.uiHud.autoMoveStopOnEnemySight) {
+      const visibleEnemiesNow = countDiscoveredEnemies(state.run);
+      if (visibleEnemiesNow > 0) {
+        state.run.lastLog = "Автодвижение остановлено: в поле зрения появился противник.";
+        clearPathingState();
+        rerender();
+        return;
+      }
     }
     if (state.uiHud.pathLockedEnemyId) {
       const targetEnemy = getEnemyById(state.run, state.uiHud.pathLockedEnemyId);

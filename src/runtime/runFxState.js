@@ -13,12 +13,16 @@ export function ensureRunFxState(run) {
     "environmentMotion",
     "environmentNextStepAtMs",
     "floatingTexts",
+    "pendingSkillApplications",
     "screenShake",
     "levelTransition",
   ];
 
   if (!Array.isArray(run.fx.floatingTexts)) {
     run.fx.floatingTexts = [];
+  }
+  if (!Array.isArray(run.fx.pendingSkillApplications)) {
+    run.fx.pendingSkillApplications = [];
   }
   if (run.fx.environmentNextStepAtMs == null) {
     run.fx.environmentNextStepAtMs = 0;

@@ -1,5 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.10-pre-alpha";
-import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.4.10-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.11-pre-alpha";
+import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.4.11-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
@@ -89,7 +89,7 @@ export const LOOT_COMMON_ITEMS = [
     type: "consumable",
     subtype: "heal_hp",
     icon: "🧀",
-    effectText: "Восстанавливает 12 HP",
+    effectText: "Восстанавливает 50% HP МАКС",
     description: "Маленький сыр, большое утешение.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -101,7 +101,7 @@ export const LOOT_COMMON_ITEMS = [
     type: "consumable",
     subtype: "heal_mana",
     icon: "💧",
-    effectText: "Восстанавливает 12 маны",
+    effectText: "Восстанавливает 50% маны МАКС",
     description: "Глоток мяты и мысли снова бегут.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -113,7 +113,7 @@ export const LOOT_COMMON_ITEMS = [
     type: "consumable",
     subtype: "heal_hybrid",
     icon: "🧴",
-    effectText: "Восстанавливает 8 HP и 8 маны",
+    effectText: "Восстанавливает 30% HP МАКС и 30% маны МАКС",
     description: "Молоко: и телу, и магии по чуть-чуть.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,

@@ -1,46 +1,57 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.10-pre-alpha";
-import { getConsumableApplyLog } from "./itemPresentation.js?v=0.4.10-pre-alpha";
-import { syncPlayerHp } from "../game/syncHp.js?v=0.4.10-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.4.11-pre-alpha";
+import { getConsumableApplyLog, getConsumableRecoveryPreview } from "./itemPresentation.js?v=0.4.11-pre-alpha";
+import { syncPlayerHp } from "../game/syncHp.js?v=0.4.11-pre-alpha";
 
 /**
  * @typedef {{ run: object, playerSheet: object, item: object }} ConsumableApplyContext
  * @typedef {{ log: string, restoredMana?: number }} ConsumableApplyResult
  */
 
+function roundMana(value) {
+  return Math.max(0, Math.round(Number(value || 0)));
+}
+
 /** @param {ConsumableApplyContext} ctx @returns {ConsumableApplyResult} */
 function applyCommonCrumbRation(ctx) {
   const { playerSheet, item } = ctx;
+  const preview = getConsumableRecoveryPreview(item, playerSheet);
   const currentHp = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats.HP ?? 0);
   const currentHpMax = floorHpMax(playerSheet.stats?.HP_MAX ?? playerSheet.baseStats.HP_MAX ?? 1);
-  const nextHp = floorHp(Math.min(currentHpMax, currentHp + 12));
+  const restoredHp = Math.max(0, floorHp(preview?.hp?.restored ?? 0));
+  const nextHp = floorHp(Math.min(currentHpMax, currentHp + restoredHp));
   syncPlayerHp(playerSheet, nextHp);
-  return { log: getConsumableApplyLog(item, "heal_hp_12") };
+  return { log: getConsumableApplyLog(item, "heal_hp_12", { restoredHp }) };
 }
 
 /** @param {ConsumableApplyContext} ctx @returns {ConsumableApplyResult} */
 function applyCommonMintDrop(ctx) {
   const { playerSheet, item } = ctx;
-  const currentMana = playerSheet.mana ?? 0;
-  const currentManaMax = playerSheet.manaMax ?? 0;
-  const nextMana = Math.min(currentManaMax, currentMana + 12);
+  const preview = getConsumableRecoveryPreview(item, playerSheet);
+  const currentMana = roundMana(playerSheet.mana ?? 0);
+  const currentManaMax = roundMana(playerSheet.manaMax ?? 0);
+  const restored = roundMana(Math.max(0, preview?.mana?.restored ?? 0));
+  const nextMana = roundMana(Math.min(currentManaMax, currentMana + restored));
   playerSheet.mana = nextMana;
-  const restored = Math.max(0, nextMana - currentMana);
-  return { log: getConsumableApplyLog(item, "heal_mana", { restored }) };
+  const restoredActual = roundMana(Math.max(0, nextMana - currentMana));
+  return { log: getConsumableApplyLog(item, "heal_mana", { restored: restoredActual }) };
 }
 
 /** @param {ConsumableApplyContext} ctx @returns {ConsumableApplyResult} */
 function applyCommonWarmMilk(ctx) {
   const { playerSheet, item } = ctx;
+  const preview = getConsumableRecoveryPreview(item, playerSheet);
   const currentHp = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats.HP ?? 0);
   const currentHpMax = floorHpMax(playerSheet.stats?.HP_MAX ?? playerSheet.baseStats.HP_MAX ?? 1);
-  const currentMana = playerSheet.mana ?? 0;
-  const currentManaMax = playerSheet.manaMax ?? 0;
-  const nextHp = floorHp(Math.min(currentHpMax, currentHp + 8));
-  const nextMana = Math.min(currentManaMax, currentMana + 8);
+  const currentMana = roundMana(playerSheet.mana ?? 0);
+  const currentManaMax = roundMana(playerSheet.manaMax ?? 0);
+  const plannedHp = Math.max(0, floorHp(preview?.hp?.restored ?? 0));
+  const plannedMana = Math.max(0, roundMana(preview?.mana?.restored ?? 0));
+  const nextHp = floorHp(Math.min(currentHpMax, currentHp + plannedHp));
+  const nextMana = roundMana(Math.min(currentManaMax, currentMana + plannedMana));
   syncPlayerHp(playerSheet, nextHp);
   playerSheet.mana = nextMana;
   const restoredHp = floorHp(nextHp - currentHp);
-  const restoredMp = Math.max(0, nextMana - currentMana);
+  const restoredMp = roundMana(Math.max(0, nextMana - currentMana));
   return { log: getConsumableApplyLog(item, "heal_hybrid_small", { restoredHp, restoredMp }) };
 }
 

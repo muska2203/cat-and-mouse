@@ -1,23 +1,85 @@
-import { floorHp } from "../rules.js?v=0.4.10-pre-alpha";
+import { floorHp } from "../rules.js?v=0.4.11-pre-alpha";
 import {
   chebyshevDistance,
   buildPathToNearestEnemyAttackCell as buildPathToNearestEnemyAttackCellNav,
-} from "../nav/pathfinding.js?v=0.4.10-pre-alpha";
-import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.4.10-pre-alpha";
-import { getEnemyById } from "./enemies.js?v=0.4.10-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.10-pre-alpha";
+} from "../nav/pathfinding.js?v=0.4.11-pre-alpha";
+import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.4.11-pre-alpha";
+import { getEnemyById } from "./enemies.js?v=0.4.11-pre-alpha";
+import { getEnemyMaxHp } from "./enemyDefs.js?v=0.4.11-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.11-pre-alpha";
 import {
   ensureEnemyStatus,
   ensurePlayerStatus,
   tickTemporaryObjects,
-} from "./trapsAndClouds.js?v=0.4.10-pre-alpha";
-import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.10-pre-alpha";
+} from "./trapsAndClouds.js?v=0.4.11-pre-alpha";
+import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.11-pre-alpha";
 import {
   isCellBlockedForEnemyWithReservations,
-} from "./cellBlocking.js?v=0.4.10-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.10-pre-alpha";
-import { processTurnEffects } from "./turnEffects.js?v=0.4.10-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.10-pre-alpha";
+} from "./cellBlocking.js?v=0.4.11-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.4.11-pre-alpha";
+import { processTurnEffects } from "./turnEffects.js?v=0.4.11-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.11-pre-alpha";
+
+function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
+  const stunnedEnemyIds = new Set();
+  let effectCount = 0;
+  for (const enemyId of actionQueue) {
+    const enemy = getEnemyById(run, enemyId);
+    if (!enemy) continue;
+
+    const status = ensureEnemyStatus(enemy);
+    if ((status.burnTurns || 0) > 0) {
+      const burnPercent = Math.max(0, Number(status.burnPercent || 0.03));
+      const enemyHpMax = Math.max(1, Number(getEnemyMaxHp(enemy) || 1));
+      const burnDamage = Math.max(1, Math.floor(enemyHpMax * burnPercent));
+      enemy.data.hp = Math.max(0, (enemy.data?.hp || 0) - burnDamage);
+      status.burnTurns = Math.max(0, (status.burnTurns || 0) - 1);
+      fx.floatingTexts.push({
+        x: enemy.x,
+        y: enemy.y,
+        value: `-${burnDamage}`,
+        color: "#fb923c",
+        durationMs: 620,
+        scale: 1.0,
+        startMs: null,
+      });
+      effectCount += 1;
+    }
+
+    if ((enemy.data?.hp || 0) <= 0) {
+      removeObject(run, enemy.id);
+      continue;
+    }
+
+    if ((status.poisonTurns || 0) > 0 && (status.poisonDamage || 0) > 0) {
+      const poisonDamage = Math.max(0, status.poisonDamage || 0);
+      enemy.data.hp = Math.max(0, (enemy.data?.hp || 0) - poisonDamage);
+      status.poisonTurns = Math.max(0, (status.poisonTurns || 0) - 1);
+      fx.floatingTexts.push({
+        x: enemy.x,
+        y: enemy.y,
+        value: `-${poisonDamage}`,
+        color: "#86efac",
+        durationMs: 620,
+        scale: 1.0,
+        startMs: null,
+      });
+      effectCount += 1;
+    }
+
+    if ((enemy.data?.hp || 0) <= 0) {
+      removeObject(run, enemy.id);
+      continue;
+    }
+
+    if ((status.stunTurns || 0) > 0) {
+      status.stunTurns = Math.max(0, (status.stunTurns || 0) - 1);
+      stunnedEnemyIds.add(enemy.id);
+      effectCount += 1;
+    }
+  }
+  return { stunnedEnemyIds, effectCount };
+}
 
 export function beginEnvironmentTurn(run) {
   const fx = ensureRunFxState(run);
@@ -42,6 +104,10 @@ export function stepEnvironmentTurn(run, playerSheet) {
   if ((run.environmentActionQueue || []).length > 0) {
     const actionQueue = [...run.environmentActionQueue];
     run.environmentActionQueue = [];
+    const {
+      stunnedEnemyIds,
+      effectCount: prePhaseEffectCount,
+    } = processEnvironmentStartEffects(run, playerSheet, actionQueue, fx);
     const plannedMoves = [];
     const plannedAttacks = [];
     const reservedDestinations = new Set();
@@ -55,7 +121,7 @@ export function stepEnvironmentTurn(run, playerSheet) {
 
     let attackCount = 0;
     let movedCount = 0;
-    let effectCount = 0;
+    let effectCount = prePhaseEffectCount;
     let lastAttackerName = "";
 
     for (const enemyId of actionQueue) {
@@ -63,29 +129,7 @@ export function stepEnvironmentTurn(run, playerSheet) {
       if (!enemy) {
         continue;
       }
-      const status = ensureEnemyStatus(enemy);
-      if ((status.poisonTurns || 0) > 0 && (status.poisonDamage || 0) > 0) {
-        const poisonDamage = Math.max(0, status.poisonDamage || 0);
-        enemy.data.hp = Math.max(0, (enemy.data?.hp || 0) - poisonDamage);
-        status.poisonTurns = Math.max(0, (status.poisonTurns || 0) - 1);
-        fx.floatingTexts.push({
-          x: enemy.x,
-          y: enemy.y,
-          value: `-${poisonDamage}`,
-          color: "#86efac",
-          durationMs: 620,
-          scale: 1.0,
-          startMs: null,
-        });
-        effectCount += 1;
-        if ((enemy.data?.hp || 0) <= 0) {
-          removeObject(run, enemy.id);
-          continue;
-        }
-      }
-      if ((status.stunTurns || 0) > 0) {
-        status.stunTurns = Math.max(0, (status.stunTurns || 0) - 1);
-        effectCount += 1;
+      if (stunnedEnemyIds.has(enemy.id)) {
         continue;
       }
 
