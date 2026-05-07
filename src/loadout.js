@@ -1,5 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.12-pre-alpha";
-import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.4.12-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.13-pre-alpha";
+import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.4.13-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
@@ -484,7 +484,7 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, 
   const weaponItem = equipped.find((item) => item.type === "weapon") || null;
   const derived = buildDerivedStats(baseStats, weaponItem);
 
-  const manaMax = roundStat(30 + intTotal * 6);
+  const manaMax = roundStat(30 + intTotal * 3);
   const manaCap = Math.max(1, Math.round(Number(manaMax || 1)));
   const nextMana = Math.max(0, Math.min(manaCap, manaCap - previousManaMissing));
   const normalizedEquippedInstances = buildEquippedInstanceMap(
@@ -635,6 +635,53 @@ export function addLootItemToPlayer(playerSheet, itemId) {
     ),
     addedTo: "bag",
   };
+}
+
+export function createRuntimeItemInstance(playerSheet, itemId, preferredInstanceId = null, skillData = null) {
+  const instanceId = preferredInstanceId || createItemInstanceId();
+  const nextInstances = { ...(playerSheet?.itemInstances || {}) };
+  const baseInstance = buildNormalizedItemInstance(
+    skillData ? { skill: skillData } : null,
+    instanceId,
+    itemId,
+  );
+  if (skillData && baseInstance && typeof baseInstance === "object") {
+    baseInstance.skill = skillData;
+  }
+  nextInstances[instanceId] = baseInstance;
+  return {
+    instanceId,
+    itemInstances: nextInstances,
+  };
+}
+
+export function restoreItemInstanceToBag(playerSheet, slotEntry) {
+  if (!slotEntry?.instanceId || !slotEntry?.itemId) return playerSheet;
+  const nextItemInstances = { ...(playerSheet?.itemInstances || {}) };
+  nextItemInstances[slotEntry.instanceId] = slotEntry.instanceEntry
+    ? { ...slotEntry.instanceEntry, instanceId: slotEntry.instanceId, itemId: slotEntry.itemId }
+    : buildNormalizedItemInstance(null, slotEntry.instanceId, slotEntry.itemId);
+  const nextBag = [...(playerSheet?.bag || [])];
+  const nextEquippedByType = { ...(playerSheet?.equippedByType || {}) };
+  const nextEquippedInstances = { ...(playerSheet?.equippedInstanceByType || {}) };
+  const originType = String(slotEntry.originType || "");
+  const canRestoreToEquip = (
+    slotEntry.source === "equipped"
+    && EQUIP_TYPES.includes(originType)
+    && !nextEquippedByType[originType]
+  );
+  if (canRestoreToEquip) {
+    nextEquippedByType[originType] = slotEntry.itemId;
+    nextEquippedInstances[originType] = slotEntry.instanceId;
+  } else {
+    nextBag.push({ instanceId: slotEntry.instanceId, itemId: slotEntry.itemId });
+  }
+  return recalculateSheetFromInventory(
+    { ...playerSheet, itemInstances: nextItemInstances },
+    nextEquippedByType,
+    nextBag,
+    nextEquippedInstances,
+  );
 }
 
 export function spendLevelUpPoint(playerSheet, statKey) {

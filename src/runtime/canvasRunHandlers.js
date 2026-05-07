@@ -2,8 +2,8 @@
  * Клик / hover по игровому canvas и автопоход по залоченному пути.
  * Зависимости передаются снаружи (состояние живёт в main.js).
  */
-import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.4.12-pre-alpha";
-import { ensureRunFxState } from "./runFxState.js?v=0.4.12-pre-alpha";
+import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.4.13-pre-alpha";
+import { ensureRunFxState } from "./runFxState.js?v=0.4.13-pre-alpha";
 
 export function createCanvasRunHandlers(deps) {
   const {
@@ -12,7 +12,6 @@ export function createCanvasRunHandlers(deps) {
     rerender,
     clearPathingState,
     performStep,
-    tryStep,
     buildPathToDiscoveredCell,
     isValidPathTargetCell,
     screenPointToGrid,
@@ -136,7 +135,7 @@ export function createCanvasRunHandlers(deps) {
       const dy = cell.y - state.run.player.y;
       const adjacentDirection = resolveDirectionByDelta(dx, dy);
       if (adjacentDirection) {
-        const consumed = performStep(adjacentDirection);
+        const consumed = performStep(adjacentDirection, true);
         if (consumed) {
           return;
         }
@@ -412,21 +411,17 @@ export function createCanvasRunHandlers(deps) {
       rerender();
       return;
     }
-    const stepResult = tryStep(state.run, state.playerSheet, direction);
-    if (!stepResult.actionConsumed) {
+    const isRouteStepFinal = (state.uiHud.pathLockedCells?.length || 0) <= 1;
+    const actionConsumed = performStep(direction, isRouteStepFinal);
+    if (!actionConsumed) {
       state.run.lastLog = "Автодвижение остановлено: путь заблокирован.";
       clearPathingState();
       rerender();
       return;
     }
-    state.run = stepResult.run;
-    state.playerSheet = stepResult.playerSheet;
-    if (state.run && stepResult.motion) {
-      fx.motion = stepResult.motion;
-    }
     const hpNowAfterStep = Number(state.playerSheet?.stats?.HP ?? state.playerSheet?.baseStats?.HP ?? 0);
     state.uiHud.autoMoveLastHp = hpNowAfterStep;
-    if (stepResult.playerDamaged || stepResult.objectActivated) {
+    if (hpNowAfterStep < hpNowBeforeStep || state.uiHud?.anvilSession) {
       clearPathingState();
       rerender();
       return;
@@ -435,7 +430,6 @@ export function createCanvasRunHandlers(deps) {
     if (movedToNextCell) {
       advanceLockedPathAfterStep();
     }
-    consumePlayerActionAndStartEnvironment();
     rerender();
   }
 

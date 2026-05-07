@@ -1,6 +1,6 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.12-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.12-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.12-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.4.13-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.13-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.13-pre-alpha";
 
 export function processTurnEffects(run, playerSheet) {
   const fx = ensureRunFxState(run);

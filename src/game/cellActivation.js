@@ -1,19 +1,19 @@
-import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.12-pre-alpha";
-import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.4.12-pre-alpha";
-import { rollChestLootItems } from "./chestLoot.js?v=0.4.12-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.12-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.12-pre-alpha";
+import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.13-pre-alpha";
+import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.4.13-pre-alpha";
+import { rollChestLootItems } from "./chestLoot.js?v=0.4.13-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.13-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.13-pre-alpha";
 import {
   ACTOR_KIND,
   getObjectsAt,
   canObjectBeActivatedBy,
   removeObject,
-} from "./cellObjects.js?v=0.4.12-pre-alpha";
+} from "./cellObjects.js?v=0.4.13-pre-alpha";
 import {
   applyTrapEffectToEnemy,
   applyTrapEffectToPlayer,
   spawnPoisonCloudObjects,
-} from "./trapsAndClouds.js?v=0.4.12-pre-alpha";
+} from "./trapsAndClouds.js?v=0.4.13-pre-alpha";
 
 function collectChestDropCells(run, x, y) {
   const cells = [];
@@ -22,8 +22,7 @@ function collectChestDropCells(run, x, y) {
     const ny = y + dir.y;
     if (!inBounds(nx, ny, run) || isWall(nx, ny, run)) continue;
     const occupied = getObjectsAt(run, nx, ny);
-    const hasEnemy = occupied.some((object) => object.type === "enemy");
-    if (hasEnemy) continue;
+    if (occupied.length > 0) continue;
     cells.push({ x: nx, y: ny });
   }
   return cells;
@@ -33,10 +32,19 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
   const fx = ensureRunFxState(run);
   const candidateCells = collectChestDropCells(run, sourceX, sourceY);
   let ord = 0;
+  let spawnedCount = 0;
   const dropMotions = [];
   for (const item of lootItems) {
     if (!item?.id) continue;
-    const targetCell = candidateCells.shift() || { x: sourceX, y: sourceY };
+    let targetCell = candidateCells.shift() || null;
+    if (!targetCell) {
+      const sourceOccupied = getObjectsAt(run, sourceX, sourceY);
+      if (sourceOccupied.length === 0) {
+        targetCell = { x: sourceX, y: sourceY };
+      } else {
+        continue;
+      }
+    }
     const lootObject = {
       id: `ground_loot_${Date.now()}_${targetCell.x}_${targetCell.y}_${ord}_${randomInt(0, 9999, run?.rng || null)}`,
       name: `Лут: ${item.name}`,
@@ -46,6 +54,7 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
       oneTime: true,
       blocksMovement: false,
       blocksEnemyMovement: false,
+      activateOnPathPass: false,
       activation: { by: [ACTOR_KIND.PLAYER], effect: "pickup_loot" },
       x: targetCell.x,
       y: targetCell.y,
@@ -57,6 +66,7 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
       },
     };
     run.objects.push(lootObject);
+    spawnedCount += 1;
     if (targetCell.x !== sourceX || targetCell.y !== sourceY) {
       dropMotions.push({
         actorId: lootObject.id,
@@ -75,15 +85,20 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
       startMs: null,
     };
   }
+  return spawnedCount;
 }
 
-export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, actorEntity = null) {
+export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, actorEntity = null, options = {}) {
   const fx = ensureRunFxState(run);
   const objects = getObjectsAt(run, x, y);
   const logs = [];
   let nextPlayerSheet = playerSheet;
+  const isRouteStepFinal = options.isRouteStepFinal !== false;
   for (const object of objects) {
     if (!canObjectBeActivatedBy(object, actorKind)) {
+      continue;
+    }
+    if (actorKind === ACTOR_KIND.PLAYER && !isRouteStepFinal && object?.activateOnPathPass !== true) {
       continue;
     }
     if (object.activation?.effect === "open_chest" && actorKind === ACTOR_KIND.PLAYER) {
@@ -91,11 +106,25 @@ export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, a
       const chestRarity = object?.data?.chestRarity || "common";
       const lootItems = rollChestLootItems(chestRarity, nextPlayerSheet?.stats?.LUK ?? 0, run?.rng || null);
       if (lootItems.length > 0) {
-        spawnGroundLootObjects(run, lootItems, x, y, object.name);
-        logs.push(`${object.name}: лут высыпан рядом (${lootItems.length}).`);
+        const spawnedCount = spawnGroundLootObjects(run, lootItems, x, y, object.name);
+        if (spawnedCount > 0) {
+          logs.push(`${object.name}: лут высыпан рядом (${spawnedCount}).`);
+        } else {
+          logs.push(`${object.name}: рядом нет места для лута.`);
+        }
       } else {
         logs.push(`${object.name} оказался пустым.`);
       }
+    }
+    if (object.activation?.effect === "open_anvil" && actorKind === ACTOR_KIND.PLAYER) {
+      if (!Array.isArray(run.pendingUiActions)) {
+        run.pendingUiActions = [];
+      }
+      run.pendingUiActions.push({
+        type: "open_anvil",
+        objectId: object.id,
+      });
+      logs.push("Наковальня готова к работе.");
     }
     if (object.activation?.effect === "pickup_loot" && actorKind === ACTOR_KIND.PLAYER) {
       const itemId = object?.data?.itemId || null;
@@ -116,7 +145,7 @@ export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, a
         }
       }
     }
-    if (object.activation?.effect === "trigger_trap" && object.type === "trap") {
+    if (object.activation?.effect === "trigger_trap") {
       const trapConfig = object?.data?.trapConfig || {};
       let effectLog = "";
       if (actorKind === ACTOR_KIND.ENEMY) {
@@ -131,7 +160,7 @@ export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, a
       const triggerLog = effectLog ? `${object.name}: ${effectLog}.` : `${object.name}: сработала.`;
       logs.push(triggerLog);
     }
-    if (object.activation?.effect === "trigger_poison_cloud" && object.type === "poison_cloud") {
+    if (object.activation?.effect === "trigger_poison_cloud") {
       const cloudConfig = object?.data?.trapConfig || {};
       let effectLog = "";
       if (actorKind === ACTOR_KIND.ENEMY) {
@@ -148,14 +177,16 @@ export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, a
     if ((run.level || 1) >= (run.maxLevel || 10)) {
       run.status = "victory";
     } else {
-      run.status = "level_complete";
-      fx.levelTransition = {
-        phase: "out",
-        startedMs: null,
-        durationMs: 420,
-        nextLevel: (run.level || 1) + 1,
-      };
-      logs.push(`Уровень ${run.level} пройден. Переход на ${run.level + 1}...`);
+      if (!Array.isArray(run.pendingUiActions)) {
+        run.pendingUiActions = [];
+      }
+      const nextLevel = (run.level || 1) + 1;
+      run.pendingUiActions.push({
+        type: "open_descend_prompt",
+        currentLevel: run.level || 1,
+        nextLevel,
+      });
+      logs.push(`Нора найдена. Спуститься на уровень ${nextLevel} или остаться?`);
     }
   }
   return { log: logs.join(" "), playerSheet: nextPlayerSheet };

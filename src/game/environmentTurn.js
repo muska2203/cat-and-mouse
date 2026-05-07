@@ -1,24 +1,24 @@
-import { floorHp } from "../rules.js?v=0.4.12-pre-alpha";
+import { floorHp } from "../rules.js?v=0.4.13-pre-alpha";
 import {
   chebyshevDistance,
   buildPathToNearestEnemyAttackCell as buildPathToNearestEnemyAttackCellNav,
-} from "../nav/pathfinding.js?v=0.4.12-pre-alpha";
-import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.4.12-pre-alpha";
-import { getEnemyById } from "./enemies.js?v=0.4.12-pre-alpha";
-import { getEnemyMaxHp } from "./enemyDefs.js?v=0.4.12-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.12-pre-alpha";
+} from "../nav/pathfinding.js?v=0.4.13-pre-alpha";
+import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.4.13-pre-alpha";
+import { getEnemyById } from "./enemies.js?v=0.4.13-pre-alpha";
+import { getEnemyMaxHp } from "./enemyDefs.js?v=0.4.13-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.13-pre-alpha";
 import {
   ensureEnemyStatus,
   ensurePlayerStatus,
   tickTemporaryObjects,
-} from "./trapsAndClouds.js?v=0.4.12-pre-alpha";
-import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.12-pre-alpha";
+} from "./trapsAndClouds.js?v=0.4.13-pre-alpha";
+import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.13-pre-alpha";
 import {
   isCellBlockedForEnemyWithReservations,
-} from "./cellBlocking.js?v=0.4.12-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.12-pre-alpha";
-import { processTurnEffects } from "./turnEffects.js?v=0.4.12-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.12-pre-alpha";
+} from "./cellBlocking.js?v=0.4.13-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.4.13-pre-alpha";
+import { processTurnEffects } from "./turnEffects.js?v=0.4.13-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.13-pre-alpha";
 
 function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
   const stunnedEnemyIds = new Set();

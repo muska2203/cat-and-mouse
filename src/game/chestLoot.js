@@ -1,7 +1,11 @@
-import { getLootPool } from "../loadout.js?v=0.4.12-pre-alpha";
-import { randomInt, weightedPick } from "./rng.js?v=0.4.12-pre-alpha";
+import { getLootPool } from "../loadout.js?v=0.4.13-pre-alpha";
+import { randomInt, weightedPick } from "./rng.js?v=0.4.13-pre-alpha";
 
-const CONSUMABLE_WEIGHT_MULTIPLIER = 0.8;
+const LOOT_KIND_WEIGHTS = [
+  { value: "restorative_consumable", weight: 30 },
+  { value: "other_consumable", weight: 30 },
+  { value: "gear", weight: 40 },
+];
 
 function getChestSpawnWeights(level) {
   const levelShift = Math.max(0, level - 1);
@@ -77,7 +81,33 @@ function getLootCountFromChest(chestRarity, rng = null) {
   return weightedPick(table, rng);
 }
 
-function getLootFromChest(chestRarity, excludedItemIds = new Set(), luck = 0, rng = null) {
+function getLootKind(rng = null) {
+  return weightedPick(LOOT_KIND_WEIGHTS, rng);
+}
+
+function pickRandomFromPool(poolName, predicate, rng = null) {
+  const pool = getLootPool(poolName).filter(predicate);
+  if (pool.length === 0) return null;
+  return weightedPick(pool.map((item) => ({ value: item, weight: 1 })), rng);
+}
+
+function isRestorativeConsumable(item) {
+  if (!item?.isConsumable || item?.isTrapItem) return false;
+  const subtype = String(item?.subtype || "");
+  return subtype === "heal_hp" || subtype === "heal_mana" || subtype === "heal_hybrid";
+}
+
+function getLootFromChestByKind(chestRarity, luck, lootKind, rng = null) {
+  if (lootKind === "restorative_consumable") {
+    const pool = [
+      ...getLootPool("common"),
+      ...getLootPool("rare"),
+      ...getLootPool("unique"),
+    ].filter(isRestorativeConsumable);
+    if (pool.length === 0) return null;
+    return weightedPick(pool.map((item) => ({ value: item, weight: 1 })), rng);
+  }
+
   const rolledPool = rollLootPoolByChestRarity(chestRarity, luck, rng);
   const fallbackPools = {
     common: ["common", "rare", "unique"],
@@ -86,17 +116,17 @@ function getLootFromChest(chestRarity, excludedItemIds = new Set(), luck = 0, rn
   };
   const poolOrder = [rolledPool, ...(fallbackPools[chestRarity] || fallbackPools.common)]
     .filter((poolName, index, list) => list.indexOf(poolName) === index);
+
+  const isOtherConsumable = lootKind === "other_consumable";
   for (const poolName of poolOrder) {
-    const pool = getLootPool(poolName).filter((item) => !excludedItemIds.has(item.id));
-    if (pool.length > 0) {
-      return weightedPick(
-        pool.map((item) => ({
-          value: item,
-          weight: item?.isConsumable ? CONSUMABLE_WEIGHT_MULTIPLIER : 1,
-        })),
-        rng,
-      );
-    }
+    const item = pickRandomFromPool(
+      poolName,
+      (candidate) => isOtherConsumable
+        ? Boolean(candidate?.isConsumable && !isRestorativeConsumable(candidate))
+        : Boolean(!candidate?.isConsumable),
+      rng,
+    );
+    if (item) return item;
   }
   return null;
 }
@@ -104,12 +134,11 @@ function getLootFromChest(chestRarity, excludedItemIds = new Set(), luck = 0, rn
 export function rollChestLootItems(chestRarity, luck = 0, rng = null) {
   const lootCount = getLootCountFromChest(chestRarity, rng);
   const picks = [];
-  const excluded = new Set();
   for (let i = 0; i < lootCount; i += 1) {
-    const item = getLootFromChest(chestRarity, excluded, luck, rng);
+    const lootKind = getLootKind(rng);
+    const item = getLootFromChestByKind(chestRarity, luck, lootKind, rng);
     if (!item) continue;
     picks.push(item);
-    excluded.add(item.id);
   }
   return picks;
 }

@@ -1,8 +1,8 @@
-import { ACTOR_KIND } from "./cellObjects.js?v=0.4.12-pre-alpha";
-import { getChestCountsForLevel } from "./chestLoot.js?v=0.4.12-pre-alpha";
-import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.4.12-pre-alpha";
-import { getEnemyDefByType } from "./enemyDefs.js?v=0.4.12-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.12-pre-alpha";
+import { ACTOR_KIND } from "./cellObjects.js?v=0.4.13-pre-alpha";
+import { getChestCountsForLevel } from "./chestLoot.js?v=0.4.13-pre-alpha";
+import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.4.13-pre-alpha";
+import { getEnemyDefByType } from "./enemyDefs.js?v=0.4.13-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.13-pre-alpha";
 
 export function generateObjects(maze, level = 1, options = {}) {
   const rng = options.rng && typeof options.rng.nextFloat === "function" ? options.rng : null;
@@ -21,6 +21,7 @@ export function generateObjects(maze, level = 1, options = {}) {
       purpose: "enemy",
       oneTime: false,
       blocksMovement: true,
+      activateOnPathPass: false,
       activation: { by: [], effect: null },
     },
     cat_mid: {
@@ -29,6 +30,7 @@ export function generateObjects(maze, level = 1, options = {}) {
       purpose: "enemy",
       oneTime: false,
       blocksMovement: true,
+      activateOnPathPass: false,
       activation: { by: [], effect: null },
     },
     cat_big: {
@@ -37,6 +39,7 @@ export function generateObjects(maze, level = 1, options = {}) {
       purpose: "enemy",
       oneTime: false,
       blocksMovement: true,
+      activateOnPathPass: false,
       activation: { by: [], effect: null },
     },
     chest_common: {
@@ -46,8 +49,9 @@ export function generateObjects(maze, level = 1, options = {}) {
       purpose: "chest",
       icon: "📦",
       oneTime: true,
-      blocksMovement: true,
+      blocksMovement: false,
       blocksEnemyMovement: false,
+      activateOnPathPass: false,
       activation: { by: [ACTOR_KIND.PLAYER], effect: "open_chest" },
       data: { chestRarity: "common" },
     },
@@ -58,8 +62,9 @@ export function generateObjects(maze, level = 1, options = {}) {
       purpose: "chest",
       icon: "🎁",
       oneTime: true,
-      blocksMovement: true,
+      blocksMovement: false,
       blocksEnemyMovement: false,
+      activateOnPathPass: false,
       activation: { by: [ACTOR_KIND.PLAYER], effect: "open_chest" },
       data: { chestRarity: "rare" },
     },
@@ -70,10 +75,27 @@ export function generateObjects(maze, level = 1, options = {}) {
       purpose: "chest",
       icon: "👑",
       oneTime: true,
-      blocksMovement: true,
+      blocksMovement: false,
       blocksEnemyMovement: false,
+      activateOnPathPass: false,
       activation: { by: [ACTOR_KIND.PLAYER], effect: "open_chest" },
       data: { chestRarity: "unique" },
+    },
+    anvil: {
+      id: "anvil",
+      name: "Наковальня",
+      type: "anvil",
+      purpose: "anvil",
+      icon: "⚒",
+      oneTime: true,
+      blocksMovement: false,
+      blocksEnemyMovement: false,
+      activateOnPathPass: false,
+      activation: { by: [ACTOR_KIND.PLAYER], effect: "open_anvil" },
+      data: {
+        remainingCrafts: 3,
+        maxCrafts: 3,
+      },
     },
   };
 
@@ -226,6 +248,7 @@ export function generateObjects(maze, level = 1, options = {}) {
       oneTime: template.oneTime,
       blocksMovement: template.blocksMovement !== false,
       blocksEnemyMovement: template.blocksEnemyMovement === true,
+      activateOnPathPass: template.activateOnPathPass === true,
       activation: template.activation
         ? {
             by: Array.isArray(template.activation.by) ? [...template.activation.by] : [],
@@ -300,6 +323,41 @@ export function generateObjects(maze, level = 1, options = {}) {
     const enemyTemplate = objectTemplates[enemyKey];
     placeObject(objects, enemyTemplate, cell, enemyOrdinal);
     enemyOrdinal += 1;
+  }
+
+  function canPlaceAt(cell) {
+    if (!cell) return false;
+    const key = keyOf(cell.x, cell.y);
+    return spawnableCellKeySet.has(key) && !reserved.has(key);
+  }
+
+  function isWalkableCell(x, y) {
+    return x >= 0 && y >= 0 && x < maze.width && y < maze.height && maze.grid[y][x] !== 1;
+  }
+
+  function isNarrowPassageCell(cell) {
+    if (!cell) return false;
+    const key = keyOf(cell.x, cell.y);
+    if (roomCellKeySet.has(key)) return false;
+    const neighbors = neighbors4(cell.x, cell.y);
+    if (neighbors.length !== 2) return false;
+    const [first, second] = neighbors;
+    const isHorizontal = first.y === second.y;
+    const isVertical = first.x === second.x;
+    if (!isHorizontal && !isVertical) return false;
+    if (isHorizontal) {
+      return !isWalkableCell(cell.x, cell.y - 1) && !isWalkableCell(cell.x, cell.y + 1);
+    }
+    return !isWalkableCell(cell.x - 1, cell.y) && !isWalkableCell(cell.x + 1, cell.y);
+  }
+
+  const shouldSpawnAnvil = level === 5 || randomInt(1, 100, rng) <= 40;
+  if (shouldSpawnAnvil) {
+    const anvilCandidates = freeCells.filter((cell) => canPlaceAt(cell) && !isNarrowPassageCell(cell));
+    if (anvilCandidates.length > 0) {
+      const anvilCell = anvilCandidates[randomInt(0, anvilCandidates.length - 1, rng)];
+      placeObject(objects, objectTemplates.anvil, anvilCell, 0);
+    }
   }
 
   return objects;

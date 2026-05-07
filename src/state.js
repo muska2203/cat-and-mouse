@@ -1,4 +1,4 @@
-import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.12-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.4.13-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -30,6 +30,8 @@ export function createInitialState() {
       quickbarSlots: Array.from({ length: 9 }, () => null),
       quickbarPulseSlot: null,
       dragPayload: null,
+      anvilSession: null,
+      descendPrompt: null,
       skillTargeting: null,
       trapTargeting: null,
       skillTargetingPreviews: [],
@@ -67,7 +69,7 @@ export function createPlayerSheet(preGameStats) {
   };
 
   const derived = buildDerivedStats(stats, null);
-  const manaMax = roundStat(30 + (stats.INT || 0) * 6);
+  const manaMax = roundStat(30 + (stats.INT || 0) * 3);
 
   return {
     baseStats: { ...stats },

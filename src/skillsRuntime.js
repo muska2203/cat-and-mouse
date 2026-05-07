@@ -1,10 +1,9 @@
-import { floorHp, floorHpMax } from "./rules.js?v=0.4.12-pre-alpha";
-import { syncPlayerHp } from "./game/syncHp.js?v=0.4.12-pre-alpha";
-import { getEnemyMaxHp as getEnemyMaxHpFromDefs } from "./game/enemyDefs.js?v=0.4.12-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.12-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.12-pre-alpha";
-import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.12-pre-alpha";
-import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.4.12-pre-alpha";
+import { floorHp } from "./rules.js?v=0.4.13-pre-alpha";
+import { syncPlayerHp } from "./game/syncHp.js?v=0.4.13-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.13-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.13-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.13-pre-alpha";
+import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.4.13-pre-alpha";
 
 const SKILL_DEFS = {
   fireball: {
@@ -30,11 +29,11 @@ const SKILL_DEFS = {
     rarity: "common",
     target: "single_unit",
     targeting: {
-      charges: 3,
+      charges: 2,
       allowRepeatTarget: true,
       shape: "single",
     },
-    description: "Серия магических шлепков по врагам: выбери до 3 целей (можно повторять одну и ту же цель).",
+    description: "Серия магических шлепков по врагам: количество применений растет с уровнем скилла (можно повторять одну и ту же цель).",
     compatibleItems: [{ type: "weapon", subtype: "staff" }],
   },
 };
@@ -64,58 +63,26 @@ const SKILL_TEMPLATE_DEFS = {
 const BURNING_TURNS = 3;
 const BURNING_PERCENT = 0.10;
 
-function getLifeDrainParams(skillLevel, playerSheet) {
-  const normalizedLevel = Math.max(1, Number(skillLevel || 1));
-  const intStat = playerSheet?.stats?.INT ?? playerSheet?.baseStats?.INT ?? 0;
-  
-  // Damage: 10% base + 1.6% per INT + 5% per level
-  const damagePercent = 0.10 + (intStat * 0.016) + (normalizedLevel * 0.05);
-  
-  // Mana restore: 15% base + 0.8% per INT + 5% per level
-  const manaPercent = 0.15 + (intStat * 0.008) + (normalizedLevel * 0.05);
-  
-  return {
-    skillLevel: normalizedLevel,
-    damagePercent,
-    manaPercent,
-  };
-}
-
 function getFireballDamage(skillLevel, playerSheet, role = "epicenter") {
   const level = Math.max(1, Number(skillLevel || 1));
   const intStat = playerSheet?.stats?.INT ?? playerSheet?.baseStats?.INT ?? 0;
-  const base = 9 + (intStat * 1.1);
-  const levelMultiplier = 1 + ((level - 1) * 0.25);
-  const centerDamage = Math.max(1, Math.floor(base * levelMultiplier));
+  const centerRaw = 16 + (intStat - 10) * 0.5 + (level - 1) * 0.75;
+  const centerDamage = Math.max(1, Math.round(centerRaw));
   if (role === "splash") {
     return Math.max(1, Math.floor(centerDamage * 0.45));
   }
   return centerDamage;
 }
 
-function getLifeDrainManaRestore(playerSheet, manaPercent) {
-  const manaMaxFromSheet = Number(playerSheet?.manaMax);
-  const manaMaxFallback = 30 + Number(playerSheet?.stats?.INT || 0) * 6;
-  const manaMax = Number.isFinite(manaMaxFromSheet) && manaMaxFromSheet > 0
-    ? manaMaxFromSheet
-    : manaMaxFallback;
-  return Math.max(0, floorHp(manaMax * manaPercent));
+function getMagicSlapDamage(playerSheet) {
+  const playerLevel = Math.max(1, Number(playerSheet?.level || 1));
+  const damageRaw = 6 + ((playerLevel - 1) * (2 / 9));
+  return Math.max(1, Math.round(damageRaw));
 }
 
-function getLifeDrainDamageByTargetHpMax(targetHpMax, damagePercent) {
-  return Math.max(1, floorHp(Math.max(1, Number(targetHpMax || 1)) * damagePercent));
-}
-
-function getMagicSlapDamage(skillLevel, playerSheet) {
+function getFireballBurnTurns(skillLevel) {
   const level = Math.max(1, Number(skillLevel || 1));
-  const intStat = playerSheet?.stats?.INT ?? playerSheet?.baseStats?.INT ?? 0;
-  const base = 5 + (intStat * 1.2);
-  const multiplier = 1 + ((level - 1) * 0.2);
-  return Math.max(1, Math.floor((base * multiplier) / 3));
-}
-
-function getEnemyMaxHp(enemy) {
-  return floorHpMax(getEnemyMaxHpFromDefs(enemy));
+  return BURNING_TURNS + (level - 1);
 }
 
 function getNowMs() {
@@ -127,10 +94,6 @@ function getNowMs() {
 
 function roundManaValue(value) {
   return Math.max(0, Math.round(Number(value || 0)));
-}
-
-function getRoundedManaMax(playerSheet) {
-  return roundManaValue(playerSheet?.manaMax || 0);
 }
 
 function getRoundedCurrentMana(playerSheet) {
@@ -384,10 +347,14 @@ export function getSkillsForEquippedItem(item, instanceData) {
     .filter(Boolean);
 }
 
-export function getSkillTargetingProfile(skillId) {
+export function getSkillTargetingProfile(skillId, skillLevel = 1) {
   const skill = getSkillById(skillId);
   if (!skill) return null;
-  const charges = Math.max(1, Number(skill?.targeting?.charges || 1));
+  const normalizedSkillLevel = Math.max(1, Number(skillLevel || 1));
+  const baseCharges = Math.max(1, Number(skill?.targeting?.charges || 1));
+  const charges = skillId === "magic_slap"
+    ? baseCharges + (normalizedSkillLevel - 1)
+    : baseCharges;
   return {
     charges,
     allowRepeatTarget: skill?.targeting?.allowRepeatTarget !== false,
@@ -439,25 +406,28 @@ export const SKILLS_APPLY_BY_ID = {
     getHoverData: (skill, item, playerSheet) => {
       const centerDamage = getFireballDamage(skill?.level || 1, playerSheet, "epicenter");
       const splashDamage = getFireballDamage(skill?.level || 1, playerSheet, "splash");
+      const burnTurns = getFireballBurnTurns(skill?.level || 1);
       return {
-        formula: `Урон в центре = (9 + ИНТ x 1.1) x (1 + 25% за уровень после первого). По соседним 8 клеткам: 45% урона центра. Горение: 3 хода, каждый ход снимает 10% МАКС HP (минимум 2).`,
+        formula: "Урон в центре: 16 на ИНТ=10 и уровне скилла 1, далее растет от ИНТ и уровня скилла. По соседним 8 клеткам: 45% урона центра. Горение: базово 3 хода, +1 ход за каждый уровень скилла после первого; каждый ход снимает 10% МАКС HP (минимум 2).",
         targets: "Любая видимая клетка в пределах 6 клеток. Затрагивается квадрат 3x3.",
         skillLevel: skill?.level || 1,
         damageCenter: centerDamage,
         damageSplash: splashDamage,
-        burnTurns: BURNING_TURNS,
+        burnTurns,
         burnPercent: Math.round(BURNING_PERCENT * 100),
       };
     },
     getEffects: (run, playerSheet, skill, instanceData, targetX, targetY, context = null) => {
       const role = context?.cellRole === "splash" ? "splash" : "epicenter";
-      const damage = getFireballDamage(instanceData?.skillLevels?.[skill.id] || 1, playerSheet, role);
+      const skillLevel = instanceData?.skillLevels?.[skill.id] || 1;
+      const damage = getFireballDamage(skillLevel, playerSheet, role);
+      const burnTurns = getFireballBurnTurns(skillLevel);
       return {
         targetDamage: damage,
         statusEffects: [{
           id: "burning",
           type: "burning",
-          turns: BURNING_TURNS,
+          turns: burnTurns,
           percent: BURNING_PERCENT,
         }],
       };
@@ -468,16 +438,18 @@ export const SKILLS_APPLY_BY_ID = {
       return getVisibleEnemyTargetCells(run);
     },
     getHoverData: (skill, item, playerSheet) => {
-      const damage = getMagicSlapDamage(skill?.level || 1, playerSheet);
+      const damage = getMagicSlapDamage(playerSheet);
+      const charges = getSkillTargetingProfile("magic_slap", skill?.level || 1)?.charges || 2;
       return {
-        formula: `Урон за один шлепок = ((5 + ИНТ x 1.2) x (1 + 20% за каждый уровень после первого)) / 3.`,
-        targets: "До 3 выборов клетки с противником. Одну и ту же цель можно выбрать несколько раз.",
+        formula: "Урон за один шлепок: 6 на уровне персонажа 1 и 8 на уровне 10. Урон не зависит от уровня скилла.",
+        targets: `До ${charges} выборов клетки с противником. Одну и ту же цель можно выбрать несколько раз.`,
         skillLevel: skill?.level || 1,
         damage: damage,
+        charges,
       };
     },
     getEffects: (run, playerSheet, skill, instanceData, targetX, targetY) => {
-      const damage = getMagicSlapDamage(instanceData?.skillLevels?.[skill.id] || 1, playerSheet);
+      const damage = getMagicSlapDamage(playerSheet);
       return { targetDamage: damage };
     },
     apply: (run, playerSheet, skill, instanceData, targetX, targetY) => {
@@ -542,7 +514,6 @@ function aggregatePreparedSkillEffects(run, playerSheet, item, instanceData, ski
     return null;
   }
   const byCell = new Map();
-  let totalPlayerManaRestore = 0;
   for (const root of selectedRoots) {
     const affectedCells = getSkillAffectedCellsForRoot(run, skillId, root.x, root.y);
     for (const cell of affectedCells) {
@@ -560,11 +531,9 @@ function aggregatePreparedSkillEffects(run, playerSheet, item, instanceData, ski
         y: cell.y,
         role: cell.role,
         targetDamage: 0,
-        targetHeal: 0,
         statusEffects: new Map(),
       };
       prev.targetDamage += Number(effects.targetDamage || 0);
-      prev.targetHeal += Number(effects.targetHeal || 0);
       const statuses = Array.isArray(effects.statusEffects) ? effects.statusEffects : [];
       for (const status of statuses) {
         const statusId = String(status?.id || "");
@@ -572,7 +541,6 @@ function aggregatePreparedSkillEffects(run, playerSheet, item, instanceData, ski
         prev.statusEffects.set(statusId, status);
       }
       byCell.set(key, prev);
-      totalPlayerManaRestore += Number(effects.playerManaRestore || 0);
     }
   }
   return {
@@ -580,7 +548,6 @@ function aggregatePreparedSkillEffects(run, playerSheet, item, instanceData, ski
       ...entry,
       statusEffects: Array.from(entry.statusEffects.values()),
     })),
-    playerManaRestore: totalPlayerManaRestore,
   };
 }
 
@@ -620,8 +587,16 @@ function applyAggregatedEffects(run, playerSheet, skill, aggregated, options = {
     const y = Number(target.y);
     const damage = Math.max(0, floorHp(target.targetDamage || 0));
     if (damage <= 0) continue;
-    const hasBurning = Array.isArray(target.statusEffects)
-      && target.statusEffects.some((effect) => effect?.type === "burning");
+    const burningEffects = Array.isArray(target.statusEffects)
+      ? target.statusEffects.filter((effect) => effect?.type === "burning")
+      : [];
+    const hasBurning = burningEffects.length > 0;
+    const burnTurns = hasBurning
+      ? burningEffects.reduce((maxTurns, effect) => Math.max(maxTurns, Number(effect?.turns || BURNING_TURNS)), BURNING_TURNS)
+      : 0;
+    const burnPercent = hasBurning
+      ? burningEffects.reduce((maxPercent, effect) => Math.max(maxPercent, Number(effect?.percent || BURNING_PERCENT)), BURNING_PERCENT)
+      : 0;
     if (x === run.player.x && y === run.player.y) {
       const playerHpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
       const playerHpNext = floorHp(playerHpNow - damage);
@@ -631,13 +606,13 @@ function applyAggregatedEffects(run, playerSheet, skill, aggregated, options = {
         const currentEffects = Array.isArray(run.overTimeEffects) ? run.overTimeEffects : [];
         const burnExisting = currentEffects.find((effect) => effect.type === "burning_player");
         if (burnExisting) {
-          burnExisting.turnsLeft = Math.max(Number(burnExisting.turnsLeft || 0), BURNING_TURNS);
-          burnExisting.burnPercent = Math.max(Number(burnExisting.burnPercent || 0), BURNING_PERCENT);
+          burnExisting.turnsLeft = Math.max(Number(burnExisting.turnsLeft || 0), burnTurns);
+          burnExisting.burnPercent = Math.max(Number(burnExisting.burnPercent || 0), burnPercent);
         } else {
           currentEffects.push({
             type: "burning_player",
-            turnsLeft: BURNING_TURNS,
-            burnPercent: BURNING_PERCENT,
+            turnsLeft: burnTurns,
+            burnPercent,
           });
           run.overTimeEffects = currentEffects;
         }
@@ -654,8 +629,8 @@ function applyAggregatedEffects(run, playerSheet, skill, aggregated, options = {
     logs.push(line);
     if (hasBurning) {
       const status = ensureEnemyStatus(enemy);
-      status.burnTurns = Math.max(Number(status.burnTurns || 0), BURNING_TURNS);
-      status.burnPercent = Math.max(Number(status.burnPercent || 0), BURNING_PERCENT);
+      status.burnTurns = Math.max(Number(status.burnTurns || 0), burnTurns);
+      status.burnPercent = Math.max(Number(status.burnPercent || 0), burnPercent);
     }
     fx.floatingTexts.push({
       x,
@@ -667,28 +642,19 @@ function applyAggregatedEffects(run, playerSheet, skill, aggregated, options = {
       startMs: floatingStartMs,
     });
   }
-  if (aggregated.byCell.some((target) => (target.statusEffects || []).some((effect) => effect?.type === "burning"))) {
-    logs.push(`Горение: ${Math.round(BURNING_PERCENT * 100)}% МАКС HP на ${BURNING_TURNS} хода (минимум 2).`);
-  }
-  const restoredMana = roundManaValue(aggregated.playerManaRestore || 0);
-  if (restoredMana > 0) {
-    const manaNow = getRoundedCurrentMana(playerSheet);
-    const manaCap = getRoundedManaMax(playerSheet);
-    const manaNext = Math.max(0, Math.min(manaCap, roundManaValue(manaNow + restoredMana)));
-    const manaDelta = Math.max(0, roundManaValue(manaNext - manaNow));
-    playerSheet.mana = manaNext;
-    if (manaDelta > 0) {
-      fx.floatingTexts.push({
-        x: run.player.x,
-        y: run.player.y,
-        value: `+${manaDelta}`,
-        color: "#60a5fa",
-        durationMs: 700,
-        scale: 1.05,
-        startMs: floatingStartMs,
-      });
-      logs.push(`Маны: +${manaDelta}.`);
-    }
+  const burningInCast = aggregated.byCell
+    .flatMap((target) => (Array.isArray(target.statusEffects) ? target.statusEffects : []))
+    .filter((effect) => effect?.type === "burning");
+  if (burningInCast.length > 0) {
+    const maxBurnTurns = burningInCast.reduce(
+      (maxTurns, effect) => Math.max(maxTurns, Number(effect?.turns || BURNING_TURNS)),
+      BURNING_TURNS,
+    );
+    const maxBurnPercent = burningInCast.reduce(
+      (maxPercent, effect) => Math.max(maxPercent, Number(effect?.percent || BURNING_PERCENT)),
+      BURNING_PERCENT,
+    );
+    logs.push(`Горение: ${Math.round(maxBurnPercent * 100)}% МАКС HP на ${maxBurnTurns} хода (минимум 2).`);
   }
   return { ok: true, log: logs.join(" ") || `${skill.name}: эффект применён.` };
 }
@@ -788,7 +754,7 @@ export function getSkillPreviewAtCell(run, playerSheet, item, instanceData, skil
     const effects = resolver.getEffects(run, playerSheet, skill, instanceData, targetX, targetY);
     if (!effects) return null;
 
-    let { targetDamage = 0, targetHeal = 0, playerManaRestore = 0 } = effects;
+    let { targetDamage = 0 } = effects;
 
     if (targetDamage > 0) {
       if (targetX === run.player.x && targetY === run.player.y) {
@@ -805,7 +771,7 @@ export function getSkillPreviewAtCell(run, playerSheet, item, instanceData, skil
       }
     }
 
-    return { targetDamage, targetHeal, playerManaRestore };
+    return { targetDamage };
   }
   
   return null;
@@ -820,18 +786,6 @@ export function getSkillPreviewForPreparedSelections(run, playerSheet, item, ins
     if (target.targetDamage > 0) {
       entries.push({ x: target.x, y: target.y, value: `-${target.targetDamage}`, color: "#ef4444" });
     }
-    if (target.targetHeal > 0) {
-      entries.push({ x: target.x, y: target.y, value: `+${target.targetHeal}`, color: "#22c55e" });
-    }
-  }
-  if (aggregated.playerManaRestore > 0) {
-    const manaRestore = roundManaValue(aggregated.playerManaRestore);
-    entries.push({
-      x: run.player.x,
-      y: run.player.y,
-      value: `+${manaRestore}`,
-      color: "#60a5fa",
-    });
   }
   return entries;
 }

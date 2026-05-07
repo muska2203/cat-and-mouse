@@ -1,8 +1,8 @@
-import { floorHp } from "../rules.js?v=0.4.12-pre-alpha";
-import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.12-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.12-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.12-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.12-pre-alpha";
+import { floorHp } from "../rules.js?v=0.4.13-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.4.13-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.4.13-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.13-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.13-pre-alpha";
 
 export function ensureEnemyStatus(enemy) {
   if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0, burnTurns: 0, burnPercent: 0 };
@@ -121,6 +121,7 @@ export function spawnPoisonCloudObjects(run, centerX, centerY, sourceName, trapC
       oneTime: false,
       blocksMovement: false,
       blocksEnemyMovement: false,
+      activateOnPathPass: true,
       activation: { by: ["player", "enemy"], effect: "trigger_poison_cloud" },
       x: cell.x,
       y: cell.y,

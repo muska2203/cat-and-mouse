@@ -1,47 +1,49 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.12-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.13-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
+  createRuntimeItemInstance,
   chooseStarterLoadoutItem,
   getStarterCommonItems,
   getAllLootItems,
   getItemById,
   initializeInventoryForRun,
+  restoreItemInstanceToBag,
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.4.12-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.12-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.12-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.12-pre-alpha";
-import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.12-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.12-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.12-pre-alpha";
-import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.4.12-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.12-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.12-pre-alpha";
+} from "./loadout.js?v=0.4.13-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.13-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.4.13-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.13-pre-alpha";
+import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.13-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.13-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.13-pre-alpha";
+import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.4.13-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.13-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.13-pre-alpha";
 import {
   advanceRunAnimationState,
   isBlockingMotionActive,
   normalizeFinishedAnimationsForRun,
-} from "./runtime/motionTiming.js?v=0.4.12-pre-alpha";
-import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.12-pre-alpha";
-import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.12-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.12-pre-alpha";
+} from "./runtime/motionTiming.js?v=0.4.13-pre-alpha";
+import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.13-pre-alpha";
+import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.13-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.13-pre-alpha";
 import {
   isEnvironmentTurnStepReady,
   isLevelTransitionReady,
   isPlayerInputBlockedByMotion,
-} from "./runtime/runFlow.js?v=0.4.12-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.4.12-pre-alpha";
-import { randomInt } from "./game/rng.js?v=0.4.12-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.4.12-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.4.12-pre-alpha";
-import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.12-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.12-pre-alpha";
-import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.12-pre-alpha";
-import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.12-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.4.12-pre-alpha";
+} from "./runtime/runFlow.js?v=0.4.13-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.4.13-pre-alpha";
+import { randomInt } from "./game/rng.js?v=0.4.13-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.4.13-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.4.13-pre-alpha";
+import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.13-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.13-pre-alpha";
+import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.13-pre-alpha";
+import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.13-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.4.13-pre-alpha";
 import {
   getSkillsForEquippedItem,
   getSkillById,
@@ -52,21 +54,38 @@ import {
   getSkillTargetingProfile,
   getSkillAffectedCellsForRoot,
   getSkillPreviewForPreparedSelections,
-} from "./skillsRuntime.js?v=0.4.12-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.4.12-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.12-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.12-pre-alpha";
-import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.12-pre-alpha";
-import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.12-pre-alpha";
-import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.12-pre-alpha";
-import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.12-pre-alpha";
-import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.12-pre-alpha";
-import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.12-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.12-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.12-pre-alpha";
-import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.12-pre-alpha";
+} from "./skillsRuntime.js?v=0.4.13-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.4.13-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.13-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.13-pre-alpha";
+import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.13-pre-alpha";
+import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.13-pre-alpha";
+import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.13-pre-alpha";
+import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.13-pre-alpha";
+import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.13-pre-alpha";
+import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.13-pre-alpha";
+import { buildAnvilOverlayHtml } from "./ui/renderers/anvilOverlay.js?v=0.4.13-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.13-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.13-pre-alpha";
+import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.13-pre-alpha";
+import {
+  buildImproveResult,
+  buildRecycleResult,
+  buildReforgeResult,
+  canCraftImprove,
+  canCraftRecycle,
+  canCraftReforge,
+  describeAnvilMode,
+  getItemRarity as getAnvilRarity,
+  getRarityBadgeClass,
+  getRecyclePreview,
+  getReforgeCandidates,
+  isEquipableItem,
+} from "./game/anvilCrafting.js?v=0.4.13-pre-alpha";
+import { ACTOR_KIND, removeObject } from "./game/cellObjects.js?v=0.4.13-pre-alpha";
+import { applyObjectActivationOnCell } from "./game/cellActivation.js?v=0.4.13-pre-alpha";
 
-import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.12-pre-alpha";
+import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.13-pre-alpha";
 
 const root = document.getElementById("app");
 
@@ -118,6 +137,7 @@ const PORTRAITS = [
 const state = createInitialState();
 state.selectedPortraitId = "witcher";
 state.uiNewModal = null;
+state.uiHud.anvilSession = null;
 state.uiNewStartMessage = "";
 state.screen = "welcome";
 state.uiNewRunStartedAtMs = null;
@@ -125,6 +145,7 @@ state.uiNewLastCanvasClickAtMs = 0;
 let uiNewResizeTimer = null;
 let lastPointerClientX = null;
 let lastPointerClientY = null;
+let anvilDragState = null;
 
 initAnalytics({ measurementId: GA4_MEASUREMENT_ID, version: APP_VERSION });
 
@@ -272,7 +293,7 @@ function formatSkillsDetailSection(item, instanceEntry) {
   return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы предмета</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
 }
 
-import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.4.12-pre-alpha";
+import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.4.13-pre-alpha";
 
 function formatItemDetailDescriptionSection(item, stackCount) {
   const id = STRINGS_RU.itemDetail;
@@ -470,6 +491,312 @@ function clearPathingState() {
   state.uiHud.autoMoveStopOnEnemySight = false;
 }
 
+function isAnvilSessionOpen() {
+  return !!state.uiHud?.anvilSession;
+}
+
+function getAnvilObjectById(anvilId) {
+  if (!state.run || !anvilId) return null;
+  return (state.run.objects || []).find((object) => object?.id === anvilId && object.type === "anvil") || null;
+}
+
+function closeAnvilSession(options = {}) {
+  const session = state.uiHud?.anvilSession;
+  if (!session || !state.playerSheet) return;
+  anvilDragState = null;
+  const committed = options.committed === true;
+  if (!committed) {
+    for (const slot of (session.slots || [])) {
+      if (!slot) continue;
+      state.playerSheet = restoreItemInstanceToBag(state.playerSheet, slot);
+    }
+    state.uiHud.anvilSession = null;
+    return;
+  }
+  if (!session.resultTakenToBag && session.result?.instanceId && session.result?.itemId) {
+    const nextBag = [...(state.playerSheet?.bag || [])];
+    nextBag.push({ instanceId: session.result.instanceId, itemId: session.result.itemId });
+    state.playerSheet = recalculateSheetFromInventory(
+      state.playerSheet,
+      state.playerSheet.equippedByType,
+      nextBag,
+      state.playerSheet.equippedInstanceByType,
+    );
+  }
+  if (state.run && session.anvilId) {
+    const anvilObject = getAnvilObjectById(session.anvilId);
+    const remainingCraftsBefore = Math.max(0, Number(anvilObject?.data?.remainingCrafts ?? 3));
+    const remainingCraftsAfter = Math.max(0, remainingCraftsBefore - 1);
+    if (anvilObject) {
+      anvilObject.data = {
+        ...(anvilObject.data || {}),
+        remainingCrafts: remainingCraftsAfter,
+      };
+    }
+    if (remainingCraftsAfter <= 0) {
+      removeObject(state.run, session.anvilId);
+      if (state.run?.status === "running") {
+        state.run.lastLog = "Наковальня рассыпалась после последней работы.";
+      }
+    } else if (state.run?.status === "running") {
+      state.run.lastLog = `Наковальня готова ещё на ${remainingCraftsAfter} ${remainingCraftsAfter === 1 ? "создание" : "создания"}.`;
+    }
+  }
+  state.uiHud.anvilSession = null;
+}
+
+function consumeAnvilUse(session) {
+  if (!session?.anvilId || !state.run) return { exhausted: true, remaining: 0 };
+  const anvilObject = getAnvilObjectById(session.anvilId);
+  const remainingCraftsBefore = Math.max(0, Number(anvilObject?.data?.remainingCrafts ?? 3));
+  const remainingCraftsAfter = Math.max(0, remainingCraftsBefore - 1);
+  if (anvilObject) {
+    anvilObject.data = {
+      ...(anvilObject.data || {}),
+      remainingCrafts: remainingCraftsAfter,
+    };
+  }
+  if (remainingCraftsAfter <= 0) {
+    removeObject(state.run, session.anvilId);
+    if (state.run?.status === "running") {
+      state.run.lastLog = "Наковальня рассыпалась после последней работы.";
+    }
+    return { exhausted: true, remaining: 0 };
+  }
+  session.usesLeft = remainingCraftsAfter;
+  if (state.run?.status === "running") {
+    state.run.lastLog = `Наковальня готова ещё на ${remainingCraftsAfter} ${remainingCraftsAfter === 1 ? "создание" : "создания"}.`;
+  }
+  return { exhausted: false, remaining: remainingCraftsAfter };
+}
+
+function openAnvilSession(anvilObject, options = {}) {
+  if (!state.run || !state.playerSheet || !anvilObject) return;
+  const remainingCrafts = Math.max(0, Number(anvilObject?.data?.remainingCrafts ?? 3));
+  if (remainingCrafts <= 0) return;
+  const ignoreAutoMoveLock = options.ignoreAutoMoveLock === true;
+  if (
+    state.uiHud.skillTargeting?.skillId
+    || state.uiHud.trapTargeting?.itemId
+    || (!ignoreAutoMoveLock && state.uiHud.autoMoveActive)
+  ) {
+    return;
+  }
+  state.uiHud.anvilSession = {
+    anvilId: anvilObject.id,
+    usesLeft: remainingCrafts,
+    windowPosition: null,
+    mode: null,
+    slots: [null, null, null],
+    reforgeTargetItemId: null,
+    improvePreviewResult: null,
+    reforgePreviewResult: null,
+    result: null,
+    canCraft: false,
+    resultTakenToBag: false,
+  };
+}
+
+function removeBagEntryAndReturnSlot(instanceId) {
+  const bag = [...(state.playerSheet?.bag || [])];
+  const index = bag.findIndex((entry) => entry?.instanceId === instanceId);
+  if (index === -1) return null;
+  const [bagEntry] = bag.splice(index, 1);
+  const itemInstances = { ...(state.playerSheet?.itemInstances || {}) };
+  const instanceEntry = itemInstances[instanceId] ? { ...itemInstances[instanceId] } : null;
+  delete itemInstances[instanceId];
+  state.playerSheet = recalculateSheetFromInventory(
+    { ...state.playerSheet, itemInstances },
+    state.playerSheet.equippedByType,
+    bag,
+    state.playerSheet.equippedInstanceByType,
+  );
+  const item = getItemById(bagEntry.itemId);
+  return {
+    instanceId: bagEntry.instanceId,
+    itemId: bagEntry.itemId,
+    source: "bag",
+    originType: item?.type || null,
+    rarity: getAnvilRarity(item),
+    instanceEntry,
+  };
+}
+
+function removeEquippedEntryAndReturnSlot(equipType) {
+  const itemId = state.playerSheet?.equippedByType?.[equipType] || null;
+  const instanceId = state.playerSheet?.equippedInstanceByType?.[equipType] || null;
+  if (!itemId || !instanceId) return null;
+  const nextEquipped = { ...(state.playerSheet.equippedByType || {}) };
+  const nextEquippedInstances = { ...(state.playerSheet.equippedInstanceByType || {}) };
+  nextEquipped[equipType] = null;
+  nextEquippedInstances[equipType] = null;
+  const itemInstances = { ...(state.playerSheet?.itemInstances || {}) };
+  const instanceEntry = itemInstances[instanceId] ? { ...itemInstances[instanceId] } : null;
+  delete itemInstances[instanceId];
+  state.playerSheet = recalculateSheetFromInventory(
+    { ...state.playerSheet, itemInstances },
+    nextEquipped,
+    [...(state.playerSheet?.bag || [])],
+    nextEquippedInstances,
+  );
+  const item = getItemById(itemId);
+  return {
+    instanceId,
+    itemId,
+    source: "equipped",
+    originType: equipType,
+    rarity: getAnvilRarity(item),
+    instanceEntry,
+  };
+}
+
+function updateAnvilSessionComputedState() {
+  const session = state.uiHud?.anvilSession;
+  if (!session) return;
+  const slots = session.slots || [];
+  session.improvePreviewResult = null;
+  session.reforgePreviewResult = null;
+  if (session.mode === "recycle") {
+    session.canCraft = canCraftRecycle(slots);
+  } else if (session.mode === "improve") {
+    session.canCraft = canCraftImprove(slots);
+    if (session.canCraft) {
+      session.improvePreviewResult = buildImproveResult(slots, state.run?.rng || null);
+    }
+  } else if (session.mode === "reforge") {
+    session.canCraft = canCraftReforge(slots, session.reforgeTargetItemId);
+    if (session.canCraft) {
+      session.reforgePreviewResult = buildReforgeResult(
+        slots,
+        session.reforgeTargetItemId,
+        state.run?.rng || null,
+      );
+    }
+  } else {
+    session.canCraft = false;
+  }
+}
+
+function placeIntoAnvilSlot(targetSlotIndex, payload) {
+  const session = state.uiHud?.anvilSession;
+  if (!session || !session.mode) return false;
+  if (!Number.isInteger(targetSlotIndex) || targetSlotIndex < 0 || targetSlotIndex > 2) return false;
+  if (session.result) return false;
+  if (session.slots[targetSlotIndex]) return false;
+  let slotEntry = null;
+  if (payload?.kind === "bag-equip" && payload.bagInstanceId) {
+    slotEntry = removeBagEntryAndReturnSlot(payload.bagInstanceId);
+  } else if (payload?.kind === "equipped-item" && payload.equipType) {
+    slotEntry = removeEquippedEntryAndReturnSlot(payload.equipType);
+  }
+  if (!slotEntry) return false;
+  const item = getItemById(slotEntry.itemId);
+  if (!isEquipableItem(item)) {
+    state.playerSheet = restoreItemInstanceToBag(state.playerSheet, slotEntry);
+    return false;
+  }
+  if (session.mode === "improve") {
+    const placedEntries = (session.slots || []).filter(Boolean);
+    if (placedEntries.length > 0) {
+      const requiredItemId = placedEntries[0].itemId;
+      if (slotEntry.itemId !== requiredItemId) {
+        state.playerSheet = restoreItemInstanceToBag(state.playerSheet, slotEntry);
+        return false;
+      }
+    }
+  }
+  const nextSlots = [...session.slots];
+  nextSlots[targetSlotIndex] = slotEntry;
+  session.slots = nextSlots;
+  if (session.mode === "reforge") {
+    const candidates = getReforgeCandidates(session.slots);
+    if (candidates.length > 0 && !candidates.some((itemEntry) => itemEntry.id === session.reforgeTargetItemId)) {
+      session.reforgeTargetItemId = candidates[0].id;
+    }
+  }
+  updateAnvilSessionComputedState();
+  return true;
+}
+
+function restoreFromAnvilSlot(slotIndex) {
+  const session = state.uiHud?.anvilSession;
+  if (!session) return false;
+  const slotEntry = session.slots?.[slotIndex] || null;
+  if (!slotEntry) return false;
+  state.playerSheet = restoreItemInstanceToBag(state.playerSheet, slotEntry);
+  const nextSlots = [...session.slots];
+  nextSlots[slotIndex] = null;
+  session.slots = nextSlots;
+  if (session.mode === "reforge") {
+    const candidates = getReforgeCandidates(session.slots);
+    if (!candidates.some((itemEntry) => itemEntry.id === session.reforgeTargetItemId)) {
+      session.reforgeTargetItemId = candidates[0]?.id || null;
+    }
+  }
+  updateAnvilSessionComputedState();
+  return true;
+}
+
+function finalizeAnvilResultToBag() {
+  const session = state.uiHud?.anvilSession;
+  if (!session?.result || session.resultTakenToBag) return false;
+  const nextBag = [...(state.playerSheet?.bag || [])];
+  nextBag.push({ instanceId: session.result.instanceId, itemId: session.result.itemId });
+  state.playerSheet = recalculateSheetFromInventory(
+    state.playerSheet,
+    state.playerSheet.equippedByType,
+    nextBag,
+    state.playerSheet.equippedInstanceByType,
+  );
+  session.resultTakenToBag = true;
+  const consumeResult = consumeAnvilUse(session);
+  if (consumeResult.exhausted) {
+    state.uiHud.anvilSession = null;
+  } else {
+    session.mode = null;
+    session.slots = [null, null, null];
+    session.improvePreviewResult = null;
+    session.reforgePreviewResult = null;
+    session.result = null;
+    session.reforgeTargetItemId = null;
+    session.canCraft = false;
+    session.resultTakenToBag = false;
+  }
+  return true;
+}
+
+function executeAnvilCraft() {
+  const session = state.uiHud?.anvilSession;
+  if (!session || !session.mode || !session.canCraft) return false;
+  const slots = session.slots || [];
+  let result = null;
+  if (session.mode === "recycle") {
+    result = buildRecycleResult(slots, state.run?.rng || null);
+  } else if (session.mode === "improve") {
+    result = session.improvePreviewResult || buildImproveResult(slots, state.run?.rng || null);
+  } else if (session.mode === "reforge") {
+    result = session.reforgePreviewResult
+      || buildReforgeResult(slots, session.reforgeTargetItemId, state.run?.rng || null);
+  }
+  if (!result) return false;
+  const created = createRuntimeItemInstance(state.playerSheet, result.itemId, null, result.skill || null);
+  state.playerSheet = {
+    ...state.playerSheet,
+    itemInstances: created.itemInstances,
+  };
+  session.slots = [null, null, null];
+  session.improvePreviewResult = null;
+  session.reforgePreviewResult = null;
+  session.result = {
+    instanceId: created.instanceId,
+    itemId: result.itemId,
+    rarity: result.rarity || getAnvilRarity(result.item),
+  };
+  session.resultTakenToBag = false;
+  updateAnvilSessionComputedState();
+  return true;
+}
+
 function snapshotProgress() {
   return {};
 }
@@ -561,6 +888,21 @@ function getStatValueForUi(sheet, key) {
 
 function getSelectedSheet() {
   return applyLoadoutToSheet(createPlayerSheet(state.preGameStats), state.starterLoadout);
+}
+
+function addTestStarterSwords(playerSheet) {
+  const swordId = "common_splinter_blade";
+  let nextSheet = playerSheet;
+  for (let i = 0; i < 12; i += 1) {
+    const created = createRuntimeItemInstance(nextSheet, swordId);
+    const nextBag = [...(nextSheet?.bag || []), { instanceId: created.instanceId, itemId: swordId }];
+    nextSheet = {
+      ...nextSheet,
+      itemInstances: created.itemInstances,
+      bag: nextBag,
+    };
+  }
+  return nextSheet;
 }
 
 function getValueDeltaClass(baseValue, previewValue) {
@@ -909,6 +1251,26 @@ function renderModal() {
   `;
 }
 
+function buildDescendOverlayHtml() {
+  const prompt = state.uiHud?.descendPrompt || null;
+  if (!prompt || state.screen !== "game") return "";
+  const nextLevel = Math.max(1, Number(prompt.nextLevel || ((state.run?.level || 1) + 1)));
+  return `
+    <div class="cm-modal-backdrop is-open">
+      <section class="cm-panel cm-modal" role="dialog" aria-modal="true" aria-label="Переход на следующий уровень">
+        <h2 class="cm-panel__title">Спуститься на уровень ${nextLevel}?</h2>
+        <div class="cm-panel__body">
+          <p>В норе пахнет новым лутом и новыми котами.</p>
+          <div class="cm-modal__actions">
+            <button class="cm-btn cm-btn--primary" type="button" data-action="descend-confirm">Спуститься</button>
+            <button class="cm-btn cm-btn--secondary" type="button" data-action="descend-stay">Остаться</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function render() {
   if (state.screen === "ending") {
     renderEndingScreen();
@@ -1193,6 +1555,22 @@ function renderGameScreen() {
     activeSlotIndex: state.uiHud?.skillTargeting?.slotIndex ?? null,
     esc,
   });
+  const anvilSession = state.uiHud?.anvilSession || null;
+  const descendOverlayHtml = buildDescendOverlayHtml();
+  const anvilOverlayHtml = anvilSession
+    ? buildAnvilOverlayHtml({
+      session: anvilSession,
+      modeDescription: describeAnvilMode(anvilSession.mode),
+      esc,
+      getItemById,
+      getRarityBadgeClass,
+      improvePreview: anvilSession.improvePreviewResult || null,
+      reforgePreview: anvilSession.reforgePreviewResult || null,
+      recyclePreview: getRecyclePreview(anvilSession.slots || []),
+      reforgeCandidates: getReforgeCandidates(anvilSession.slots || []),
+      windowPosition: anvilSession.windowPosition || null,
+    })
+    : "";
 
   root.innerHTML = buildGameScreenHtml({
     portrait,
@@ -1211,6 +1589,8 @@ function renderGameScreen() {
     getUiStatName,
     getValueDeltaClass,
     renderModal,
+    anvilOverlayHtml,
+    descendOverlayHtml,
   });
 
   const canvasOverlay = buildCanvasOverlayViewModel(state.uiHud);
@@ -1275,20 +1655,26 @@ function resetToWelcome() {
   state.uiNewModal = null;
   state.uiNewStartMessage = "";
   state.uiNewRunStartedAtMs = null;
+  state.uiHud.anvilSession = null;
+  state.uiHud.descendPrompt = null;
   inventoryPopover.hide();
   skillPopover.hide();
 }
 
-function performStep(direction) {
+function performStep(direction, isRouteStepFinal = true) {
   if (!canAcceptPlayerAction(state)) {
     return false;
   }
-  const result = tryStep(state.run, state.playerSheet, direction);
+  if (isAnvilSessionOpen()) {
+    closeAnvilSession({ committed: false });
+  }
+  const result = tryStep(state.run, state.playerSheet, direction, isRouteStepFinal);
   state.run = result.run;
   state.playerSheet = result.playerSheet;
   if (state.run && result.motion) {
     ensureRunFxState(state.run).motion = result.motion;
   }
+  processPendingUiActions();
 
   if (state.run.status === "victory" || state.run.status === "defeat") {
     maybeTrackRunEnd();
@@ -1304,10 +1690,74 @@ function performStep(direction) {
   return Boolean(result.actionConsumed);
 }
 
+function processPendingUiActions() {
+  if (state.run?.status !== "running") return;
+  const pendingUiActions = Array.isArray(state.run.pendingUiActions) ? [...state.run.pendingUiActions] : [];
+  state.run.pendingUiActions = [];
+  for (const action of pendingUiActions) {
+    if (action?.type === "open_anvil") {
+      const anvilObject = (state.run.objects || []).find((object) => (
+        object?.id === action.objectId
+        && object?.type === "anvil"
+      )) || null;
+      if (anvilObject) {
+        openAnvilSession(anvilObject, { ignoreAutoMoveLock: true });
+      }
+      continue;
+    }
+    if (action?.type === "open_descend_prompt") {
+      state.uiHud.descendPrompt = {
+        currentLevel: Math.max(1, Number(action.currentLevel || state.run.level || 1)),
+        nextLevel: Math.max(1, Number(action.nextLevel || ((state.run.level || 1) + 1))),
+      };
+    }
+  }
+}
+
+function tryActivateCurrentCellObject() {
+  if (!state.run || !state.playerSheet) return false;
+  const activationResult = applyObjectActivationOnCell(
+    state.run,
+    state.playerSheet,
+    ACTOR_KIND.PLAYER,
+    state.run.player.x,
+    state.run.player.y,
+    null,
+    { isRouteStepFinal: true }
+  );
+  state.playerSheet = activationResult.playerSheet || state.playerSheet;
+  processPendingUiActions();
+  if (activationResult.log) {
+    state.run.lastLog = activationResult.log;
+    consumeActionAndRunEnvironment();
+    return true;
+  }
+  return false;
+}
+
+function handleSkipTurnAction() {
+  if (!canAcceptPlayerAction(state)) return false;
+  if (state.uiHud.trapTargeting?.itemId) {
+    state.run.lastLog = "Выбери клетку мышью для установки ловушки.";
+    return true;
+  }
+  if (state.uiHud.skillTargeting?.skillId) {
+    tryCastPreparedSkillOnSelf();
+    return true;
+  }
+  if (tryActivateCurrentCellObject()) {
+    return true;
+  }
+  state.run.lastLog = "Ход пропущен.";
+  consumeActionAndRunEnvironment();
+  return true;
+}
+
 function handleLevelTransition(nowMs) {
   if (!isLevelTransitionReady(state.run, nowMs)) {
     return;
   }
+  state.uiHud.descendPrompt = null;
   state.run = createNextLevelRun(state.run, state.playerSheet);
   clearSkillTargeting();
   clearPathingState();
@@ -1360,7 +1810,7 @@ function tryMoveToCanvasCell(canvas, clientX, clientY) {
   const next = path[1];
   const direction = resolveDirectionByDelta(next.x - state.run.player.x, next.y - state.run.player.y);
   if (!direction) return;
-  performStep(direction);
+  performStep(direction, true);
 }
 
 const canvasHandlers = createCanvasRunHandlers({
@@ -1377,6 +1827,12 @@ const canvasHandlers = createCanvasRunHandlers({
   getItemById,
   getEnemyById,
   placeTrap,
+  openAnvilSession,
+  beforePlayerMovement: () => {
+    if (isAnvilSessionOpen()) {
+      closeAnvilSession({ committed: false });
+    }
+  },
   recalculateSheetFromInventory,
   consumePlayerActionAndStartEnvironment: consumeActionAndRunEnvironment,
   clearSkillTargeting,
@@ -1512,7 +1968,8 @@ function useQuickbarSlot(slotIndex) {
     if (alreadyActive) {
       clearSkillTargeting();
     } else {
-      const profile = getSkillTargetingProfile(slotPayload.skillId);
+      const activeSkill = getActiveSkills(state.playerSheet).find((entry) => entry.id === slotPayload.skillId) || null;
+      const profile = getSkillTargetingProfile(slotPayload.skillId, activeSkill?.level || 1);
       state.uiHud.skillTargeting = {
         slotIndex,
         skillId: slotPayload.skillId,
@@ -1756,6 +2213,103 @@ function onRootClick(event) {
     return;
   }
 
+  if (action === "anvil-close") {
+    const committed = !!state.uiHud?.anvilSession?.result;
+    closeAnvilSession({ committed });
+    render();
+    return;
+  }
+
+  if (action === "anvil-back-to-modes") {
+    const session = state.uiHud?.anvilSession;
+    if (session) {
+      for (let i = 0; i < 3; i += 1) {
+        if (session.slots?.[i]) {
+          restoreFromAnvilSlot(i);
+        }
+      }
+      session.mode = null;
+      session.reforgeTargetItemId = null;
+      session.improvePreviewResult = null;
+      session.reforgePreviewResult = null;
+      session.result = null;
+      session.canCraft = false;
+    }
+    render();
+    return;
+  }
+
+  if (action === "anvil-mode-select") {
+    const session = state.uiHud?.anvilSession;
+    if (!session) return;
+    const mode = String(actionEl.dataset.anvilMode || "");
+    if (!["recycle", "improve", "reforge"].includes(mode)) return;
+    session.mode = mode;
+    session.improvePreviewResult = null;
+    session.reforgePreviewResult = null;
+    session.result = null;
+    if (mode === "reforge") {
+      const candidates = getReforgeCandidates(session.slots || []);
+      session.reforgeTargetItemId = candidates[0]?.id || null;
+    } else {
+      session.reforgeTargetItemId = null;
+    }
+    updateAnvilSessionComputedState();
+    render();
+    return;
+  }
+
+  if (action === "anvil-slot-return") {
+    const slotIndex = Number(actionEl.dataset.anvilSlotIndex);
+    if (restoreFromAnvilSlot(slotIndex)) {
+      render();
+    }
+    return;
+  }
+
+  if (action === "anvil-result-take") {
+    if (finalizeAnvilResultToBag()) {
+      render();
+    }
+    return;
+  }
+
+  if (action === "anvil-craft") {
+    if (executeAnvilCraft()) {
+      render();
+    }
+    return;
+  }
+
+  if (action === "skip-turn" && state.screen === "game") {
+    if (handleSkipTurnAction()) {
+      render();
+    }
+    return;
+  }
+
+  if (action === "descend-stay" && state.screen === "game") {
+    state.uiHud.descendPrompt = null;
+    state.run.lastLog = "Спуск отменен. Ты остаешься на текущем уровне.";
+    render();
+    return;
+  }
+
+  if (action === "descend-confirm" && state.screen === "game" && state.run?.status === "running") {
+    const nextLevel = Math.max(1, Number(state.uiHud?.descendPrompt?.nextLevel || ((state.run.level || 1) + 1)));
+    state.uiHud.descendPrompt = null;
+    state.run.status = "level_complete";
+    ensureRunFxState(state.run).levelTransition = {
+      phase: "out",
+      startedMs: null,
+      durationMs: 420,
+      nextLevel,
+    };
+    state.run.lastLog = `Уровень ${state.run.level} пройден. Переход на ${nextLevel}...`;
+    render();
+    return;
+  }
+
   if (action === "start-game") {
     const hasAllTypes = ["weapon", "armor", "amulet"].every((type) =>
       state.starterLoadout.some((id) => getItemById(id)?.type === type),
@@ -1765,6 +2319,7 @@ function onRootClick(event) {
     }
     state.playerSheet = applyLoadoutToSheet(createPlayerSheet(state.preGameStats), state.starterLoadout);
     state.playerSheet = initializeInventoryForRun(state.playerSheet);
+    state.playerSheet = addTestStarterSwords(state.playerSheet);
     state.run = createRunState(state.playerSheet, 1);
     state.run.analyticsRunId = createRunAnalyticsId();
     state.run.analyticsRunEndTracked = false;
@@ -1774,6 +2329,8 @@ function onRootClick(event) {
     });
     state.uiNewRunStartedAtMs = Date.now();
     initQuickbarForNewRun();
+    state.uiHud.anvilSession = null;
+    state.uiHud.descendPrompt = null;
     state.screen = "game";
     state.uiNewStartMessage = "";
     render();
@@ -1796,6 +2353,17 @@ function onRootClick(event) {
     if (item.isConsumable) {
       useConsumableById(item.id, bagInstanceId || null, -1);
     } else {
+      const anvilSession = state.uiHud?.anvilSession;
+      const firstFreeAnvilSlot = anvilSession?.mode && !anvilSession?.result
+        ? (anvilSession.slots || []).findIndex((slot) => !slot)
+        : -1;
+      if (firstFreeAnvilSlot >= 0 && bagInstanceId) {
+        const placed = placeIntoAnvilSlot(firstFreeAnvilSlot, { kind: "bag-equip", bagInstanceId });
+        if (placed) {
+          render();
+          return;
+        }
+      }
       const previousSheet = state.playerSheet;
       state.playerSheet = swapItemFromBag(state.playerSheet, bagInstanceId, -1);
       if (state.playerSheet !== previousSheet) {
@@ -1808,6 +2376,17 @@ function onRootClick(event) {
 
   if (action === "equip-slot-action" && state.screen === "game" && state.run?.turnPhase === "player") {
     const equipType = actionEl.dataset.equipType;
+    const anvilSession = state.uiHud?.anvilSession;
+    const firstFreeAnvilSlot = anvilSession?.mode && !anvilSession?.result
+      ? (anvilSession.slots || []).findIndex((slot) => !slot)
+      : -1;
+    if (firstFreeAnvilSlot >= 0 && equipType) {
+      const placed = placeIntoAnvilSlot(firstFreeAnvilSlot, { kind: "equipped-item", equipType });
+      if (placed) {
+        render();
+        return;
+      }
+    }
     moveEquippedItemToBag(equipType);
     render();
     return;
@@ -1832,7 +2411,8 @@ function onRootClick(event) {
       render();
       return;
     }
-    const profile = getSkillTargetingProfile(skillId);
+    const activeSkill = getActiveSkills(state.playerSheet).find((entry) => entry.id === skillId) || null;
+    const profile = getSkillTargetingProfile(skillId, activeSkill?.level || 1);
     state.uiHud.skillTargeting = {
       slotIndex: null,
       skillId,
@@ -1940,6 +2520,9 @@ function clearDragUiState() {
   root.querySelectorAll(".cm-equip-slot__box--drop-target").forEach((el) => {
     el.classList.remove("cm-equip-slot__box--drop-target");
   });
+  root.querySelectorAll(".cm-anvil-slot--drop-target").forEach((el) => {
+    el.classList.remove("cm-anvil-slot--drop-target");
+  });
 }
 
 function applyEquipDropTargetHighlight(payload) {
@@ -1978,6 +2561,27 @@ function moveEquippedItemToBag(equipType) {
 }
 
 function onRootDragStart(event) {
+  const anvilResult = event.target.closest("[data-anvil-result='true']");
+  if (anvilResult) {
+    state.uiHud.dragPayload = { kind: "anvil-result" };
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", "anvil-result");
+    return;
+  }
+
+  const anvilSlot = event.target.closest("[data-drag-kind='anvil-slot']");
+  if (anvilSlot) {
+    const slotIndex = Number(anvilSlot.dataset.anvilSlotIndex);
+    if (!Number.isInteger(slotIndex)) {
+      event.preventDefault();
+      return;
+    }
+    state.uiHud.dragPayload = { kind: "anvil-slot", slotIndex };
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", `anvil-slot:${slotIndex}`);
+    return;
+  }
+
   const quickbarSlot = event.target.closest("[data-drag-kind='quick-slot']");
   if (quickbarSlot) {
     const slotIndex = Number(quickbarSlot.dataset.dragSlotIndex);
@@ -2050,9 +2654,19 @@ function onRootDragOver(event) {
   const quickbarSlot = event.target.closest("[data-slot-index]");
   const equipSlot = event.target.closest("[data-equip-type]");
   const bagDropzone = event.target.closest("[data-bag-dropzone]");
+  const anvilSlot = event.target.closest("[data-anvil-slot-index]");
   const payload = state.uiHud.dragPayload;
   applyEquipDropTargetHighlight(payload);
-  if (!payload || (!quickbarSlot && !equipSlot && !bagDropzone)) {
+  if (!payload || (!quickbarSlot && !equipSlot && !bagDropzone && !anvilSlot)) {
+    return;
+  }
+  if (anvilSlot) {
+    const slotIndex = Number(anvilSlot.dataset.anvilSlotIndex);
+    if (!Number.isInteger(slotIndex)) return;
+    if (payload.kind !== "bag-equip" && payload.kind !== "equipped-item") return;
+    event.preventDefault();
+    anvilSlot.classList.add("cm-anvil-slot--drop-target");
+    event.dataTransfer.dropEffect = "move";
     return;
   }
   if (equipSlot) {
@@ -2062,7 +2676,7 @@ function onRootDragOver(event) {
     }
     equipSlot.classList.add("cm-equip-slot__box--drop-target");
   }
-  if (bagDropzone && payload.kind !== "equipped-item") {
+  if (bagDropzone && payload.kind !== "equipped-item" && payload.kind !== "anvil-slot" && payload.kind !== "anvil-result") {
     return;
   }
   event.preventDefault();
@@ -2070,7 +2684,39 @@ function onRootDragOver(event) {
 }
 
 function onRootDrop(event) {
+  const anvilSlot = event.target.closest("[data-anvil-slot-index]");
+  if (anvilSlot && (state.uiHud.dragPayload?.kind === "bag-equip" || state.uiHud.dragPayload?.kind === "equipped-item")) {
+    event.preventDefault();
+    const placed = placeIntoAnvilSlot(Number(anvilSlot.dataset.anvilSlotIndex), state.uiHud.dragPayload);
+    state.uiHud.dragPayload = null;
+    clearDragUiState();
+    if (placed) {
+      render();
+    }
+    return;
+  }
+
   const bagDropzone = event.target.closest("[data-bag-dropzone]");
+  if (bagDropzone && state.uiHud.dragPayload?.kind === "anvil-result") {
+    event.preventDefault();
+    const finalized = finalizeAnvilResultToBag();
+    state.uiHud.dragPayload = null;
+    clearDragUiState();
+    if (finalized) {
+      render();
+    }
+    return;
+  }
+  if (bagDropzone && state.uiHud.dragPayload?.kind === "anvil-slot") {
+    event.preventDefault();
+    const restored = restoreFromAnvilSlot(state.uiHud.dragPayload.slotIndex);
+    state.uiHud.dragPayload = null;
+    clearDragUiState();
+    if (restored) {
+      render();
+    }
+    return;
+  }
   if (bagDropzone && state.uiHud.dragPayload?.kind === "equipped-item") {
     event.preventDefault();
     const moved = moveEquippedItemToBag(state.uiHud.dragPayload.equipType);
@@ -2083,6 +2729,16 @@ function onRootDrop(event) {
   }
 
   const equipSlot = event.target.closest("[data-equip-type]");
+  if (equipSlot && state.uiHud.dragPayload?.kind === "anvil-slot") {
+    event.preventDefault();
+    const restored = restoreFromAnvilSlot(state.uiHud.dragPayload.slotIndex);
+    state.uiHud.dragPayload = null;
+    clearDragUiState();
+    if (restored) {
+      render();
+    }
+    return;
+  }
   if (equipSlot && state.uiHud.dragPayload?.kind === "bag-equip") {
     const equipType = equipSlot.dataset.equipType;
     const payload = state.uiHud.dragPayload;
@@ -2145,6 +2801,31 @@ function onRootDragEnd(event) {
 }
 
 root.addEventListener("click", onRootClick);
+root.addEventListener("mousedown", (event) => {
+  const handle = event.target.closest("[data-action='anvil-drag-handle']");
+  if (!handle) return;
+  const session = state.uiHud?.anvilSession;
+  if (!session) return;
+  const card = handle.closest(".cm-anvil-card");
+  if (!card) return;
+  event.preventDefault();
+  const rect = card.getBoundingClientRect();
+  session.windowPosition = { x: rect.left, y: rect.top };
+  anvilDragState = {
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top,
+  };
+  render();
+});
+root.addEventListener("change", (event) => {
+  const actionEl = event.target.closest("[data-action='anvil-reforge-target']");
+  if (!actionEl) return;
+  const session = state.uiHud?.anvilSession;
+  if (!session || session.mode !== "reforge") return;
+  session.reforgeTargetItemId = String(actionEl.value || "") || null;
+  updateAnvilSessionComputedState();
+  render();
+});
 root.addEventListener("dragstart", onRootDragStart);
 root.addEventListener("dragover", onRootDragOver);
 root.addEventListener("drop", onRootDrop);
@@ -2152,6 +2833,20 @@ root.addEventListener("dragend", onRootDragEnd);
 root.addEventListener("mouseup", (event) => {
   const canvas = event.target.closest("#newGameCanvas");
   if (!canvas) return;
+  if (event.button === 2) {
+    event.preventDefault();
+    if (state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
+      clearSkillTargeting();
+      if (state.run?.status === "running") {
+        state.run.lastLog = "Подготовка скилла отменена.";
+      }
+      render();
+    }
+    return;
+  }
+  if (event.button !== 0) {
+    return;
+  }
   const nowMs = performance.now();
   if (nowMs - Number(state.uiNewLastCanvasClickAtMs || 0) < 140) {
     return;
@@ -2166,6 +2861,11 @@ root.addEventListener("mouseup", (event) => {
     return;
   }
   canvasHandlers.onCanvasClick(event, canvas);
+});
+root.addEventListener("contextmenu", (event) => {
+  const canvas = event.target.closest("#newGameCanvas");
+  if (!canvas) return;
+  event.preventDefault();
 });
 root.addEventListener("mousemove", (event) => {
   lastPointerClientX = Number(event.clientX || 0);
@@ -2182,6 +2882,17 @@ root.addEventListener("mousemove", (event) => {
     }
   }
   canvasHandlers.onCanvasMouseMove(event, canvas);
+});
+window.addEventListener("mousemove", (event) => {
+  if (!anvilDragState || !state.uiHud?.anvilSession) return;
+  const nextX = Math.max(8, event.clientX - anvilDragState.offsetX);
+  const nextY = Math.max(8, event.clientY - anvilDragState.offsetY);
+  state.uiHud.anvilSession.windowPosition = { x: nextX, y: nextY };
+  render();
+});
+window.addEventListener("mouseup", () => {
+  if (!anvilDragState) return;
+  anvilDragState = null;
 });
 root.addEventListener("mouseout", (event) => {
   if (event.target.closest("#newGameCanvas") && !event.relatedTarget?.closest?.("#newGameCanvas")) {
@@ -2245,6 +2956,7 @@ root.addEventListener("wheel", (event) => {
 }, { passive: false });
 window.addEventListener("keydown", (event) => {
   if (!canAcceptPlayerAction(state)) return;
+  if (state.uiHud?.descendPrompt) return;
 
   const quickSlot = resolveQuickbarSlotIndexFromKeyboardEvent(event);
   if (quickSlot != null) {
@@ -2256,23 +2968,21 @@ window.addEventListener("keydown", (event) => {
 
   if (event.code === "Space" || event.key === " ") {
     event.preventDefault();
-    if (state.uiHud.trapTargeting?.itemId) {
-      state.run.lastLog = "Выбери клетку мышью для установки ловушки.";
+    if (handleSkipTurnAction()) {
       render();
       return;
     }
-    if (state.uiHud.skillTargeting?.skillId) {
-      tryCastPreparedSkillOnSelf();
-      render();
-      return;
-    }
-    state.run.lastLog = "Ход пропущен.";
-    consumeActionAndRunEnvironment();
-    render();
     return;
   }
 
   if (event.key === "Escape") {
+    if (isAnvilSessionOpen()) {
+      event.preventDefault();
+      const committed = !!state.uiHud?.anvilSession?.result;
+      closeAnvilSession({ committed });
+      render();
+      return;
+    }
     if (state.uiHud.skillTargeting?.skillId || state.uiHud.trapTargeting?.itemId) {
       event.preventDefault();
       clearSkillTargeting();
@@ -2300,7 +3010,7 @@ window.addEventListener("keydown", (event) => {
   }
   if (!direction) return;
   event.preventDefault();
-  performStep(direction);
+  performStep(direction, true);
 });
 window.addEventListener("resize", () => {
   if (uiNewResizeTimer) {

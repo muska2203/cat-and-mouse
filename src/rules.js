@@ -1,4 +1,4 @@
-import { randomFloat } from "./game/rng.js?v=0.4.12-pre-alpha";
+import { randomFloat } from "./game/rng.js?v=0.4.13-pre-alpha";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(value, max));
@@ -76,7 +76,7 @@ const WEAPON_DAMAGE_CALCULATORS = {
   staff: (baseDamage, stats) => {
     const str = stats?.STR ?? 0;
     const intStat = stats?.INT ?? 0;
-    return baseDamage * (1 + str / 20) + (intStat * 0.5);
+    return baseDamage * (1 + (str / 20) * 0.7) + (intStat * 0.35);
   },
   unarmed: (baseDamage, stats) => {
     const str = stats?.STR ?? 0;
@@ -90,7 +90,7 @@ export function getWeaponDamageFormulaText(weaponItem) {
     return "База × (1 + СИЛ / 10) + ЛОВ × 0.3";
   }
   if (subtype === "staff") {
-    return "База × (1 + СИЛ / 20) + ИНТ × 0.5";
+    return "База × (1 + СИЛ / 20 × 0.7) + ИНТ × 0.35";
   }
   return "База + СИЛ";
 }

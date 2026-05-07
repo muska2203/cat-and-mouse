@@ -1,5 +1,5 @@
-import { buildSkillHoverData } from "../skillsRuntime.js?v=0.4.12-pre-alpha";
-import { getSkillManaCost } from "../skillsRuntime.js?v=0.4.12-pre-alpha";
+import { buildSkillHoverData } from "../skillsRuntime.js?v=0.4.13-pre-alpha";
+import { getSkillManaCost } from "../skillsRuntime.js?v=0.4.13-pre-alpha";
 
 function escapeHtml(str) {
   return String(str)

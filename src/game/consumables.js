@@ -1,7 +1,7 @@
-import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.12-pre-alpha";
-import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.12-pre-alpha";
-import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.12-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.12-pre-alpha";
+import { getConsumableApplyLog, appendManaToLog } from "../items/itemPresentation.js?v=0.4.13-pre-alpha";
+import { resolveConsumableApply } from "../items/consumableApply.js?v=0.4.13-pre-alpha";
+import { getTrapPlacementCells } from "./trapPlacement.js?v=0.4.13-pre-alpha";
+import { randomInt } from "./rng.js?v=0.4.13-pre-alpha";
 
 function roundMana(value) {
   return Math.max(0, Math.round(Number(value || 0)));
@@ -62,6 +62,7 @@ export function placeTrap(run, playerSheet, item, targetX, targetY) {
     oneTime: true,
     blocksMovement: false,
     blocksEnemyMovement: false,
+    activateOnPathPass: true,
     activation: { by: ["player", "enemy"], effect: "trigger_trap" },
     x: targetX,
     y: targetY,
