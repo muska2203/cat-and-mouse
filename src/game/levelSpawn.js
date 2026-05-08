@@ -1,4 +1,4 @@
-import { randomFloat, randomPick } from "./rng.js?v=0.5.3-pre-alpha";
+import { randomFloat, randomPick } from "./rng.js?v=0.5.4-pre-alpha";
 
 function createFilledMask(width, height, fill) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => fill));

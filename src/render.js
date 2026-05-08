@@ -1,6 +1,6 @@
-import { roundStat } from "./rules.js?v=0.5.3-pre-alpha";
-import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.3-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.3-pre-alpha";
+import { roundStat } from "./rules.js?v=0.5.4-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.4-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.4-pre-alpha";
 import {
   getLoadedSprite,
   resolveEnemySpriteUrl,
@@ -13,7 +13,7 @@ import {
   resolvePoisonCloudSpriteUrl,
   resolveRandomFloorTileSpriteUrl,
   resolveTileSpriteUrl,
-} from "./runtime/spriteAssets.js?v=0.5.3-pre-alpha";
+} from "./runtime/spriteAssets.js?v=0.5.4-pre-alpha";
 
 const WORLD_OBJECT_SPRITE_SCALE = 0.65;
 

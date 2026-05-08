@@ -1,7 +1,7 @@
 /**
  * Всплывающая карточка предмета инвентаря (DOM вне #app).
  */
-import { createHoverPopoverController } from "./hoverPopover.js?v=0.5.3-pre-alpha";
+import { createHoverPopoverController } from "./hoverPopover.js?v=0.5.4-pre-alpha";
 
 export function createInventoryItemPopoverController(options) {
   const {

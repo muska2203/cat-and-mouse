@@ -1,9 +1,9 @@
-import { ACTOR_KIND } from "./cellObjects.js?v=0.5.3-pre-alpha";
-import { getChestCountsForLevel } from "./chestLoot.js?v=0.5.3-pre-alpha";
-import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.5.3-pre-alpha";
-import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.3-pre-alpha";
-import { randomInt } from "./rng.js?v=0.5.3-pre-alpha";
-import { createWorldObject } from "./worldObjectModel.js?v=0.5.3-pre-alpha";
+import { ACTOR_KIND } from "./cellObjects.js?v=0.5.4-pre-alpha";
+import { getChestCountsForLevel } from "./chestLoot.js?v=0.5.4-pre-alpha";
+import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.5.4-pre-alpha";
+import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.4-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.4-pre-alpha";
+import { createWorldObject } from "./worldObjectModel.js?v=0.5.4-pre-alpha";
 
 export function generateObjects(maze, level = 1, options = {}) {
   const rng = options.rng && typeof options.rng.nextFloat === "function" ? options.rng : null;

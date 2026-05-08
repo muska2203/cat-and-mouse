@@ -1,5 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.5.3-pre-alpha";
-import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.5.3-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.5.4-pre-alpha";
+import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.5.4-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
