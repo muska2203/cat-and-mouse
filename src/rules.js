@@ -1,4 +1,4 @@
-import { randomFloat } from "./game/rng.js?v=0.5.1-pre-alpha";
+import { randomFloat } from "./game/rng.js?v=0.5.2-pre-alpha";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(value, max));
@@ -71,7 +71,7 @@ const WEAPON_DAMAGE_CALCULATORS = {
   sword: (baseDamage, stats) => {
     const str = stats?.STR ?? 0;
     const agi = stats?.AGI ?? 0;
-    return baseDamage * (1 + str / 10) + (agi * 0.3);
+    return baseDamage * (1 + str / 20) + (agi * 0.3);
   },
   staff: (baseDamage, stats) => {
     const str = stats?.STR ?? 0;
@@ -80,19 +80,19 @@ const WEAPON_DAMAGE_CALCULATORS = {
   },
   unarmed: (baseDamage, stats) => {
     const str = stats?.STR ?? 0;
-    return baseDamage + str;
+    return baseDamage + str / 3;
   }
 };
 
 export function getWeaponDamageFormulaText(weaponItem) {
   const subtype = weaponItem?.subtype || "unarmed";
   if (subtype === "sword") {
-    return "База × (1 + СИЛ / 10) + ЛОВ × 0.3";
+    return "База × (1 + СИЛ / 20) + ЛВК × 0.3";
   }
   if (subtype === "staff") {
     return "База × (1 + СИЛ / 20 × 0.7) + ИНТ × 0.35";
   }
-  return "База + СИЛ";
+  return "База + СИЛ / 3";
 }
 
 export function calculateWeaponDamage(weaponItem, stats) {

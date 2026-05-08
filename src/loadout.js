@@ -1,5 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.5.1-pre-alpha";
-import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.5.1-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.5.2-pre-alpha";
+import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.5.2-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
@@ -461,7 +461,7 @@ export function recalculateSheetFromInventory(playerSheet, equippedByType, bag, 
   const strTotal = baseStats.STR || 0;
   const intTotal = baseStats.INT || 0;
   const bonusHpMaxFromEffects = playerSheet.bonusHpMaxFromEffects || 0;
-  baseStats.HP_MAX = floorHpMax(100 + strTotal * 8 + bonusHpMaxFromEffects);
+  baseStats.HP_MAX = floorHpMax(100 + strTotal * 8 * 0.7 + bonusHpMaxFromEffects);
 
   const hpCap = baseStats.HP_MAX;
   // При смене экипировки сохраняем "дефицит HP", чтобы избежать накопительной

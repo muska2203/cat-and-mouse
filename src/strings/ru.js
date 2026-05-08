@@ -124,6 +124,7 @@ export const STRINGS_RU = {
   itemDetail: {
     bonusesTitle: "Бонусы характеристик",
     combatTitle: "Боевые параметры",
+    damageFormulaLine: "Формула:",
     baseDamage: "Базовый урон:",
     critChanceBase: "Шанс крита (база оружия):",
     critMultBase: "Множитель крита (база оружия):",

@@ -1,4 +1,4 @@
-import { getSkillPreviewForPreparedSelections } from "../skillsRuntime.js?v=0.5.1-pre-alpha";
+import { getSkillPreviewForPreparedSelections } from "../skillsRuntime.js?v=0.5.2-pre-alpha";
 
 export function buildSkillTargetingPreviews(run, playerSheet, targeting, targetCell, getItemContext) {
   if (!run || !playerSheet || !targeting?.skillId || !targetCell) return [];
