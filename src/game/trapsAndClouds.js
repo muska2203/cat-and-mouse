@@ -1,9 +1,9 @@
-import { floorHp } from "../rules.js?v=0.5.2-pre-alpha";
-import { inBounds, isWall } from "../nav/pathfinding.js?v=0.5.2-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.5.2-pre-alpha";
-import { randomInt } from "./rng.js?v=0.5.2-pre-alpha";
-import { enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.2-pre-alpha";
-import { createWorldObject } from "./worldObjectModel.js?v=0.5.2-pre-alpha";
+import { floorHp } from "../rules.js?v=0.5.3-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.5.3-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.3-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.3-pre-alpha";
+import { enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.3-pre-alpha";
+import { createWorldObject } from "./worldObjectModel.js?v=0.5.3-pre-alpha";
 
 export function ensureEnemyStatus(enemy) {
   if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0, burnTurns: 0, burnPercent: 0 };

@@ -1,12 +1,13 @@
-import { generateMazeRun } from "./maze.js?v=0.5.2-pre-alpha";
-import { buildPathToCell as buildPathToCellNav } from "./nav/pathfinding.js?v=0.5.2-pre-alpha";
-import { planStartAndGoalSpawn } from "./game/levelSpawn.js?v=0.5.2-pre-alpha";
-import { generateObjects } from "./game/generateObjects.js?v=0.5.2-pre-alpha";
-import { defaultCellBlocked } from "./game/cellBlocking.js?v=0.5.2-pre-alpha";
-import { revealAroundPlayer } from "./game/fogReveal.js?v=0.5.2-pre-alpha";
-import { createRunRng } from "./game/rng.js?v=0.5.2-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.2-pre-alpha";
-import { preloadAllRunSprites } from "./runtime/spriteAssets.js?v=0.5.2-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.5.3-pre-alpha";
+import { buildPathToCell as buildPathToCellNav } from "./nav/pathfinding.js?v=0.5.3-pre-alpha";
+import { planStartAndGoalSpawn } from "./game/levelSpawn.js?v=0.5.3-pre-alpha";
+import { generateObjects } from "./game/generateObjects.js?v=0.5.3-pre-alpha";
+import { defaultCellBlocked } from "./game/cellBlocking.js?v=0.5.3-pre-alpha";
+import { revealAroundPlayer } from "./game/fogReveal.js?v=0.5.3-pre-alpha";
+import { createRunRng } from "./game/rng.js?v=0.5.3-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.3-pre-alpha";
+import { preloadAllRunSprites } from "./runtime/spriteAssets.js?v=0.5.3-pre-alpha";
+import { mergeRunTotalsForNextFloor } from "./game/runTotals.js?v=0.5.3-pre-alpha";
 
 function createMask(width, height, value = false) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => value));
@@ -69,6 +70,12 @@ export function createRunState(playerSheet, level = 1, options = {}) {
       screenShake: null,
       levelTransition: null,
     },
+    runTotals: {
+      turnsBeforeCurrentFloor: 0,
+      enemiesKilled: 0,
+      chestsOpened: 0,
+      itemsPickedUp: 0,
+    },
   };
   ensureRunFxState(run);
   revealAroundPlayer(run, run.visionRange);
@@ -87,10 +94,11 @@ export function createNextLevelRun(previousRun, playerSheet) {
       stunTurns: Math.max(0, previousRun.playerStatus.stunTurns || 0),
     };
   }
+  mergeRunTotalsForNextFloor(previousRun, nextRun);
   ensureRunFxState(nextRun);
   return nextRun;
 }
 
-export { useSkill, getSkillTargetCells, useSkillAtCell } from "./game/runSkills.js?v=0.5.2-pre-alpha";
-export { tryStep } from "./game/playerStep.js?v=0.5.2-pre-alpha";
-export { beginEnvironmentTurn, stepEnvironmentTurn } from "./game/environmentTurn.js?v=0.5.2-pre-alpha";
+export { useSkill, getSkillTargetCells, useSkillAtCell } from "./game/runSkills.js?v=0.5.3-pre-alpha";
+export { tryStep } from "./game/playerStep.js?v=0.5.3-pre-alpha";
+export { beginEnvironmentTurn, stepEnvironmentTurn } from "./game/environmentTurn.js?v=0.5.3-pre-alpha";

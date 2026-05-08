@@ -1,4 +1,4 @@
-import { floorHp } from "../rules.js?v=0.5.2-pre-alpha";
+import { floorHp } from "../rules.js?v=0.5.3-pre-alpha";
 
 export function syncPlayerHp(playerSheet, hpValue) {
   const h = floorHp(hpValue);

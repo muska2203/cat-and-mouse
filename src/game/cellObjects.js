@@ -1,5 +1,7 @@
 /** Кто на клетке и кто блокирует ход для игрока / врага. */
 
+import { bumpRunTotal } from "./runTotals.js?v=0.5.3-pre-alpha";
+
 export const ACTOR_KIND = {
   PLAYER: "player",
   ENEMY: "enemy",
@@ -58,5 +60,12 @@ export function canObjectBeActivatedBy(object, actorKind) {
 }
 
 export function removeObject(run, objectId) {
-  run.objects = run.objects.filter((object) => object.id !== objectId);
+  const objects = run.objects || [];
+  const removed = objects.find((object) => object.id === objectId);
+  if (removed?.type === "enemy") {
+    bumpRunTotal(run, "enemiesKilled", 1);
+  } else if (removed?.type === "chest") {
+    bumpRunTotal(run, "chestsOpened", 1);
+  }
+  run.objects = objects.filter((object) => object.id !== objectId);
 }

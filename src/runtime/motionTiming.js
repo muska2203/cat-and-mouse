@@ -1,5 +1,5 @@
 /** Состояние движения / перехода уровня и время — без привязки к глобальному state. */
-import { ensureRunFxState } from "./runFxState.js?v=0.5.2-pre-alpha";
+import { ensureRunFxState } from "./runFxState.js?v=0.5.3-pre-alpha";
 
 export function isMotionActive(motion, nowMs) {
   if (!motion) {

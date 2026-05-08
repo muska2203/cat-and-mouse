@@ -2,7 +2,7 @@ import {
   resolveItemSubtypeSpriteUrl,
   resolveLootFrameSpriteUrl,
   resolveSkillSpriteUrl,
-} from "../runtime/spriteAssets.js?v=0.5.2-pre-alpha";
+} from "../runtime/spriteAssets.js?v=0.5.3-pre-alpha";
 
 function escapeHtml(str) {
   return String(str ?? "")

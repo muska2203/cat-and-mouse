@@ -1,3 +1,5 @@
+import { getRunEndingSummaryMetrics } from "../../game/runTotals.js?v=0.5.3-pre-alpha";
+
 export function buildEndingScreenHtml({
   portrait,
   run,
@@ -13,6 +15,7 @@ export function buildEndingScreenHtml({
   renderModal,
   footerMetaHtml = "",
 }) {
+  const m = getRunEndingSummaryMetrics(run);
   return `
     <div class="cm-app cm-ending-app">
       <div class="cm-main cm-ending-main">
@@ -43,11 +46,11 @@ export function buildEndingScreenHtml({
               <p class="cm-ending-subtitle">${esc(subtitle)}</p>
               <div class="cm-ending-metrics">
                 <div class="cm-ending-metric"><span class="cm-ending-metric__label">Длительность</span><span class="cm-ending-metric__value">${durationLabel}</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Ходов</span><span class="cm-ending-metric__value">${Number(run?.turns || 0)}</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Убито противников</span><span class="cm-ending-metric__value">—</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Пройдено уровней</span><span class="cm-ending-metric__value">${Number(run?.level || 1)}</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Открыто сундуков</span><span class="cm-ending-metric__value">—</span></div>
-                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Подобрано предметов</span><span class="cm-ending-metric__value">—</span></div>
+                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Ходов</span><span class="cm-ending-metric__value">${m.totalTurns}</span></div>
+                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Убито противников</span><span class="cm-ending-metric__value">${m.enemiesKilled}</span></div>
+                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Достигнут уровень лабиринта</span><span class="cm-ending-metric__value">${m.deepestLevel}</span></div>
+                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Открыто сундуков</span><span class="cm-ending-metric__value">${m.chestsOpened}</span></div>
+                <div class="cm-ending-metric"><span class="cm-ending-metric__label">Подобрано предметов</span><span class="cm-ending-metric__value">${m.itemsPickedUp}</span></div>
               </div>
             </div>
           </section>

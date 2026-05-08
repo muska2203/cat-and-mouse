@@ -1,19 +1,20 @@
-import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.5.2-pre-alpha";
-import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.5.2-pre-alpha";
-import { rollChestLootItems } from "./chestLoot.js?v=0.5.2-pre-alpha";
-import { randomInt } from "./rng.js?v=0.5.2-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.5.2-pre-alpha";
+import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.5.3-pre-alpha";
+import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.5.3-pre-alpha";
+import { rollChestLootItems } from "./chestLoot.js?v=0.5.3-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.3-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.5.3-pre-alpha";
+import { bumpRunTotal } from "./runTotals.js?v=0.5.3-pre-alpha";
 import {
   ACTOR_KIND,
   getObjectsAt,
   canObjectBeActivatedBy,
   removeObject,
-} from "./cellObjects.js?v=0.5.2-pre-alpha";
+} from "./cellObjects.js?v=0.5.3-pre-alpha";
 import {
   applyTrapEffectToEnemy,
   applyTrapEffectToPlayer,
   spawnPoisonCloudObjects,
-} from "./trapsAndClouds.js?v=0.5.2-pre-alpha";
+} from "./trapsAndClouds.js?v=0.5.3-pre-alpha";
 
 function collectChestDropCells(run, x, y) {
   const cells = [];
@@ -138,6 +139,7 @@ export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, a
       } else {
         const lootResult = addLootItemToPlayer(nextPlayerSheet, item.id);
         nextPlayerSheet = lootResult.playerSheet;
+        bumpRunTotal(run, "itemsPickedUp", 1);
         removeObject(run, object.id);
         if (lootResult.addedTo === "equip") {
           logs.push(`Подобрано: ${item.name}. Автоэкипировка.`);

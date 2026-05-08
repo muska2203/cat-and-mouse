@@ -1,8 +1,8 @@
 import {
   getAllLootItems,
   getItemById,
-} from "../loadout.js?v=0.5.2-pre-alpha";
-import { normalizeSkillInstanceData } from "../skillsRuntime.js?v=0.5.2-pre-alpha";
+} from "../loadout.js?v=0.5.3-pre-alpha";
+import { normalizeSkillInstanceData } from "../skillsRuntime.js?v=0.5.3-pre-alpha";
 
 const EQUIP_TYPES = new Set(["weapon", "armor", "amulet"]);
 
@@ -32,7 +32,7 @@ function rarityScore(rarity) {
 
 function getRecycleWeightByRarity(rarity) {
   if (rarity === "unique") return 60;
-  if (rarity === "rare") return 30;
+  if (rarity === "rare") return 40;
   return 10;
 }
 
@@ -64,9 +64,13 @@ export function getRecyclePreview(slots) {
     const item = getItemById(slot.itemId);
     return sum + getRecycleWeightByRarity(getItemRarity(item));
   }, 0);
+  // Вес сверх 100 даёт долю уникального; оставшийся интервал [0;100) делится между редким и обычным
+  // пропорционально min(суммарный вес, 100), чтобы при переполнении редкий не «лип» к 100%.
   const uniqueChance = Math.max(0, Math.min(100, totalWeight - 100));
-  const rareChance = Math.max(0, Math.min(100, totalWeight - uniqueChance));
-  const commonChance = Math.max(0, 100 - rareChance - uniqueChance);
+  const fillPts = Math.min(totalWeight, 100);
+  const nonUniqueRollSpace = 100 - uniqueChance;
+  const rareChance = (fillPts / 100) * nonUniqueRollSpace;
+  const commonChance = nonUniqueRollSpace - rareChance;
   return {
     totalWeight,
     commonChance,
