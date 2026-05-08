@@ -1,8 +1,9 @@
-import { ACTOR_KIND } from "./cellObjects.js?v=0.4.13-pre-alpha";
-import { getChestCountsForLevel } from "./chestLoot.js?v=0.4.13-pre-alpha";
-import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.4.13-pre-alpha";
-import { getEnemyDefByType } from "./enemyDefs.js?v=0.4.13-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.13-pre-alpha";
+import { ACTOR_KIND } from "./cellObjects.js?v=0.5.0-pre-alpha";
+import { getChestCountsForLevel } from "./chestLoot.js?v=0.5.0-pre-alpha";
+import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.5.0-pre-alpha";
+import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.0-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.0-pre-alpha";
+import { createWorldObject } from "./worldObjectModel.js?v=0.5.0-pre-alpha";
 
 export function generateObjects(maze, level = 1, options = {}) {
   const rng = options.rng && typeof options.rng.nextFloat === "function" ? options.rng : null;
@@ -45,6 +46,7 @@ export function generateObjects(maze, level = 1, options = {}) {
     chest_common: {
       id: "chest_common",
       name: "Обычный сундук",
+      description: "Сундук с добычей. Открывается при заходе на клетку.",
       type: "chest",
       purpose: "chest",
       icon: "📦",
@@ -58,6 +60,7 @@ export function generateObjects(maze, level = 1, options = {}) {
     chest_rare: {
       id: "chest_rare",
       name: "Редкий сундук",
+      description: "Сундук с более ценной добычей. Открывается при заходе на клетку.",
       type: "chest",
       purpose: "chest",
       icon: "🎁",
@@ -71,6 +74,7 @@ export function generateObjects(maze, level = 1, options = {}) {
     chest_unique: {
       id: "chest_unique",
       name: "Уникальный сундук",
+      description: "Редкий сундук с ценной добычей. Открывается при заходе на клетку.",
       type: "chest",
       purpose: "chest",
       icon: "👑",
@@ -84,6 +88,7 @@ export function generateObjects(maze, level = 1, options = {}) {
     anvil: {
       id: "anvil",
       name: "Наковальня",
+      description: "Позволяет перерабатывать и улучшать экипировку.",
       type: "anvil",
       purpose: "anvil",
       icon: "⚒",
@@ -239,9 +244,10 @@ export function generateObjects(maze, level = 1, options = {}) {
   function placeObject(list, template, cell, ordinal) {
     const enemyDef = template.type === "enemy" ? getEnemyDefByType(template.id) : null;
     reserved.add(keyOf(cell.x, cell.y));
-    list.push({
+    list.push(createWorldObject({
       id: `${template.id}_${ordinal}_${cell.x}_${cell.y}`,
       name: enemyDef?.name || template.name,
+      description: enemyDef?.description || template.description || "",
       type: template.type,
       purpose: template.purpose || template.type,
       icon: enemyDef?.icon || template.icon,
@@ -265,7 +271,7 @@ export function generateObjects(maze, level = 1, options = {}) {
             enemyType: template.id,
           }
         : { ...template.data },
-    });
+    }));
   }
 
   const chestPlacementPlan = [

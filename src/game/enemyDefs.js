@@ -2,6 +2,7 @@ const ENEMY_DEFS = {
   cat_small: {
     idPrefix: "cat_small",
     name: "Котенок",
+    description: "Легкий противник ближнего боя.",
     icon: "🐱",
     hp: 18,
     damage: 2,
@@ -10,6 +11,7 @@ const ENEMY_DEFS = {
   cat_mid: {
     idPrefix: "cat_mid",
     name: "Домашний кот",
+    description: "Сбалансированный противник с заметным уроном.",
     icon: "🐈",
     hp: 27,
     damage: 5,
@@ -18,6 +20,7 @@ const ENEMY_DEFS = {
   cat_big: {
     idPrefix: "cat_big",
     name: "Дворовый кот",
+    description: "Тяжелый противник с высоким запасом HP.",
     icon: "😾",
     hp: 38,
     damage: 7,

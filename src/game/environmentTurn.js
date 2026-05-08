@@ -1,24 +1,24 @@
-import { floorHp } from "../rules.js?v=0.4.13-pre-alpha";
+import { floorHp } from "../rules.js?v=0.5.0-pre-alpha";
 import {
   chebyshevDistance,
   buildPathToNearestEnemyAttackCell as buildPathToNearestEnemyAttackCellNav,
-} from "../nav/pathfinding.js?v=0.4.13-pre-alpha";
-import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.4.13-pre-alpha";
-import { getEnemyById } from "./enemies.js?v=0.4.13-pre-alpha";
-import { getEnemyMaxHp } from "./enemyDefs.js?v=0.4.13-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.13-pre-alpha";
+} from "../nav/pathfinding.js?v=0.5.0-pre-alpha";
+import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.5.0-pre-alpha";
+import { getEnemyById } from "./enemies.js?v=0.5.0-pre-alpha";
+import { getEnemyMaxHp } from "./enemyDefs.js?v=0.5.0-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.0-pre-alpha";
 import {
   ensureEnemyStatus,
   ensurePlayerStatus,
   tickTemporaryObjects,
-} from "./trapsAndClouds.js?v=0.4.13-pre-alpha";
-import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.4.13-pre-alpha";
+} from "./trapsAndClouds.js?v=0.5.0-pre-alpha";
+import { applyEndOfEnvironmentObjectEffects, applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.0-pre-alpha";
 import {
   isCellBlockedForEnemyWithReservations,
-} from "./cellBlocking.js?v=0.4.13-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.13-pre-alpha";
-import { processTurnEffects } from "./turnEffects.js?v=0.4.13-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.13-pre-alpha";
+} from "./cellBlocking.js?v=0.5.0-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.5.0-pre-alpha";
+import { processTurnEffects } from "./turnEffects.js?v=0.5.0-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.0-pre-alpha";
 
 function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
   const stunnedEnemyIds = new Set();
@@ -34,7 +34,7 @@ function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
       const burnDamage = Math.max(2, Math.floor(enemyHpMax * burnPercent));
       enemy.data.hp = Math.max(0, (enemy.data?.hp || 0) - burnDamage);
       status.burnTurns = Math.max(0, (status.burnTurns || 0) - 1);
-      fx.floatingTexts.push({
+      enqueueFloatingText(run, {
         x: enemy.x,
         y: enemy.y,
         value: `-${burnDamage}`,
@@ -55,7 +55,7 @@ function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
       const poisonDamage = Math.max(0, status.poisonDamage || 0);
       enemy.data.hp = Math.max(0, (enemy.data?.hp || 0) - poisonDamage);
       status.poisonTurns = Math.max(0, (status.poisonTurns || 0) - 1);
-      fx.floatingTexts.push({
+      enqueueFloatingText(run, {
         x: enemy.x,
         y: enemy.y,
         value: `-${poisonDamage}`,
@@ -143,7 +143,7 @@ export function stepEnvironmentTurn(run, playerSheet) {
         const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
         const nextHp = floorHp(hpNow - damageTaken);
         syncPlayerHp(playerSheet, nextHp);
-        fx.floatingTexts.push({
+        enqueueFloatingText(run, {
           x: run.player.x,
           y: run.player.y,
           value: `-${damageTaken}`,
@@ -227,6 +227,8 @@ export function stepEnvironmentTurn(run, playerSheet) {
 
   run.turnPhase = "player";
   run.turns += 1;
+  const objectTurnEffects = applyEndOfEnvironmentObjectEffects(run, playerSheet);
+  playerSheet = objectTurnEffects.playerSheet || playerSheet;
   processTurnEffects(run, playerSheet);
   tickTemporaryObjects(run);
   if ((playerSheet.stats?.HP ?? 0) <= 0) {

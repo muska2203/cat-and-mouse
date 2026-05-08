@@ -17,6 +17,7 @@ export function buildGameScreenHtml({
   renderModal,
   anvilOverlayHtml = "",
   descendOverlayHtml = "",
+  footerMetaHtml = "",
 }) {
   return `
     <div class="cm-app cm-app--game">
@@ -119,6 +120,7 @@ export function buildGameScreenHtml({
           </section>
         </aside>
       </div>
+      ${footerMetaHtml}
     </div>
     ${renderModal()}
     ${descendOverlayHtml}

@@ -1,9 +1,9 @@
-import { floorHp } from "./rules.js?v=0.4.13-pre-alpha";
-import { syncPlayerHp } from "./game/syncHp.js?v=0.4.13-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.4.13-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.13-pre-alpha";
-import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.4.13-pre-alpha";
-import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.4.13-pre-alpha";
+import { floorHp } from "./rules.js?v=0.5.0-pre-alpha";
+import { syncPlayerHp } from "./game/syncHp.js?v=0.5.0-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.5.0-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "./runtime/runFxState.js?v=0.5.0-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.5.0-pre-alpha";
+import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.5.0-pre-alpha";
 
 const SKILL_DEFS = {
   fireball: {
@@ -220,6 +220,10 @@ function pickNRandomUnique(values, count, rng) {
 
 export function getSkillById(skillId) {
   return SKILL_DEFS[skillId] || null;
+}
+
+export function getAllSkillIds() {
+  return Object.keys(SKILL_DEFS);
 }
 
 export function getSkillManaCost(skillDef, playerSheet) {
@@ -474,7 +478,7 @@ export const SKILLS_APPLY_BY_ID = {
       }
       
       const fx = ensureRunFxState(run);
-      fx.floatingTexts.push({
+      enqueueFloatingText(run, {
         x: targetX,
         y: targetY,
         value: `-${damage}`,
@@ -632,7 +636,7 @@ function applyAggregatedEffects(run, playerSheet, skill, aggregated, options = {
       status.burnTurns = Math.max(Number(status.burnTurns || 0), burnTurns);
       status.burnPercent = Math.max(Number(status.burnPercent || 0), burnPercent);
     }
-    fx.floatingTexts.push({
+    enqueueFloatingText(run, {
       x,
       y,
       value: `-${damage}`,

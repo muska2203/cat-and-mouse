@@ -1,6 +1,6 @@
-import { getSkillById, getSkillManaCost } from "../skillsRuntime.js?v=0.4.13-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.4.13-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.13-pre-alpha";
+import { getSkillById, getSkillManaCost } from "../skillsRuntime.js?v=0.5.0-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.5.0-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.5.0-pre-alpha";
 
 export function useSkill(run, playerSheet, skillId) {
   return useSkillAtCell(run, playerSheet, skillId, run?.player?.x, run?.player?.y);

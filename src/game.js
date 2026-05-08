@@ -1,11 +1,12 @@
-import { generateMazeRun } from "./maze.js?v=0.4.13-pre-alpha";
-import { buildPathToCell as buildPathToCellNav } from "./nav/pathfinding.js?v=0.4.13-pre-alpha";
-import { planStartAndGoalSpawn } from "./game/levelSpawn.js?v=0.4.13-pre-alpha";
-import { generateObjects } from "./game/generateObjects.js?v=0.4.13-pre-alpha";
-import { defaultCellBlocked } from "./game/cellBlocking.js?v=0.4.13-pre-alpha";
-import { revealAroundPlayer } from "./game/fogReveal.js?v=0.4.13-pre-alpha";
-import { createRunRng } from "./game/rng.js?v=0.4.13-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.13-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.5.0-pre-alpha";
+import { buildPathToCell as buildPathToCellNav } from "./nav/pathfinding.js?v=0.5.0-pre-alpha";
+import { planStartAndGoalSpawn } from "./game/levelSpawn.js?v=0.5.0-pre-alpha";
+import { generateObjects } from "./game/generateObjects.js?v=0.5.0-pre-alpha";
+import { defaultCellBlocked } from "./game/cellBlocking.js?v=0.5.0-pre-alpha";
+import { revealAroundPlayer } from "./game/fogReveal.js?v=0.5.0-pre-alpha";
+import { createRunRng } from "./game/rng.js?v=0.5.0-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.0-pre-alpha";
+import { preloadAllRunSprites } from "./runtime/spriteAssets.js?v=0.5.0-pre-alpha";
 
 function createMask(width, height, value = false) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => value));
@@ -30,6 +31,7 @@ export function buildPathToDiscoveredCell(run, start, target, options = {}) {
 }
 
 export function createRunState(playerSheet, level = 1, options = {}) {
+  preloadAllRunSprites();
   const rng = options.rng && typeof options.rng.nextFloat === "function"
     ? options.rng
     : createRunRng(options.seed);
@@ -89,6 +91,6 @@ export function createNextLevelRun(previousRun, playerSheet) {
   return nextRun;
 }
 
-export { useSkill, getSkillTargetCells, useSkillAtCell } from "./game/runSkills.js?v=0.4.13-pre-alpha";
-export { tryStep } from "./game/playerStep.js?v=0.4.13-pre-alpha";
-export { beginEnvironmentTurn, stepEnvironmentTurn } from "./game/environmentTurn.js?v=0.4.13-pre-alpha";
+export { useSkill, getSkillTargetCells, useSkillAtCell } from "./game/runSkills.js?v=0.5.0-pre-alpha";
+export { tryStep } from "./game/playerStep.js?v=0.5.0-pre-alpha";
+export { beginEnvironmentTurn, stepEnvironmentTurn } from "./game/environmentTurn.js?v=0.5.0-pre-alpha";

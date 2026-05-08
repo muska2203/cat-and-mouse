@@ -1,3 +1,5 @@
+import { buildItemSpriteStackHtml } from "./spriteIconHtml.js?v=0.5.0-pre-alpha";
+
 const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 
 export function buildGameEquipRowsHtml({
@@ -18,7 +20,7 @@ export function buildGameEquipRowsHtml({
       <div class="cm-equip-slot">
         <span class="cm-equip-slot__label">${toRuType(type)}</span>
         <button class="cm-equip-slot__box item-rarity-${getItemRarity(item)}" type="button" data-action="equip-slot-action" data-equip-type="${type}" data-drag-kind="equipped-item" data-drag-equip-type="${type}" data-inventory-detail-item-id="${item.id}" data-inventory-detail-instance-id="${sheet?.equippedInstanceByType?.[type] || ""}" draggable="true" title="${esc(item.name)}">
-          <span class="cm-equip-slot__icon">${item.icon || "—"}</span>
+          <span class="cm-equip-slot__icon">${buildItemSpriteStackHtml(item, { fallbackText: "—" })}</span>
           ${type === "weapon" ? `<span class="cm-item-weapon-damage ${getValueDeltaClass(getWeaponDamageForSheet(sheet, item), getWeaponDamageForSheet(previewSheet || sheet, item))}">${getWeaponDamageForSheet(previewSheet || sheet, item)}</span>` : ""}
         </button>
       </div>
@@ -49,7 +51,7 @@ export function buildEndingEquipRowsHtml({
       <div class="cm-equip-slot">
         <span class="cm-equip-slot__label">${toRuType(type)}</span>
         <div class="cm-equip-slot__box ${item ? `item-rarity-${getItemRarity(item)}` : ""}" ${item ? `data-inventory-detail-item-id="${item.id}" data-inventory-detail-instance-id="${sheet?.equippedInstanceByType?.[type] || ""}"` : ""}>
-          <span class="cm-equip-slot__icon">${item?.icon || "—"}</span>
+          <span class="cm-equip-slot__icon">${item ? buildItemSpriteStackHtml(item, { fallbackText: "—" }) : "—"}</span>
           ${type === "weapon" && item ? `<span class="cm-item-weapon-damage">${getWeaponDamageForSheet(sheet, item)}</span>` : ""}
         </div>
       </div>

@@ -1,5 +1,5 @@
-import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.4.13-pre-alpha";
-import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.4.13-pre-alpha";
+import { buildDerivedStats, floorHp, floorHpMax, roundStat } from "./rules.js?v=0.5.0-pre-alpha";
+import { normalizeSkillInstanceData } from "./skillsRuntime.js?v=0.5.0-pre-alpha";
 
 export const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 export const STARTER_LOADOUT_MAX = 3;
@@ -137,26 +137,12 @@ export const LOOT_COMMON_ITEMS = [
     type: "consumable",
     subtype: "trap",
     icon: "🪤",
-    effectText: "Ставит ловушку: 8 урона и оглушение на 1 ход",
+    effectText: "Ставит ловушку: 4 урона и оглушение на 2 хода",
     description: "Классика: щелк — и тишина.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
     isTrapItem: true,
-    trapConfig: { trapType: "mousetrap", rarity: "common", damage: 8, stunTurns: 1 },
-    statBonuses: {},
-  },
-  {
-    id: "common_trap_stun_2",
-    name: "Клейкая растяжка",
-    type: "consumable",
-    subtype: "trap",
-    icon: "🕸️",
-    effectText: "Ставит ловушку: оглушение на 2 хода",
-    description: "Прилип и задумался о жизни.",
-    classRestriction: ["mage", "warrior"],
-    isConsumable: true,
-    isTrapItem: true,
-    trapConfig: { trapType: "glue", rarity: "common", stunTurns: 2 },
+    trapConfig: { trapType: "mousetrap", rarity: "common", damage: 4, stunTurns: 2 },
     statBonuses: {},
   },
 ];
@@ -254,11 +240,11 @@ export const LOOT_RARE_ITEMS = [
   },
   {
     id: "rare_trap_poison_cloud",
-    name: "Ядовитая мина",
+    name: "Ядовитая мышеловка",
     type: "consumable",
     subtype: "trap",
     icon: "☣️",
-    effectText: "Ставит мину: 4 урона + ядовитый туман 3x3",
+    effectText: "Ставит ловушку: 4 урона, оглушение на 2 хода и ядовитый туман 3x3",
     description: "Небольшой хлопок и очень плохой воздух.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -267,6 +253,7 @@ export const LOOT_RARE_ITEMS = [
       trapType: "venom_mine",
       rarity: "rare",
       damage: 4,
+      stunTurns: 2,
       spawnPoisonCloud: true,
       cloudDurationTurns: 3,
       cloudDamage: 2,

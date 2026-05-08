@@ -1,5 +1,5 @@
-import { PROGRESSION_CONFIG } from "../state.js?v=0.4.13-pre-alpha";
-import { getEnemyDefById } from "./enemyDefs.js?v=0.4.13-pre-alpha";
+import { PROGRESSION_CONFIG } from "../state.js?v=0.5.0-pre-alpha";
+import { getEnemyDefById } from "./enemyDefs.js?v=0.5.0-pre-alpha";
 
 export function getXpForEnemy(enemyId) {
   const def = getEnemyDefById(enemyId);

@@ -1,14 +1,7 @@
-import { buildSkillHoverData } from "../skillsRuntime.js?v=0.4.13-pre-alpha";
-import { getSkillManaCost } from "../skillsRuntime.js?v=0.4.13-pre-alpha";
-
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+import { buildSkillHoverData } from "../skillsRuntime.js?v=0.5.0-pre-alpha";
+import { getSkillManaCost } from "../skillsRuntime.js?v=0.5.0-pre-alpha";
+import { buildSkillSpriteHtml } from "./spriteIconHtml.js?v=0.5.0-pre-alpha";
+import { buildHoverCardHtml, escapeHtml } from "./hoverCardHtml.js?v=0.5.0-pre-alpha";
 
 export function buildSkillDetailHtml(skill, skillState, options = {}) {
   if (!skill) return "";
@@ -51,5 +44,9 @@ export function buildSkillDetailHtml(skill, skillState, options = {}) {
   if (rawDescription.toLowerCase().includes("клетку персонажа")) {
     targets = "Своя клетка";
   }
-  return `<div class="item-detail-card item-detail-rarity-common"><div class="skill-detail-topline"><span class="item-detail-icon" aria-hidden="true">${escapeHtml(skill.icon || "✨")}</span><span class="item-detail-name">${escapeHtml(skill.name)}</span><div class="skill-detail-badges">${badgesHtml}</div></div><div class="item-detail-section"><h4 class="item-detail-section-title">Описание</h4><p class="item-detail-desc">${escapeHtml(description).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Формула</h4><p class="item-detail-desc">${escapeHtml(formula).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Доступные цели</h4><p class="item-detail-desc">${escapeHtml(targets)}</p></div></div>`;
+  return buildHoverCardHtml({
+    rarity: "common",
+    titleRowHtml: `<div class="skill-detail-topline"><span class="item-detail-icon" aria-hidden="true">${buildSkillSpriteHtml(skill)}</span><span class="item-detail-name">${escapeHtml(skill.name)}</span><div class="skill-detail-badges">${badgesHtml}</div></div>`,
+    sectionsHtml: `<div class="item-detail-section"><h4 class="item-detail-section-title">Описание</h4><p class="item-detail-desc">${escapeHtml(description).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Формула</h4><p class="item-detail-desc">${escapeHtml(formula).replace(/\n/g, "<br>")}</p></div><div class="item-detail-section"><h4 class="item-detail-section-title">Доступные цели</h4><p class="item-detail-desc">${escapeHtml(targets)}</p></div>`,
+  });
 }

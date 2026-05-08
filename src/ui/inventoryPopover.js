@@ -1,6 +1,8 @@
 /**
  * Всплывающая карточка предмета инвентаря (DOM вне #app).
  */
+import { createHoverPopoverController } from "./hoverPopover.js?v=0.5.0-pre-alpha";
+
 export function createInventoryItemPopoverController(options) {
   const {
     root,
@@ -10,59 +12,7 @@ export function createInventoryItemPopoverController(options) {
     buildInventoryItemDetailHtml,
   } = options;
 
-  let popoverEl = null;
-  let popoverKey = null;
-  function ensureEl() {
-    if (popoverEl) {
-      return popoverEl;
-    }
-    popoverEl = document.createElement("div");
-    popoverEl.className = "inventory-item-detail-popover";
-    popoverEl.setAttribute("role", "tooltip");
-    popoverEl.hidden = true;
-    popoverEl.setAttribute("aria-hidden", "true");
-    document.body.appendChild(popoverEl);
-    return popoverEl;
-  }
-
-  function hide() {
-    popoverKey = null;
-    if (popoverEl) {
-      popoverEl.hidden = true;
-      popoverEl.setAttribute("aria-hidden", "true");
-      popoverEl.innerHTML = "";
-      popoverEl.style.visibility = "";
-    }
-  }
-
-  function scheduleHide() {
-    hide();
-  }
-
-  function positionByAnchor(anchorEl) {
-    const el = popoverEl;
-    if (!el || el.hidden || !anchorEl) {
-      return;
-    }
-    const pad = 10;
-    const rect = anchorEl.getBoundingClientRect();
-    el.style.visibility = "hidden";
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    let x = rect.left - w - pad;
-    let y = rect.top;
-    if (x < 10) {
-      x = rect.right + pad;
-    }
-    if (y + h > window.innerHeight - 10) {
-      y = Math.max(10, window.innerHeight - h - 10);
-    }
-    if (x < 10) x = 10;
-    if (y < 10) y = 10;
-    el.style.left = `${x}px`;
-    el.style.top = `${y}px`;
-    el.style.visibility = "visible";
-  }
+  const popover = createHoverPopoverController({ delayMs: 0 });
 
   function updateFromEvent(event) {
     const screen = getScreen();
@@ -90,15 +40,16 @@ export function createInventoryItemPopoverController(options) {
       ? getItemInstanceById(instanceId)
       : null;
 
-    const pop = ensureEl();
-    if (popoverKey !== key) {
-      pop.innerHTML = buildInventoryItemDetailHtml(item, { stackCount, instanceEntry });
-      popoverKey = key;
-    }
-    pop.hidden = false;
-    pop.setAttribute("aria-hidden", "false");
-    positionByAnchor(trigger);
+    popover.updateAnchor({
+      key,
+      anchorEl: trigger,
+      html: buildInventoryItemDetailHtml(item, { stackCount, instanceEntry }),
+    });
   }
 
-  return { hide, scheduleHide, updateFromEvent };
+  return {
+    hide: popover.hide,
+    scheduleHide: popover.scheduleHide,
+    updateFromEvent,
+  };
 }

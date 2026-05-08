@@ -225,6 +225,45 @@ body {
   min-height: 0;
 }
 
+.cm-meta-footer {
+  align-self: flex-end;
+  max-width: min(460px, 100%);
+  margin-top: 2px;
+  padding: 7px 10px;
+  border: 1px solid rgba(196, 163, 90, 0.35);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(22, 15, 11, 0.7), rgba(15, 10, 8, 0.78));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.cm-meta-footer__line {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.cm-meta-footer__label {
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.cm-meta-footer__value {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.cm-meta-footer__note {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
 @media (max-width: 1100px) {
   .cm-main {
     grid-template-columns: 1fr;
@@ -240,6 +279,15 @@ body {
 
   .cm-col--right {
     order: 1;
+  }
+
+  .cm-meta-footer {
+    align-self: stretch;
+    text-align: left;
+  }
+
+  .cm-meta-footer__line {
+    justify-content: flex-start;
   }
 }
 
@@ -593,6 +641,10 @@ body {
 .cm-equip-slot__box {
   width: var(--equip-slot-size);
   height: var(--equip-slot-size);
+  min-width: var(--equip-slot-size);
+  min-height: var(--equip-slot-size);
+  max-width: var(--equip-slot-size);
+  max-height: var(--equip-slot-size);
   aspect-ratio: 1;
   box-sizing: border-box;
   align-self: center;
@@ -604,19 +656,24 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--cm-gap-xs);
+  padding: 0;
   box-shadow: var(--shadow-inset);
   font-size: 10px;
   text-align: center;
   color: var(--text-muted);
+  overflow: hidden;
 }
 
 .cm-equip-slot__icon {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 26px;
   line-height: 1;
-  margin-bottom: var(--cm-gap-xs);
+  margin-bottom: 0;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+  width: 100%;
+  height: 100%;
 }
 
 .cm-equip-slot__bonus {
@@ -779,6 +836,8 @@ body {
 
 .cm-inv-cell {
   position: relative;
+  aspect-ratio: 1;
+  padding: 0;
   background: linear-gradient(165deg, rgba(255, 255, 255, 0.04), transparent 55%), var(--slot-inner);
   border: 2px solid var(--bronze-dark);
   border-radius: 4px;
@@ -787,6 +846,55 @@ body {
   justify-content: center;
   font-size: 22px;
   box-shadow: var(--shadow-inset), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.cm-sprite-stack {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.cm-sprite-stack__frame,
+.cm-sprite-stack__body,
+.cm-sprite-stack__skill {
+  position: absolute;
+  display: block;
+  image-rendering: pixelated;
+}
+
+.cm-sprite-stack--item .cm-sprite-stack__frame {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cm-sprite-stack--item .cm-sprite-stack__body {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+}
+
+.cm-sprite-stack--skill .cm-sprite-stack__skill {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 72%;
+  height: 72%;
+}
+
+.cm-sprite-fallback {
+  font-size: 1em;
+  line-height: 1;
+}
+
+.cm-sprite-stack img + .cm-sprite-fallback {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .cm-inv-cell__qty {
@@ -1006,6 +1114,7 @@ body {
   position: relative;
   width: 52px;
   height: 52px;
+  padding: 0;
   flex-shrink: 0;
   background: var(--slot-inner);
   border: 2px solid var(--bronze);
@@ -1017,6 +1126,27 @@ body {
   font-size: 20px;
   box-shadow: var(--shadow-inset), 0 2px 6px rgba(0, 0, 0, 0.35);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cm-hot-slot .cm-sprite-stack--item .cm-sprite-stack__frame {
+  width: 100%;
+  height: 100%;
+}
+
+.cm-hot-slot .cm-sprite-stack--item .cm-sprite-stack__body {
+  width: 80%;
+  height: 80%;
+}
+
+.cm-hot-slot .cm-sprite-stack--skill .cm-sprite-stack__skill {
+  width: 80%;
+  height: 80%;
+}
+
+.cm-inv-cell .cm-sprite-stack--item .cm-sprite-stack__body,
+.cm-equip-slot__icon .cm-sprite-stack--item .cm-sprite-stack__body {
+  width: 80%;
+  height: 80%;
 }
 
 .cm-hot-slot.active {

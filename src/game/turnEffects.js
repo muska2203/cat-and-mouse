@@ -1,9 +1,8 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.4.13-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.4.13-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.13-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.5.0-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.0-pre-alpha";
+import { enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.0-pre-alpha";
 
 export function processTurnEffects(run, playerSheet) {
-  const fx = ensureRunFxState(run);
   if (!run || !playerSheet) {
     return;
   }
@@ -19,7 +18,7 @@ export function processTurnEffects(run, playerSheet) {
       const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
       const nextHp = floorHp(Math.min(hpMax, hpNow + healPerTurn));
       syncPlayerHp(playerSheet, nextHp);
-      fx.floatingTexts.push({
+      enqueueFloatingText(run, {
         x: run.player.x,
         y: run.player.y,
         value: `+${Math.max(0, nextHp - hpNow)}`,
@@ -33,7 +32,7 @@ export function processTurnEffects(run, playerSheet) {
       const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
       const nextHp = floorHp(hpNow - poisonDamage);
       syncPlayerHp(playerSheet, nextHp);
-      fx.floatingTexts.push({
+      enqueueFloatingText(run, {
         x: run.player.x,
         y: run.player.y,
         value: `-${poisonDamage}`,
@@ -49,7 +48,7 @@ export function processTurnEffects(run, playerSheet) {
       const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
       const nextHp = floorHp(hpNow - burnDamage);
       syncPlayerHp(playerSheet, nextHp);
-      fx.floatingTexts.push({
+      enqueueFloatingText(run, {
         x: run.player.x,
         y: run.player.y,
         value: `-${burnDamage}`,

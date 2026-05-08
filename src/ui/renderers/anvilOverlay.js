@@ -1,3 +1,5 @@
+import { buildItemSpriteStackHtml } from "../spriteIconHtml.js?v=0.5.0-pre-alpha";
+
 export function buildAnvilOverlayHtml({
   session,
   modeDescription,
@@ -71,7 +73,7 @@ export function buildAnvilOverlayHtml({
           data-inventory-detail-item-id="${slot.itemId}"
           data-inventory-detail-instance-id="${slot.instanceId || ""}"
           draggable="true"
-        >${esc(item?.icon || "•")}</button>
+        >${buildItemSpriteStackHtml(item)}</button>
       `;
     })
     .join("");
@@ -117,7 +119,7 @@ export function buildAnvilOverlayHtml({
       ${resultReady && session.result?.instanceId ? `data-inventory-detail-instance-id="${session.result.instanceId}"` : ""}
       ${resultReady ? "draggable=\"true\"" : ""}
       ${resultDisabled ? "disabled" : ""}
-    >${esc(resultItem?.icon || "•")}</button>
+    >${buildItemSpriteStackHtml(resultItem)}</button>
   `;
   const canCraft = !!session.canCraft;
   const actionLabel = mode === "recycle" ? "Переработать" : mode === "improve" ? "Улучшить" : "Перековать";

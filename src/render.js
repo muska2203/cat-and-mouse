@@ -1,6 +1,21 @@
-import { roundStat } from "./rules.js?v=0.4.13-pre-alpha";
-import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.4.13-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.13-pre-alpha";
+import { roundStat } from "./rules.js?v=0.5.0-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.0-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.0-pre-alpha";
+import {
+  getLoadedSprite,
+  resolveEnemySpriteUrl,
+  resolveGroundLootContainerSpriteUrl,
+  resolveGoalSpriteUrl,
+  resolveItemSubtypeSpriteUrl,
+  resolveLootFrameSpriteUrl,
+  resolveObjectSpriteUrl,
+  resolvePlayerSpriteUrl,
+  resolvePoisonCloudSpriteUrl,
+  resolveRandomFloorTileSpriteUrl,
+  resolveTileSpriteUrl,
+} from "./runtime/spriteAssets.js?v=0.5.0-pre-alpha";
+
+const WORLD_OBJECT_SPRITE_SCALE = 0.65;
 
 export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1, overlay = null) {
   if (!canvas || !run) {
@@ -19,6 +34,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     canvas.height = Math.floor(height * dpr);
   }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
 
   // Темная подложка скрывает границы карты до исследования.
   ctx.fillStyle = "#01030a";
@@ -47,11 +63,15 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
 
       if (!discovered) continue;
 
-      ctx.fillStyle = cell === 1 ? "#1f2937" : "#0f172a";
-      ctx.fillRect(px, py, tile, tile);
+      const tileSpriteUrl = cell === 1
+        ? resolveTileSpriteUrl("wall")
+        : resolveRandomFloorTileSpriteUrl(x, y, run?.level || 0);
+      const tileDrawn = drawTileSprite(ctx, tileSpriteUrl, px, py, tile);
+      if (!tileDrawn) {
+        ctx.fillStyle = cell === 1 ? "#1f2937" : "#0f172a";
+        ctx.fillRect(px, py, tile, tile);
+      }
 
-      ctx.strokeStyle = "rgba(148,163,184,0.22)";
-      ctx.strokeRect(px, py, tile, tile);
     }
   }
 
@@ -83,27 +103,40 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
       if (isEnemyBurning(enemy)) {
         drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, enemyVisual.x, enemyVisual.y, nowMs);
       }
+      const enemyIsMovingNow = isObjectInActiveMotion(run, enemy, nowMs);
+      const enemyMovePhase = nowMs * 0.025 + (String(enemy?.id || "").length * 0.6);
+      const enemyMoveLeanRad = enemyIsMovingNow
+        ? Math.sin(enemyMovePhase) * 0.2
+        : 0;
+      const enemyMoveHopY = enemyIsMovingNow
+        ? -Math.abs(Math.sin(enemyMovePhase)) * Math.max(0.8, tile * 0.05)
+        : 0;
+      const enemyIdleOffsetY = enemyIsMovingNow
+        ? 0
+        : getIdleBobOffsetY(tile, nowMs, enemy?.id || `${enemyVisual.x}:${enemyVisual.y}`);
       const cx = cameraOffsetX + enemyVisual.x * tile + tile / 2;
-      const cy = cameraOffsetY + enemyVisual.y * tile + tile / 2;
+      const cy = cameraOffsetY + enemyVisual.y * tile + tile / 2 + enemyIdleOffsetY + enemyMoveHopY;
 
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
-      ctx.fillText(enemy.icon || "?", cx, cy);
+      const enemyType = String(enemy?.data?.enemyType || "").trim();
+      const enemySpriteUrl = resolveEnemySpriteUrl(enemyType);
+      const hasEnemySprite = drawCenteredSpriteWithRotation(
+        ctx,
+        enemySpriteUrl,
+        cx,
+        cy,
+        tile,
+        enemyMoveLeanRad,
+      );
+      if (!hasEnemySprite) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(enemyMoveLeanRad);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
+        ctx.fillText(enemy.icon || "?", 0, 0);
+        ctx.restore();
+      }
 
-      // HP и урон привязаны к иконке врага, чтобы не "прыгали" при анимации.
-      // HP справа сверху от иконки
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      ctx.fillStyle = "#ef4444";
-      ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
-      ctx.fillText(`${enemy.data.hp}`, cx + tile * 0.2, cy - tile * 0.12);
-      // Урон слева снизу от иконки
-      ctx.textAlign = "right";
-      ctx.textBaseline = "top";
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(`${enemy.data.damage}`, cx - tile * 0.2, cy + tile * 0.1);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
     }
   }
 
@@ -159,25 +192,68 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     ctx.textBaseline = "middle";
     ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(
-      "🕳",
-      cameraOffsetX + run.goal.x * tile + tile / 2,
-      cameraOffsetY + run.goal.y * tile + tile / 2
+    const goalCx = cameraOffsetX + run.goal.x * tile + tile / 2;
+    const goalCy = cameraOffsetY + run.goal.y * tile + tile / 2;
+    const hasGoalSprite = drawCenteredSprite(
+      ctx,
+      resolveGoalSpriteUrl(),
+      goalCx,
+      goalCy,
+      tile * WORLD_OBJECT_SPRITE_SCALE,
     );
+    if (!hasGoalSprite) {
+      ctx.fillText("🕳", goalCx, goalCy);
+    }
   }
 
   ctx.font = `${Math.max(12, Math.floor(tile * 0.62))}px Arial`;
+  const isPlayerMovingNow = isPlayerInActiveMotion(run, nowMs);
+  const movePhase = nowMs * 0.025;
+  const moveLeanRad = isPlayerMovingNow
+    ? Math.sin(movePhase) * 0.2
+    : 0;
+  const moveHopY = isPlayerMovingNow
+    ? -Math.abs(Math.sin(movePhase)) * Math.max(0.8, tile * 0.05)
+    : 0;
   const mouseScreenX = cameraOffsetX + playerVisual.x * tile + tile / 2;
-  const mouseScreenY = cameraOffsetY + playerVisual.y * tile + tile / 2;
+  const playerIdleOffsetY = isPlayerInActiveMotion(run, nowMs)
+    ? 0
+    : getIdleBobOffsetY(tile, nowMs, "player");
+  const mouseScreenY = cameraOffsetY + playerVisual.y * tile + tile / 2 + playerIdleOffsetY + moveHopY;
 
   if (isPlayerBurning(run)) {
     drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, playerVisual.x, playerVisual.y, nowMs);
   }
-  ctx.fillText(
-    "🐭",
+  const hasPlayerSprite = drawCenteredSpriteWithRotation(
+    ctx,
+    resolvePlayerSpriteUrl(),
     mouseScreenX,
-    mouseScreenY
+    mouseScreenY,
+    tile,
+    moveLeanRad,
   );
+  if (!hasPlayerSprite) {
+    ctx.save();
+    ctx.translate(mouseScreenX, mouseScreenY);
+    ctx.rotate(moveLeanRad);
+    ctx.fillText("🐭", 0, 0);
+    ctx.restore();
+  }
+
+  if (Array.isArray(run.objects)) {
+    const visibleEnemies = run.objects.filter(
+      (object) => object.type === "enemy" && run.discovered?.[object.y]?.[object.x],
+    );
+    for (const enemy of visibleEnemies) {
+      const enemyVisual = getObjectVisualPosition(run, enemy, nowMs);
+      const enemyIdleOffsetY = isObjectInActiveMotion(run, enemy, nowMs)
+        ? 0
+        : getIdleBobOffsetY(tile, nowMs, enemy?.id || `${enemyVisual.x}:${enemyVisual.y}`);
+      const cx = cameraOffsetX + enemyVisual.x * tile + tile / 2;
+      const cy = cameraOffsetY + enemyVisual.y * tile + tile / 2 + enemyIdleOffsetY;
+      drawEnemyHpBarIfNeeded(ctx, enemy, cx, cy, tile);
+    }
+  }
 
   const skillTargetingPreviews = Array.isArray(overlay?.skillTargetingPreviews)
     ? overlay.skillTargetingPreviews
@@ -399,6 +475,46 @@ function getObjectVisualPosition(run, object, nowMs) {
   return { x: object.x, y: object.y };
 }
 
+function isMotionActive(motion, nowMs) {
+  if (!motion) return false;
+  const durationMs = Math.max(1, Number(motion.durationMs || 0));
+  if (motion.startMs == null) return true;
+  return (nowMs - motion.startMs) < durationMs;
+}
+
+function isPlayerInActiveMotion(run, nowMs) {
+  return isMotionActive(run?.fx?.motion, nowMs);
+}
+
+function isObjectInActiveMotion(run, object, nowMs) {
+  const motion = run?.fx?.environmentMotion;
+  if (!isMotionActive(motion, nowMs)) {
+    return false;
+  }
+  if (motion.kind === "object-move") {
+    return motion.actorId === object?.id;
+  }
+  if (motion.kind === "object-move-batch") {
+    return Array.isArray(motion.actors) && motion.actors.some((entry) => entry.actorId === object?.id);
+  }
+  return false;
+}
+
+function getIdleBobOffsetY(tile, nowMs, seedKey = "") {
+  const seedText = String(seedKey || "");
+  let hash = 0;
+  for (let i = 0; i < seedText.length; i += 1) {
+    hash = (hash * 31 + seedText.charCodeAt(i)) % 3600;
+  }
+  const phase = hash / 3600 * Math.PI * 2;
+  const bob = Math.sin(nowMs * 0.008 + phase);
+  const amplitude = Math.max(0.6, tile * 0.03);
+  // Idle-движение только вверх: вниз возвращаемся ровно в базовую точку (без ухода ниже).
+  // Диапазон: [-2 * amplitude, 0].
+  const normalized = (bob + 1) / 2;
+  return -2 * amplitude * normalized;
+}
+
 function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, nowMs) {
   const objectVisual = getObjectVisualPosition(run, object, nowMs);
   const px = cameraOffsetX + objectVisual.x * tile;
@@ -407,8 +523,22 @@ function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, no
   const cy = cameraOffsetY + objectVisual.y * tile + tile / 2;
   if (object.type === "ground_loot") {
     const icon = object?.data?.itemIcon || "?";
+    const itemForSprite = object?.data?.item
+      || {
+        type: object?.data?.itemType,
+        subtype: object?.data?.itemSubtype,
+      };
+    const itemSpriteUrl = resolveItemSubtypeSpriteUrl(itemForSprite);
     const rarity = getItemRarityById(object?.data?.itemId);
     const rarityColors = getGroundLootRarityColors(rarity);
+    const containerSpriteUrl = resolveGroundLootContainerSpriteUrl(rarity);
+    const fallbackFrameSpriteUrl = resolveLootFrameSpriteUrl(rarity);
+    const hasContainerSprite = drawCenteredSprite(ctx, containerSpriteUrl, cx, cy, tile * WORLD_OBJECT_SPRITE_SCALE)
+      || drawCenteredSprite(ctx, fallbackFrameSpriteUrl, cx, cy, tile * WORLD_OBJECT_SPRITE_SCALE);
+    const hasItemSprite = drawCenteredSprite(ctx, itemSpriteUrl, cx, cy, tile * 0.8);
+    if (hasContainerSprite && hasItemSprite) {
+      return;
+    }
     ctx.save();
     if (rarityColors.glowBlur > 0) {
       ctx.shadowColor = rarityColors.glowColor;
@@ -432,6 +562,13 @@ function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, no
     ctx.font = `${Math.max(11, Math.floor(tile * 0.42))}px Arial`;
     ctx.fillText(icon, cx, cy);
     ctx.restore();
+    return;
+  }
+  const objectSpriteKey = getWorldObjectSpriteKey(object);
+  const objectSpriteUrl = resolveObjectSpriteUrl(objectSpriteKey);
+  const objectSpriteScale = object?.type === "anvil" ? 1 : WORLD_OBJECT_SPRITE_SCALE;
+  const hasObjectSprite = drawCenteredSprite(ctx, objectSpriteUrl, cx, cy, tile * objectSpriteScale);
+  if (hasObjectSprite) {
     return;
   }
   ctx.fillStyle = "#ffffff";
@@ -506,9 +643,74 @@ function drawPoisonCloud(ctx, cameraOffsetX, cameraOffsetY, tile, cloudVisual, n
     ctx.fill();
   }
 
-  ctx.fillStyle = `rgba(240, 253, 250, ${0.62 + pulse * 0.18})`;
-  ctx.font = `${Math.max(11, Math.floor(tile * 0.42))}px Arial`;
-  ctx.fillText(icon, cx, cy);
+  const cloudSprite = drawCenteredSprite(ctx, resolvePoisonCloudSpriteUrl(), cx, cy, tile * WORLD_OBJECT_SPRITE_SCALE);
+  if (!cloudSprite) {
+    ctx.fillStyle = `rgba(240, 253, 250, ${0.62 + pulse * 0.18})`;
+    ctx.font = `${Math.max(11, Math.floor(tile * 0.42))}px Arial`;
+    ctx.fillText(icon, cx, cy);
+  }
+}
+
+function drawEnemyHpBarIfNeeded(ctx, enemy, cx, cy, tile) {
+  const hpNow = Math.max(0, Number(enemy?.data?.hp || 0));
+  const hpMaxRaw = Number(enemy?.data?.maxHp || 0);
+  const hpMax = hpMaxRaw > 0 ? hpMaxRaw : Math.max(1, hpNow);
+  if (hpNow >= hpMax) {
+    return;
+  }
+
+  const ratio = Math.max(0, Math.min(1, hpNow / hpMax));
+  const barWidth = Math.max(14, Math.floor(tile * 0.74));
+  const barHeight = Math.max(3, Math.floor(tile * 0.09));
+  const barX = Math.floor(cx - barWidth / 2);
+  const barY = Math.floor(cy - tile * 0.58);
+
+  ctx.fillStyle = "rgba(2, 6, 23, 0.85)";
+  ctx.fillRect(barX - 1, barY - 1, barWidth + 2, barHeight + 2);
+
+  ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+  ctx.fillRect(barX, barY, barWidth, barHeight);
+
+  const hpFill = Math.max(0, Math.floor(barWidth * ratio));
+  const hpColor = ratio <= 0.3 ? "#ef4444" : (ratio <= 0.6 ? "#f59e0b" : "#22c55e");
+  ctx.fillStyle = hpColor;
+  ctx.fillRect(barX, barY, hpFill, barHeight);
+}
+
+function drawCenteredSprite(ctx, spriteUrl, cx, cy, sizePx) {
+  const sprite = getLoadedSprite(spriteUrl);
+  if (!sprite) return false;
+  const size = Math.max(8, Math.floor(sizePx));
+  ctx.drawImage(sprite, Math.floor(cx - size / 2), Math.floor(cy - size / 2), size, size);
+  return true;
+}
+
+function drawCenteredSpriteWithRotation(ctx, spriteUrl, cx, cy, sizePx, angleRad = 0) {
+  const sprite = getLoadedSprite(spriteUrl);
+  if (!sprite) return false;
+  const size = Math.max(8, Math.floor(sizePx));
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angleRad);
+  ctx.drawImage(sprite, Math.floor(-size / 2), Math.floor(-size / 2), size, size);
+  ctx.restore();
+  return true;
+}
+
+function drawTileSprite(ctx, spriteUrl, px, py, tile) {
+  const sprite = getLoadedSprite(spriteUrl);
+  if (!sprite) return false;
+  const size = Math.max(4, Math.floor(tile));
+  ctx.drawImage(sprite, Math.floor(px), Math.floor(py), size, size);
+  return true;
+}
+
+function getWorldObjectSpriteKey(object) {
+  const rawId = String(object?.id || "");
+  if (!rawId) return "";
+  const parts = rawId.split("_");
+  if (parts.length <= 3) return rawId;
+  return parts.slice(0, -3).join("_");
 }
 
 function getPlayerVisual(run, nowMs) {
@@ -556,12 +758,16 @@ function drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) 
     const y = baseY - t * tile * 0.7;
     const alpha = 1 - t;
 
-    ctx.fillStyle = withAlpha(text.color || "#ffffff", alpha);
-    const scale = Math.max(0.8, text.scale || 1);
+    const scale = Math.max(1.05, text.scale || 1);
     const fontWeight = text.isCrit ? "700 " : "";
-    ctx.font = `${fontWeight}${Math.max(11, Math.floor(tile * 0.3 * scale))}px Arial`;
+    const fontSize = Math.max(14, Math.floor(tile * 0.4 * scale));
+    ctx.font = `${fontWeight}${fontSize}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    ctx.lineWidth = Math.max(2, Math.floor(fontSize * 0.14));
+    ctx.strokeStyle = withAlpha("#020617", Math.max(0.68, alpha));
+    ctx.strokeText(text.value, baseX, y);
+    ctx.fillStyle = withAlpha(text.color || "#f8fafc", Math.max(0.86, alpha));
     ctx.fillText(text.value, baseX, y);
   }
 }

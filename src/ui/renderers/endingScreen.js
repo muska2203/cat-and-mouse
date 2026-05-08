@@ -11,6 +11,7 @@ export function buildEndingScreenHtml({
   getUiStatIcon,
   getUiStatName,
   renderModal,
+  footerMetaHtml = "",
 }) {
   return `
     <div class="cm-app cm-ending-app">
@@ -80,6 +81,7 @@ export function buildEndingScreenHtml({
           </section>
         </aside>
       </div>
+      ${footerMetaHtml}
     </div>
     ${renderModal()}
   `;

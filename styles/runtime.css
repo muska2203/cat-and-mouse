@@ -378,7 +378,37 @@
   margin-top: 8px;
 }
 
-.item-detail-icon { font-size: 20px; }
+.item-detail-icon {
+  font-size: 20px;
+  width: var(--equip-slot-size);
+  height: var(--equip-slot-size);
+  min-width: var(--equip-slot-size);
+  min-height: var(--equip-slot-size);
+  max-width: var(--equip-slot-size);
+  max-height: var(--equip-slot-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.item-detail-icon .cm-sprite-stack {
+  width: 100%;
+  height: 100%;
+}
+
+.item-detail-icon .cm-sprite-stack--item .cm-sprite-stack__frame,
+.item-detail-icon .cm-sprite-stack--item .cm-sprite-stack__body {
+  width: 100%;
+  height: 100%;
+}
+
+.item-detail-icon__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
 .item-detail-name { font-weight: 700; }
 .item-detail-list { margin: 0; padding-left: 16px; }
 .item-detail-list-plain { list-style: none; padding-left: 0; }

@@ -1,4 +1,4 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.4.13-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.5.0-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
@@ -12,38 +12,38 @@ import {
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.4.13-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.4.13-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.4.13-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.4.13-pre-alpha";
-import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.4.13-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.4.13-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.4.13-pre-alpha";
-import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.4.13-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.4.13-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.4.13-pre-alpha";
+} from "./loadout.js?v=0.5.0-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.5.0-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.5.0-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.5.0-pre-alpha";
+import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.5.0-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.5.0-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.5.0-pre-alpha";
+import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.5.0-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.5.0-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.5.0-pre-alpha";
 import {
   advanceRunAnimationState,
   isBlockingMotionActive,
   normalizeFinishedAnimationsForRun,
-} from "./runtime/motionTiming.js?v=0.4.13-pre-alpha";
-import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.4.13-pre-alpha";
-import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.4.13-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.4.13-pre-alpha";
+} from "./runtime/motionTiming.js?v=0.5.0-pre-alpha";
+import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.5.0-pre-alpha";
+import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.5.0-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.0-pre-alpha";
 import {
   isEnvironmentTurnStepReady,
   isLevelTransitionReady,
   isPlayerInputBlockedByMotion,
-} from "./runtime/runFlow.js?v=0.4.13-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.4.13-pre-alpha";
-import { randomInt } from "./game/rng.js?v=0.4.13-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.4.13-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.4.13-pre-alpha";
-import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.4.13-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.4.13-pre-alpha";
-import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.4.13-pre-alpha";
-import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.4.13-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.4.13-pre-alpha";
+} from "./runtime/runFlow.js?v=0.5.0-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.5.0-pre-alpha";
+import { randomInt } from "./game/rng.js?v=0.5.0-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.5.0-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.5.0-pre-alpha";
+import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.5.0-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.5.0-pre-alpha";
+import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.5.0-pre-alpha";
+import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.5.0-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.5.0-pre-alpha";
 import {
   getSkillsForEquippedItem,
   getSkillById,
@@ -54,20 +54,26 @@ import {
   getSkillTargetingProfile,
   getSkillAffectedCellsForRoot,
   getSkillPreviewForPreparedSelections,
-} from "./skillsRuntime.js?v=0.4.13-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.4.13-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.4.13-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.4.13-pre-alpha";
-import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.4.13-pre-alpha";
-import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.4.13-pre-alpha";
-import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.4.13-pre-alpha";
-import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.4.13-pre-alpha";
-import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.4.13-pre-alpha";
-import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.4.13-pre-alpha";
-import { buildAnvilOverlayHtml } from "./ui/renderers/anvilOverlay.js?v=0.4.13-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.4.13-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.4.13-pre-alpha";
-import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.4.13-pre-alpha";
+} from "./skillsRuntime.js?v=0.5.0-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.5.0-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.5.0-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.5.0-pre-alpha";
+import {
+  createSkillHoverPopoverController,
+  createWorldObjectHoverPopoverController,
+} from "./ui/gameHoverPopovers.js?v=0.5.0-pre-alpha";
+import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.5.0-pre-alpha";
+import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.5.0-pre-alpha";
+import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.5.0-pre-alpha";
+import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.5.0-pre-alpha";
+import { buildItemSpriteStackHtml } from "./ui/spriteIconHtml.js?v=0.5.0-pre-alpha";
+import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.5.0-pre-alpha";
+import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.5.0-pre-alpha";
+import { buildAnvilOverlayHtml } from "./ui/renderers/anvilOverlay.js?v=0.5.0-pre-alpha";
+import { buildFooterMetaHtml } from "./ui/footerMetaHtml.js?v=0.5.0-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.5.0-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.5.0-pre-alpha";
+import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.5.0-pre-alpha";
 import {
   buildImproveResult,
   buildRecycleResult,
@@ -81,11 +87,12 @@ import {
   getRecyclePreview,
   getReforgeCandidates,
   isEquipableItem,
-} from "./game/anvilCrafting.js?v=0.4.13-pre-alpha";
-import { ACTOR_KIND, removeObject } from "./game/cellObjects.js?v=0.4.13-pre-alpha";
-import { applyObjectActivationOnCell } from "./game/cellActivation.js?v=0.4.13-pre-alpha";
+} from "./game/anvilCrafting.js?v=0.5.0-pre-alpha";
+import { ACTOR_KIND, removeObject } from "./game/cellObjects.js?v=0.5.0-pre-alpha";
+import { applyObjectActivationOnCell } from "./game/cellActivation.js?v=0.5.0-pre-alpha";
 
-import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.4.13-pre-alpha";
+import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.5.0-pre-alpha";
+import { buildHoverCardHtml } from "./ui/hoverCardHtml.js?v=0.5.0-pre-alpha";
 
 const root = document.getElementById("app");
 
@@ -293,19 +300,22 @@ function formatSkillsDetailSection(item, instanceEntry) {
   return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы предмета</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
 }
 
-import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.4.13-pre-alpha";
+import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.5.0-pre-alpha";
 
-function formatItemDetailDescriptionSection(item, stackCount) {
+function formatItemDetailWorkPrincipleSection(item) {
+  if (!item?.isConsumable) {
+    return "";
+  }
+  const consumableEffect = getConsumableDescription(item);
+  if (!consumableEffect) {
+    return "";
+  }
+  return `<div class="item-detail-section"><h4 class="item-detail-section-title">Принцип работы</h4><p class="item-detail-desc">${escapeHtml(consumableEffect).replace(/\n/g, "<br>")}</p></div>`;
+}
+
+function formatItemDetailDescriptionSection(item) {
   const id = STRINGS_RU.itemDetail;
   let rawDescription = String(item?.description || "").trim();
-  
-  if (item?.isConsumable) {
-    const consumableEffect = getConsumableDescription(item);
-    if (consumableEffect) {
-      rawDescription += (rawDescription ? "\n\n" : "") + "Принцип работы:\n" + consumableEffect;
-    }
-  }
-
   if (rawDescription) {
     return `<div class="item-detail-section"><h4 class="item-detail-section-title">${id.descriptionTitle}</h4><p class="item-detail-desc">${escapeHtml(rawDescription).replace(/\n/g, "<br>")}</p></div>`;
   }
@@ -344,6 +354,7 @@ function buildInventoryItemDetailHtml(item, options = {}) {
   const rarityRu = rarity === "unique" ? id.rarityUnique : rarity === "rare" ? id.rarityRare : id.rarityCommon;
   const typeRu = toRuType(item.type);
   const icon = item.icon || "•";
+  const iconHtml = buildItemSpriteStackHtml(item, { fallbackText: icon });
   const stackPill = item.isConsumable && stackCount != null && stackCount > 1
     ? `<span class="item-detail-stack-pill" aria-hidden="true">×${stackCount}</span>`
     : "";
@@ -351,11 +362,20 @@ function buildInventoryItemDetailHtml(item, options = {}) {
     formatItemStatBonusesDetailSection(item),
     formatWeaponCombatDetailSection(item),
     formatSkillsDetailSection(item, options.instanceEntry || null),
-    formatItemDetailDescriptionSection(item, stackCount),
+    formatItemDetailWorkPrincipleSection(item),
+    formatItemDetailDescriptionSection(item),
   ].filter(Boolean).join("");
   const emptyHint = sections === "" ? `<p class="item-detail-muted item-detail-empty">${STRINGS_RU.itemDetail.emptyHint}</p>` : "";
   const recoveryBadges = formatConsumableRecoveryBadges(item);
-  return `<div class="item-detail-card item-detail-rarity-${escapeHtml(rarity)}"><header class="item-detail-head"><span class="item-detail-rarity">${escapeHtml(rarityRu)}</span><span class="item-detail-type">${escapeHtml(typeRu)}</span>${stackPill}</header><div class="item-detail-title-row"><span class="item-detail-icon" aria-hidden="true">${escapeHtml(icon)}</span><span class="item-detail-name">${escapeHtml(item.name)}</span></div>${recoveryBadges}${sections}${emptyHint}</div>`;
+  return buildHoverCardHtml({
+    rarity,
+    headerLeft: rarityRu,
+    headerRight: typeRu,
+    titleRowHtml: `<div class="item-detail-title-row"><span class="item-detail-icon cm-inv-cell item-rarity-${escapeHtml(rarity)}" aria-hidden="true">${iconHtml}</span><span class="item-detail-name">${escapeHtml(item.name)}</span></div>`,
+    badgesHtml: recoveryBadges,
+    sectionsHtml: sections,
+    emptyHintHtml: emptyHint,
+  });
 }
 
 const inventoryPopover = createInventoryItemPopoverController({
@@ -365,91 +385,26 @@ const inventoryPopover = createInventoryItemPopoverController({
   getItemInstanceById: (instanceId) => state.playerSheet?.itemInstances?.[instanceId] || null,
   buildInventoryItemDetailHtml,
 });
+const skillPopover = createSkillHoverPopoverController({
+  root,
+  getScreen: () => state.screen,
+  getPlayerSheet: () => state.playerSheet,
+  getActiveSkills,
+  getSkillById,
+  getEquippedItemContextBySkill,
+  buildSkillDetailHtml,
+});
 
-function createSkillPopoverController() {
-  let popoverEl = null;
-  let popoverKey = null;
-
-  function ensureEl() {
-    if (popoverEl) return popoverEl;
-    popoverEl = document.createElement("div");
-    popoverEl.className = "inventory-item-detail-popover";
-    popoverEl.setAttribute("role", "tooltip");
-    popoverEl.hidden = true;
-    popoverEl.setAttribute("aria-hidden", "true");
-    document.body.appendChild(popoverEl);
-    return popoverEl;
-  }
-
-  function hide() {
-    popoverKey = null;
-    if (!popoverEl) return;
-    popoverEl.hidden = true;
-    popoverEl.setAttribute("aria-hidden", "true");
-    popoverEl.innerHTML = "";
-    popoverEl.style.visibility = "";
-  }
-
-  function scheduleHide() {
-    hide();
-  }
-
-  function positionByAnchor(anchorEl) {
-    if (!popoverEl || popoverEl.hidden) return;
-    if (!anchorEl) return;
-    const pad = 10;
-    const rect = anchorEl.getBoundingClientRect();
-    popoverEl.style.visibility = "hidden";
-    const w = popoverEl.offsetWidth;
-    const h = popoverEl.offsetHeight;
-    let x = rect.left - w - pad;
-    let y = rect.top;
-    if (x < 10) x = rect.right + pad;
-    if (y + h > window.innerHeight - 10) y = Math.max(10, window.innerHeight - h - 10);
-    if (x < 10) x = 10;
-    if (y < 10) y = 10;
-    popoverEl.style.left = `${x}px`;
-    popoverEl.style.top = `${y}px`;
-    popoverEl.style.visibility = "visible";
-  }
-
-  function updateFromEvent(event) {
-    if (state.screen !== "game") {
-      scheduleHide();
-      return;
-    }
-    const trigger = event.target.closest("[data-skill-detail-id]");
-    if (!trigger || !root.contains(trigger)) {
-      scheduleHide();
-      return;
-    }
-    const skillId = trigger.dataset.skillDetailId;
-    const skills = getActiveSkills(state.playerSheet);
-    const activeSkill = skills.find((skill) => skill.id === skillId) || null;
-    const skill = activeSkill ? { ...getSkillById(activeSkill.id), level: activeSkill.level } : null;
-    if (!skill) {
-      hide();
-      return;
-    }
-    const skillState = { learned: true, level: 1 };
-    const key = `${skill.id}:${Number(skillState?.level || 1)}`;
-    const pop = ensureEl();
-    if (popoverKey !== key) {
-      pop.innerHTML = buildSkillDetailHtml(skill, skillState, {
-        item: getEquippedItemContextBySkill(state.playerSheet, skill.id)?.item || null,
-        playerSheet: state.playerSheet,
-      });
-      popoverKey = key;
-    }
-    pop.hidden = false;
-    pop.setAttribute("aria-hidden", "false");
-    positionByAnchor(trigger);
-  }
-
-  return { hide, scheduleHide, updateFromEvent };
-}
-
-const skillPopover = createSkillPopoverController();
+const worldObjectPopover = createWorldObjectHoverPopoverController({
+  getState: () => state,
+  screenPointToGrid,
+  buildGroundLootDetailHtml: (object) => {
+    if (object?.type !== "ground_loot") return "";
+    const item = object?.data?.item || getItemById(object?.data?.itemId);
+    if (!item) return "";
+    return buildInventoryItemDetailHtml(item);
+  },
+});
 
 function queueInventoryPopoverUpdate(event) {
   const trigger = event.target.closest("[data-inventory-detail-item-id]");
@@ -1151,7 +1106,7 @@ function renderStarterGroup(type, options, baseActorStats = null, previewActorSt
               data-inventory-detail-item-id="${item.id}"
               aria-label="${esc(item.name)}"
               title="${esc(item.name)}"
-            >${item.icon || "•"}${item.type === "weapon" ? `<span class="cm-item-weapon-damage ${getValueDeltaClass(getWeaponDamageForActorStats(baseActorStats || state.preGameStats, item), getWeaponDamageForActorStats(previewActorStats || baseActorStats || state.preGameStats, item))}">${getWeaponDamageForActorStats(previewActorStats || baseActorStats || state.preGameStats, item)}</span>` : ""}</button>
+            >${buildItemSpriteStackHtml(item)}${item.type === "weapon" ? `<span class="cm-item-weapon-damage ${getValueDeltaClass(getWeaponDamageForActorStats(baseActorStats || state.preGameStats, item), getWeaponDamageForActorStats(previewActorStats || baseActorStats || state.preGameStats, item))}">${getWeaponDamageForActorStats(previewActorStats || baseActorStats || state.preGameStats, item)}</span>` : ""}</button>
           `;
         }).join("")}
       </div>
@@ -1179,6 +1134,26 @@ function getWeaponDamageForSheet(sheet, item) {
 
 function getWeaponDamageForPreGameStats(preGameStats, item) {
   return getWeaponDamageForActorStats(preGameStats, item);
+}
+
+function grantOneOfEachLootItemToBag(playerSheet) {
+  if (!playerSheet) return playerSheet;
+  const nextBag = [...(playerSheet.bag || [])];
+  let nextItemInstances = { ...(playerSheet.itemInstances || {}) };
+  for (const item of getAllLootItems()) {
+    const created = createRuntimeItemInstance(
+      { ...playerSheet, itemInstances: nextItemInstances },
+      item.id,
+    );
+    nextItemInstances = created.itemInstances;
+    nextBag.push({ instanceId: created.instanceId, itemId: item.id });
+  }
+  return recalculateSheetFromInventory(
+    { ...playerSheet, itemInstances: nextItemInstances },
+    playerSheet.equippedByType || {},
+    nextBag,
+    playerSheet.equippedInstanceByType || {},
+  );
 }
 
 function buildWelcomePreviewSheetFromItem(itemPreview) {
@@ -1285,6 +1260,7 @@ function render() {
     state.starterLoadout.some((id) => getItemById(id)?.type === type),
   );
   const canStart = state.preGamePointsRemaining === 0 && hasAllTypes;
+  const footerMetaHtml = buildFooterMetaHtml();
 
   root.innerHTML = `
     <div class="cm-app">
@@ -1404,6 +1380,7 @@ function render() {
           </div>
         </aside>
       </div>
+      ${footerMetaHtml}
     </div>
     ${renderModal()}
   `;
@@ -1576,6 +1553,7 @@ function renderGameScreen() {
     renderModal,
     anvilOverlayHtml,
     descendOverlayHtml,
+    footerMetaHtml: buildFooterMetaHtml(),
   });
 
   const canvasOverlay = buildCanvasOverlayViewModel(state.uiHud);
@@ -1625,6 +1603,7 @@ function renderEndingScreen() {
     getUiStatIcon,
     getUiStatName,
     renderModal,
+    footerMetaHtml: buildFooterMetaHtml(),
   });
 }
 
@@ -1644,6 +1623,7 @@ function resetToWelcome() {
   state.uiHud.descendPrompt = null;
   inventoryPopover.hide();
   skillPopover.hide();
+  worldObjectPopover.hide();
 }
 
 function performStep(direction, isRouteStepFinal = true) {
@@ -2858,6 +2838,7 @@ root.addEventListener("mousemove", (event) => {
   updateStatHoverPreviewFromTarget(event.target);
   queueInventoryPopoverUpdate(event);
   queueSkillPopoverUpdate(event);
+  worldObjectPopover.updateFromEvent(event);
   const canvas = event.target.closest("#newGameCanvas");
   if (!canvas) return;
   if (state.screen === "game" && state.run && state.playerSheet && state.uiHud.skillTargeting?.skillId) {
@@ -2917,6 +2898,9 @@ root.addEventListener("mouseout", (event) => {
   const stillInsideSkillDetail = toTarget?.closest?.("[data-skill-detail-id]");
   if (!stillInsideSkillDetail) {
     skillPopover.scheduleHide();
+  }
+  if (event.target.closest("#newGameCanvas") && !event.relatedTarget?.closest?.("#newGameCanvas")) {
+    worldObjectPopover.scheduleHide();
   }
   if (event.target.closest("#newGameCanvas") && !event.relatedTarget?.closest?.("#newGameCanvas")) {
     canvasHandlers.onCanvasMouseLeave();

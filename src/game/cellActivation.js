@@ -1,19 +1,19 @@
-import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.4.13-pre-alpha";
-import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.4.13-pre-alpha";
-import { rollChestLootItems } from "./chestLoot.js?v=0.4.13-pre-alpha";
-import { randomInt } from "./rng.js?v=0.4.13-pre-alpha";
-import { ensureRunFxState } from "../runtime/runFxState.js?v=0.4.13-pre-alpha";
+import { DIRS_8, inBounds, isWall } from "../nav/pathfinding.js?v=0.5.0-pre-alpha";
+import { getItemById, addLootItemToPlayer } from "../loadout.js?v=0.5.0-pre-alpha";
+import { rollChestLootItems } from "./chestLoot.js?v=0.5.0-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.0-pre-alpha";
+import { ensureRunFxState } from "../runtime/runFxState.js?v=0.5.0-pre-alpha";
 import {
   ACTOR_KIND,
   getObjectsAt,
   canObjectBeActivatedBy,
   removeObject,
-} from "./cellObjects.js?v=0.4.13-pre-alpha";
+} from "./cellObjects.js?v=0.5.0-pre-alpha";
 import {
   applyTrapEffectToEnemy,
   applyTrapEffectToPlayer,
   spawnPoisonCloudObjects,
-} from "./trapsAndClouds.js?v=0.4.13-pre-alpha";
+} from "./trapsAndClouds.js?v=0.5.0-pre-alpha";
 
 function collectChestDropCells(run, x, y) {
   const cells = [];
@@ -62,6 +62,9 @@ function spawnGroundLootObjects(run, lootItems, sourceX, sourceY, sourceName) {
         itemId: item.id,
         itemName: item.name,
         itemIcon: item.icon || "📦",
+        itemType: item.type || "",
+        itemSubtype: item.subtype || "",
+        item,
         sourceName,
       },
     };
@@ -190,4 +193,40 @@ export function applyObjectActivationOnCell(run, playerSheet, actorKind, x, y, a
     }
   }
   return { log: logs.join(" "), playerSheet: nextPlayerSheet };
+}
+
+export function applyEndOfEnvironmentObjectEffects(run, playerSheet) {
+  const objects = Array.isArray(run?.objects) ? [...run.objects] : [];
+  let nextPlayerSheet = playerSheet;
+  let effectCount = 0;
+
+  for (const source of objects) {
+    if (source?.turnTick?.effect !== "affect_cooccupants_with_trap") {
+      continue;
+    }
+    const trapConfig = source?.data?.trapConfig || {};
+
+    const objectsOnCell = getObjectsAt(run, source.x, source.y).filter((target) => target.id !== source.id);
+    for (const target of objectsOnCell) {
+      if (target.type !== "enemy") {
+        continue;
+      }
+      const effectLog = applyTrapEffectToEnemy(run, target, trapConfig);
+      if (effectLog) {
+        effectCount += 1;
+      }
+      if ((target.data?.hp || 0) <= 0) {
+        removeObject(run, target.id);
+      }
+    }
+
+    if (run.player?.x === source.x && run.player?.y === source.y) {
+      const effectLog = applyTrapEffectToPlayer(run, nextPlayerSheet, trapConfig);
+      if (effectLog) {
+        effectCount += 1;
+      }
+    }
+  }
+
+  return { playerSheet: nextPlayerSheet, effectCount };
 }
