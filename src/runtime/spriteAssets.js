@@ -1,6 +1,6 @@
-import { APP_VERSION } from "../app-config.js?v=0.5.0-pre-alpha";
-import { getAllLootItems } from "../loadout.js?v=0.5.0-pre-alpha";
-import { getAllSkillIds } from "../skillsRuntime.js?v=0.5.0-pre-alpha";
+import { APP_VERSION } from "../app-config.js?v=0.5.1-pre-alpha";
+import { getAllLootItems } from "../loadout.js?v=0.5.1-pre-alpha";
+import { getAllSkillIds } from "../skillsRuntime.js?v=0.5.1-pre-alpha";
 
 const spriteCache = new Map();
 

@@ -1,5 +1,5 @@
-import { removeObject } from "./cellObjects.js?v=0.5.0-pre-alpha";
-import { applyXpGain, getXpForEnemy } from "./xp.js?v=0.5.0-pre-alpha";
+import { removeObject } from "./cellObjects.js?v=0.5.1-pre-alpha";
+import { applyXpGain, getXpForEnemy } from "./xp.js?v=0.5.1-pre-alpha";
 
 export function applyDamageToEnemyAndResolveDefeat(run, playerSheet, enemy, damage) {
   if (!run || !playerSheet || !enemy || enemy.type !== "enemy") {

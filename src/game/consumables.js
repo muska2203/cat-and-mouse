@@ -1,8 +1,8 @@
-import { getConsumableApplyLog, appendManaToLog, getConsumableDescription } from "../items/itemPresentation.js?v=0.5.0-pre-alpha";
-import { resolveConsumableApply } from "../items/consumableApply.js?v=0.5.0-pre-alpha";
-import { getTrapPlacementCells } from "./trapPlacement.js?v=0.5.0-pre-alpha";
-import { randomInt } from "./rng.js?v=0.5.0-pre-alpha";
-import { createWorldObject } from "./worldObjectModel.js?v=0.5.0-pre-alpha";
+import { getConsumableApplyLog, appendManaToLog, getConsumableDescription } from "../items/itemPresentation.js?v=0.5.1-pre-alpha";
+import { resolveConsumableApply } from "../items/consumableApply.js?v=0.5.1-pre-alpha";
+import { getTrapPlacementCells } from "./trapPlacement.js?v=0.5.1-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.1-pre-alpha";
+import { createWorldObject } from "./worldObjectModel.js?v=0.5.1-pre-alpha";
 
 function roundMana(value) {
   return Math.max(0, Math.round(Number(value || 0)));

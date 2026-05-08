@@ -1,8 +1,8 @@
 import {
   getAllLootItems,
   getItemById,
-} from "../loadout.js?v=0.5.0-pre-alpha";
-import { normalizeSkillInstanceData } from "../skillsRuntime.js?v=0.5.0-pre-alpha";
+} from "../loadout.js?v=0.5.1-pre-alpha";
+import { normalizeSkillInstanceData } from "../skillsRuntime.js?v=0.5.1-pre-alpha";
 
 const EQUIP_TYPES = new Set(["weapon", "armor", "amulet"]);
 
