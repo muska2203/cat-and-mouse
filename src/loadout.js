@@ -244,7 +244,8 @@ export const LOOT_RARE_ITEMS = [
     type: "consumable",
     subtype: "trap",
     icon: "☣️",
-    effectText: "Ставит ловушку: 4 урона, оглушение на 2 хода и ядовитый туман 3x3",
+    effectText:
+      "Ставит ловушку: 4 урона, оглушение на 2 хода и ядовитый туман 3x3 (урон в тумане только пока стоишь на клетке в конце хода окружения)",
     description: "Небольшой хлопок и очень плохой воздух.",
     classRestriction: ["mage", "warrior"],
     isConsumable: true,
@@ -257,8 +258,6 @@ export const LOOT_RARE_ITEMS = [
       spawnPoisonCloud: true,
       cloudDurationTurns: 3,
       cloudDamage: 2,
-      cloudPoisonTurns: 2,
-      cloudPoisonDamage: 2,
     },
     statBonuses: {},
   },

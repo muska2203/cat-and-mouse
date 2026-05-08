@@ -109,8 +109,6 @@ export function applyTrapEffectToPlayer(run, playerSheet, trapConfig) {
 export function spawnPoisonCloudObjects(run, centerX, centerY, sourceName, trapConfig) {
   const durationTurns = Math.max(1, trapConfig?.cloudDurationTurns || 2);
   const cloudDamage = Math.max(0, trapConfig?.cloudDamage || 0);
-  const cloudPoisonTurns = Math.max(0, trapConfig?.cloudPoisonTurns || 0);
-  const cloudPoisonDamage = Math.max(0, trapConfig?.cloudPoisonDamage || 0);
   const cells = [];
   for (let dy = -1; dy <= 1; dy += 1) {
     for (let dx = -1; dx <= 1; dx += 1) {
@@ -126,25 +124,23 @@ export function spawnPoisonCloudObjects(run, centerX, centerY, sourceName, trapC
     run.objects.push(createWorldObject({
       id: `poison_cloud_${Date.now()}_${cell.x}_${cell.y}_${randomInt(0, 9999, run?.rng || null)}`,
       name: "Ядовитый туман",
-      description: "Ядовитый туман. Вредит всем на этой клетке каждый ход.",
+      description:
+        "Ядовитый туман. В конце хода окружения наносит урон всем, кто стоит на этой клетке.",
       type: "poison_cloud",
       purpose: "poison_cloud",
       icon: "☠",
       oneTime: false,
       blocksMovement: false,
       blocksEnemyMovement: false,
-      activateOnPathPass: true,
       turnTick: { effect: "affect_cooccupants_with_trap" },
-      activation: { by: ["player", "enemy"], effect: "trigger_poison_cloud" },
       x: cell.x,
       y: cell.y,
       data: {
         sourceName,
         durationTurns,
+        // Только мгновенный урон при со-жительстве на конце хода окружения; без активации при входе и без отложенного яда.
         trapConfig: {
           damage: cloudDamage,
-          poisonTurns: cloudPoisonTurns,
-          poisonDamage: cloudPoisonDamage,
         },
       },
     }));
