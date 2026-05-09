@@ -1,4 +1,4 @@
-import { buildItemSpriteStackHtml } from "./spriteIconHtml.js?v=0.5.4-pre-alpha";
+import { buildItemSpriteStackHtml } from "./spriteIconHtml.js?v=0.5.5-pre-alpha";
 
 const EQUIP_TYPES = ["weapon", "armor", "amulet"];
 

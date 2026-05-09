@@ -2,8 +2,8 @@
  * Клик / hover по игровому canvas и автопоход по залоченному пути.
  * Зависимости передаются снаружи (состояние живёт в main.js).
  */
-import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.5.4-pre-alpha";
-import { ensureRunFxState } from "./runFxState.js?v=0.5.4-pre-alpha";
+import { resolveDirectionByDelta } from "../input/directionMap.js?v=0.5.5-pre-alpha";
+import { ensureRunFxState } from "./runFxState.js?v=0.5.5-pre-alpha";
 
 export function createCanvasRunHandlers(deps) {
   const {

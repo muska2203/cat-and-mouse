@@ -1,4 +1,4 @@
-import { buildDerivedStats, roundStat } from "./rules.js?v=0.5.4-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.5.5-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,

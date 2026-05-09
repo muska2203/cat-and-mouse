@@ -1,5 +1,5 @@
-import { isBlockingMotionActive, normalizeFinishedAnimationsForRun } from "./motionTiming.js?v=0.5.4-pre-alpha";
-import { ensureRunFxState } from "./runFxState.js?v=0.5.4-pre-alpha";
+import { isBlockingMotionActive, normalizeFinishedAnimationsForRun } from "./motionTiming.js?v=0.5.5-pre-alpha";
+import { ensureRunFxState } from "./runFxState.js?v=0.5.5-pre-alpha";
 
 export function isPlayerInputBlockedByMotion(run, nowMs) {
   if (!run) return true;

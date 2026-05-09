@@ -3,7 +3,7 @@ export function normalizeCanvasZoom(value) {
   if (!Number.isFinite(zoom)) {
     return 1;
   }
-  return Math.max(0.35, Math.min(1.5, zoom));
+  return Math.max(0.35, Math.min(3, zoom));
 }
 
 export function getCanvasTileSize(viewWidth, viewHeight, zoomScale = 1) {

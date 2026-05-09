@@ -1,5 +1,5 @@
-import { getLootPool } from "../loadout.js?v=0.5.4-pre-alpha";
-import { randomInt, weightedPick } from "./rng.js?v=0.5.4-pre-alpha";
+import { getLootPool } from "../loadout.js?v=0.5.5-pre-alpha";
+import { randomInt, weightedPick } from "./rng.js?v=0.5.5-pre-alpha";
 
 const LOOT_KIND_WEIGHTS = [
   { value: "restorative_consumable", weight: 30 },

@@ -1,13 +1,13 @@
-import { generateMazeRun } from "./maze.js?v=0.5.4-pre-alpha";
-import { buildPathToCell as buildPathToCellNav } from "./nav/pathfinding.js?v=0.5.4-pre-alpha";
-import { planStartAndGoalSpawn } from "./game/levelSpawn.js?v=0.5.4-pre-alpha";
-import { generateObjects } from "./game/generateObjects.js?v=0.5.4-pre-alpha";
-import { defaultCellBlocked } from "./game/cellBlocking.js?v=0.5.4-pre-alpha";
-import { revealAroundPlayer } from "./game/fogReveal.js?v=0.5.4-pre-alpha";
-import { createRunRng } from "./game/rng.js?v=0.5.4-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.4-pre-alpha";
-import { preloadAllRunSprites } from "./runtime/spriteAssets.js?v=0.5.4-pre-alpha";
-import { mergeRunTotalsForNextFloor } from "./game/runTotals.js?v=0.5.4-pre-alpha";
+import { generateMazeRun } from "./maze.js?v=0.5.5-pre-alpha";
+import { buildPathToCell as buildPathToCellNav } from "./nav/pathfinding.js?v=0.5.5-pre-alpha";
+import { planStartAndGoalSpawn } from "./game/levelSpawn.js?v=0.5.5-pre-alpha";
+import { generateObjects } from "./game/generateObjects.js?v=0.5.5-pre-alpha";
+import { defaultCellBlocked } from "./game/cellBlocking.js?v=0.5.5-pre-alpha";
+import { revealAroundPlayer } from "./game/fogReveal.js?v=0.5.5-pre-alpha";
+import { createRunRng } from "./game/rng.js?v=0.5.5-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.5-pre-alpha";
+import { preloadAllRunSprites } from "./runtime/spriteAssets.js?v=0.5.5-pre-alpha";
+import { mergeRunTotalsForNextFloor } from "./game/runTotals.js?v=0.5.5-pre-alpha";
 
 function createMask(width, height, value = false) {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => value));
@@ -33,6 +33,7 @@ export function buildPathToDiscoveredCell(run, start, target, options = {}) {
 
 export function createRunState(playerSheet, level = 1, options = {}) {
   preloadAllRunSprites();
+  const playerPortraitId = String(options.playerPortraitId || "").trim() || "witcher";
   const rng = options.rng && typeof options.rng.nextFloat === "function"
     ? options.rng
     : createRunRng(options.seed);
@@ -46,6 +47,7 @@ export function createRunState(playerSheet, level = 1, options = {}) {
   const run = {
     ...mazeWithSpawn,
     player: { x: mazeWithSpawn.start.x, y: mazeWithSpawn.start.y },
+    playerPortraitId,
     level,
     maxLevel: 10,
     turns: 0,
@@ -84,7 +86,10 @@ export function createRunState(playerSheet, level = 1, options = {}) {
 
 export function createNextLevelRun(previousRun, playerSheet) {
   const nextLevel = (previousRun?.level || 1) + 1;
-  const nextRun = createRunState(playerSheet, nextLevel, { rng: previousRun?.rng });
+  const nextRun = createRunState(playerSheet, nextLevel, {
+    rng: previousRun?.rng,
+    playerPortraitId: previousRun?.playerPortraitId,
+  });
   nextRun.nextHitMultiplier = Math.max(1, previousRun?.nextHitMultiplier || 1);
   if (Array.isArray(previousRun?.overTimeEffects) && previousRun.overTimeEffects.length > 0) {
     nextRun.overTimeEffects = previousRun.overTimeEffects.map((effect) => ({ ...effect }));
@@ -99,6 +104,6 @@ export function createNextLevelRun(previousRun, playerSheet) {
   return nextRun;
 }
 
-export { useSkill, getSkillTargetCells, useSkillAtCell } from "./game/runSkills.js?v=0.5.4-pre-alpha";
-export { tryStep } from "./game/playerStep.js?v=0.5.4-pre-alpha";
-export { beginEnvironmentTurn, stepEnvironmentTurn } from "./game/environmentTurn.js?v=0.5.4-pre-alpha";
+export { useSkill, getSkillTargetCells, useSkillAtCell } from "./game/runSkills.js?v=0.5.5-pre-alpha";
+export { tryStep } from "./game/playerStep.js?v=0.5.5-pre-alpha";
+export { beginEnvironmentTurn, stepEnvironmentTurn } from "./game/environmentTurn.js?v=0.5.5-pre-alpha";

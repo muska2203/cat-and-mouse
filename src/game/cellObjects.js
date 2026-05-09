@@ -1,6 +1,6 @@
 /** Кто на клетке и кто блокирует ход для игрока / врага. */
 
-import { bumpRunTotal } from "./runTotals.js?v=0.5.4-pre-alpha";
+import { bumpRunTotal } from "./runTotals.js?v=0.5.5-pre-alpha";
 
 export const ACTOR_KIND = {
   PLAYER: "player",

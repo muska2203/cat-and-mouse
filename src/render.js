@@ -1,6 +1,6 @@
-import { roundStat } from "./rules.js?v=0.5.4-pre-alpha";
-import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.4-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.4-pre-alpha";
+import { roundStat } from "./rules.js?v=0.5.5-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.5-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.5-pre-alpha";
 import {
   getLoadedSprite,
   resolveEnemySpriteUrl,
@@ -13,9 +13,11 @@ import {
   resolvePoisonCloudSpriteUrl,
   resolveRandomFloorTileSpriteUrl,
   resolveTileSpriteUrl,
-} from "./runtime/spriteAssets.js?v=0.5.4-pre-alpha";
+} from "./runtime/spriteAssets.js?v=0.5.5-pre-alpha";
 
 const WORLD_OBJECT_SPRITE_SCALE = 0.65;
+/** Спрайт игрока на поле: 150% от размера клетки (в терминах UI-масштаба «150%»). */
+const PLAYER_FIELD_SPRITE_SCALE = 1.5;
 
 export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1, overlay = null) {
   if (!canvas || !run) {
@@ -219,23 +221,28 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   const playerIdleOffsetY = isPlayerInActiveMotion(run, nowMs)
     ? 0
     : getIdleBobOffsetY(tile, nowMs, "player");
-  const mouseScreenY = cameraOffsetY + playerVisual.y * tile + tile / 2 + playerIdleOffsetY + moveHopY;
+  const playerSpriteSizePx = Math.max(8, Math.floor(tile * PLAYER_FIELD_SPRITE_SCALE));
+  // Якорь: центр по горизонтали на середине клетки; по вертикали низ спрайта — на нижней границе клетки (+ покачивание/прыжок).
+  const playerTileBottomY = cameraOffsetY + playerVisual.y * tile + tile;
+  const spriteBottomY = playerTileBottomY + playerIdleOffsetY + moveHopY;
+  const mouseScreenY = spriteBottomY - playerSpriteSizePx / 2;
 
   if (isPlayerBurning(run)) {
     drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, playerVisual.x, playerVisual.y, nowMs);
   }
   const hasPlayerSprite = drawCenteredSpriteWithRotation(
     ctx,
-    resolvePlayerSpriteUrl(),
+    resolvePlayerSpriteUrl(run?.playerPortraitId),
     mouseScreenX,
     mouseScreenY,
-    tile,
+    playerSpriteSizePx,
     moveLeanRad,
   );
   if (!hasPlayerSprite) {
     ctx.save();
     ctx.translate(mouseScreenX, mouseScreenY);
     ctx.rotate(moveLeanRad);
+    ctx.font = `${Math.max(12, Math.floor(tile * 0.62 * PLAYER_FIELD_SPRITE_SCALE))}px Arial`;
     ctx.fillText("🐭", 0, 0);
     ctx.restore();
   }

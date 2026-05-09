@@ -1,12 +1,13 @@
-import { APP_VERSION } from "../app-config.js?v=0.5.4-pre-alpha";
-import { getAllLootItems } from "../loadout.js?v=0.5.4-pre-alpha";
-import { getAllSkillIds } from "../skillsRuntime.js?v=0.5.4-pre-alpha";
+import { APP_VERSION } from "../app-config.js?v=0.5.5-pre-alpha";
+import { isKnownPlayerPortraitId, PLAYER_PORTRAITS } from "../game/playerPortraitsCatalog.js?v=0.5.5-pre-alpha";
+import { getAllLootItems } from "../loadout.js?v=0.5.5-pre-alpha";
+import { getAllSkillIds } from "../skillsRuntime.js?v=0.5.5-pre-alpha";
 
 const spriteCache = new Map();
 
 const ENEMY_SPRITE_KEYS = ["cat_small", "cat_mid", "cat_big"];
 const OBJECT_SPRITE_KEYS = ["chest_common", "chest_rare", "chest_unique", "anvil"];
-const FLOOR_TILE_KEYS = ["floor1", "floor2"];
+const FLOOR_TILE_KEYS = ["floor1"];
 const TILE_SPRITE_KEYS = ["wall", ...FLOOR_TILE_KEYS];
 const LOOT_FRAME_BY_RARITY = {
   common: "loot_frame_common",
@@ -82,8 +83,13 @@ export function resolveRandomFloorTileSpriteUrl(x, y, levelSeed = 0) {
   return resolveTileSpriteUrl(variants[index]);
 }
 
-export function resolvePlayerSpriteUrl() {
-  return withVersion("./src/assets/sprites/actors/player_mouse.png");
+const DEFAULT_PLAYER_SPRITE_BASENAME = "player_mouse";
+
+/** Спрайт героя на поле: имя файла `player_<portraitId>.png` для известных id из каталога. */
+export function resolvePlayerSpriteUrl(portraitId = "") {
+  const id = String(portraitId || "").trim();
+  const basename = id && isKnownPlayerPortraitId(id) ? `player_${id}` : DEFAULT_PLAYER_SPRITE_BASENAME;
+  return withVersion(`./src/assets/sprites/actors/${basename}.png`);
 }
 
 export function resolveGoalSpriteUrl() {
@@ -148,7 +154,10 @@ export function preloadAllRunSprites() {
   for (const tileKey of TILE_SPRITE_KEYS) {
     preloadSpriteByUrl(resolveTileSpriteUrl(tileKey));
   }
-  preloadSpriteByUrl(resolvePlayerSpriteUrl());
+  preloadSpriteByUrl(resolvePlayerSpriteUrl(""));
+  for (const portrait of PLAYER_PORTRAITS) {
+    preloadSpriteByUrl(resolvePlayerSpriteUrl(portrait.id));
+  }
   preloadSpriteByUrl(resolveGoalSpriteUrl());
   preloadSpriteByUrl(resolvePoisonCloudSpriteUrl());
 }

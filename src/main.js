@@ -1,4 +1,4 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.5.4-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.5.5-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
@@ -12,38 +12,38 @@ import {
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.5.4-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.5.4-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.5.4-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.5.4-pre-alpha";
-import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.5.4-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.5.4-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.5.4-pre-alpha";
-import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.5.4-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.5.4-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.5.4-pre-alpha";
+} from "./loadout.js?v=0.5.5-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.5.5-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.5.5-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.5.5-pre-alpha";
+import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.5.5-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.5.5-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.5.5-pre-alpha";
+import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.5.5-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.5.5-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.5.5-pre-alpha";
 import {
   advanceRunAnimationState,
   isBlockingMotionActive,
   normalizeFinishedAnimationsForRun,
-} from "./runtime/motionTiming.js?v=0.5.4-pre-alpha";
-import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.5.4-pre-alpha";
-import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.5.4-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.4-pre-alpha";
+} from "./runtime/motionTiming.js?v=0.5.5-pre-alpha";
+import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.5.5-pre-alpha";
+import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.5.5-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.5-pre-alpha";
 import {
   isEnvironmentTurnStepReady,
   isLevelTransitionReady,
   isPlayerInputBlockedByMotion,
-} from "./runtime/runFlow.js?v=0.5.4-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.5.4-pre-alpha";
-import { randomInt } from "./game/rng.js?v=0.5.4-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.5.4-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.5.4-pre-alpha";
-import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.5.4-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.5.4-pre-alpha";
-import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.5.4-pre-alpha";
-import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.5.4-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.5.4-pre-alpha";
+} from "./runtime/runFlow.js?v=0.5.5-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.5.5-pre-alpha";
+import { randomInt } from "./game/rng.js?v=0.5.5-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.5.5-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.5.5-pre-alpha";
+import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.5.5-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.5.5-pre-alpha";
+import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.5.5-pre-alpha";
+import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.5.5-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.5.5-pre-alpha";
 import {
   getSkillsForEquippedItem,
   getSkillById,
@@ -54,26 +54,26 @@ import {
   getSkillTargetingProfile,
   getSkillAffectedCellsForRoot,
   getSkillPreviewForPreparedSelections,
-} from "./skillsRuntime.js?v=0.5.4-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.5.4-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.5.4-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.5.4-pre-alpha";
+} from "./skillsRuntime.js?v=0.5.5-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.5.5-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.5.5-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.5.5-pre-alpha";
 import {
   createSkillHoverPopoverController,
   createWorldObjectHoverPopoverController,
-} from "./ui/gameHoverPopovers.js?v=0.5.4-pre-alpha";
-import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.5.4-pre-alpha";
-import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.5.4-pre-alpha";
-import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.5.4-pre-alpha";
-import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.5.4-pre-alpha";
-import { buildItemSpriteStackHtml } from "./ui/spriteIconHtml.js?v=0.5.4-pre-alpha";
-import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.5.4-pre-alpha";
-import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.5.4-pre-alpha";
-import { buildAnvilOverlayHtml } from "./ui/renderers/anvilOverlay.js?v=0.5.4-pre-alpha";
-import { buildFooterMetaHtml } from "./ui/footerMetaHtml.js?v=0.5.4-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.5.4-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.5.4-pre-alpha";
-import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.5.4-pre-alpha";
+} from "./ui/gameHoverPopovers.js?v=0.5.5-pre-alpha";
+import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.5.5-pre-alpha";
+import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.5.5-pre-alpha";
+import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.5.5-pre-alpha";
+import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.5.5-pre-alpha";
+import { buildItemSpriteStackHtml } from "./ui/spriteIconHtml.js?v=0.5.5-pre-alpha";
+import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.5.5-pre-alpha";
+import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.5.5-pre-alpha";
+import { buildAnvilOverlayHtml } from "./ui/renderers/anvilOverlay.js?v=0.5.5-pre-alpha";
+import { buildFooterMetaHtml } from "./ui/footerMetaHtml.js?v=0.5.5-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.5.5-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.5.5-pre-alpha";
+import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.5.5-pre-alpha";
 import {
   buildImproveResult,
   buildRecycleResult,
@@ -87,59 +87,17 @@ import {
   getRecyclePreview,
   getReforgeCandidates,
   isEquipableItem,
-} from "./game/anvilCrafting.js?v=0.5.4-pre-alpha";
-import { ACTOR_KIND, removeObject } from "./game/cellObjects.js?v=0.5.4-pre-alpha";
-import { applyObjectActivationOnCell } from "./game/cellActivation.js?v=0.5.4-pre-alpha";
+} from "./game/anvilCrafting.js?v=0.5.5-pre-alpha";
+import { ACTOR_KIND, removeObject } from "./game/cellObjects.js?v=0.5.5-pre-alpha";
+import { applyObjectActivationOnCell } from "./game/cellActivation.js?v=0.5.5-pre-alpha";
+import { PLAYER_PORTRAITS } from "./game/playerPortraitsCatalog.js?v=0.5.5-pre-alpha";
 
-import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.5.4-pre-alpha";
-import { buildHoverCardHtml } from "./ui/hoverCardHtml.js?v=0.5.4-pre-alpha";
+import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.5.5-pre-alpha";
+import { buildHoverCardHtml } from "./ui/hoverCardHtml.js?v=0.5.5-pre-alpha";
 
 const root = document.getElementById("app");
 
-const PORTRAITS = [
-  {
-    id: "witcher",
-    name: "Белый Хвост",
-    imageSrc: "./src/assets/avatars/witcher-ready.png",
-    desc: "Охотник на чудовищ и мечник-алхимик.",
-  },
-  {
-    id: "halfling-mage",
-    name: "Сырный Мерлин",
-    imageSrc: "./src/assets/avatars/halfling-mage-ready.png",
-    desc: "Арканист поддержки и контроля.",
-  },
-  {
-    id: "paladin",
-    name: "Сир Чеддар",
-    imageSrc: "./src/assets/avatars/paladin-ready.png",
-    desc: "Паладин света и фронтовой защитник.",
-  },
-  {
-    id: "elven-ranger",
-    name: "Тонкоух",
-    imageSrc: "./src/assets/avatars/elven-ranger-ready.png",
-    desc: "Стрелок-разведчик с тропами между капканами.",
-  },
-  {
-    id: "orc-barbarian",
-    name: "Клыкохвост",
-    imageSrc: "./src/assets/avatars/orc-barbarian-ready.png",
-    desc: "Берсерк ближнего боя, проламывающий дорогу.",
-  },
-  {
-    id: "samurai",
-    name: "Усатый Сэнсэй",
-    imageSrc: "./src/assets/avatars/samurai-ready.png",
-    desc: "Дуэлянт дисциплины и одного точного удара.",
-  },
-  {
-    id: "necromancer",
-    name: "Мышь-Косторез",
-    imageSrc: "./src/assets/avatars/necromancer-ready.png",
-    desc: "Тёмный маг, повелитель порчи и проклятий.",
-  },
-];
+const PORTRAITS = PLAYER_PORTRAITS;
 
 const state = createInitialState();
 state.selectedPortraitId = "witcher";
@@ -300,7 +258,7 @@ function formatSkillsDetailSection(item, instanceEntry) {
   return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы предмета</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
 }
 
-import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.5.4-pre-alpha";
+import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.5.5-pre-alpha";
 
 function formatItemDetailWorkPrincipleSection(item) {
   if (!item?.isConsumable) {
@@ -2284,7 +2242,7 @@ function onRootClick(event) {
     }
     state.playerSheet = applyLoadoutToSheet(createPlayerSheet(state.preGameStats), state.starterLoadout);
     state.playerSheet = initializeInventoryForRun(state.playerSheet);
-    state.run = createRunState(state.playerSheet, 1);
+    state.run = createRunState(state.playerSheet, 1, { playerPortraitId: state.selectedPortraitId });
     state.run.analyticsRunId = createRunAnalyticsId();
     state.run.analyticsRunEndTracked = false;
     trackEvent("game_start", {

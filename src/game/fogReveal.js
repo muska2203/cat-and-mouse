@@ -1,5 +1,5 @@
-import { inBounds } from "../nav/pathfinding.js?v=0.5.4-pre-alpha";
-import { hasLineOfSightOnGrid } from "../nav/lineOfSight.js?v=0.5.4-pre-alpha";
+import { inBounds } from "../nav/pathfinding.js?v=0.5.5-pre-alpha";
+import { hasLineOfSightOnGrid } from "../nav/lineOfSight.js?v=0.5.5-pre-alpha";
 
 export function revealAroundPlayer(run, visionRange) {
   const px = run.player.x;
