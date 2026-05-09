@@ -16,6 +16,7 @@ export function ensureRunFxState(run) {
     "pendingSkillApplications",
     "screenShake",
     "levelTransition",
+    "objectDissolves",
   ];
 
   if (!Array.isArray(run.fx.floatingTexts)) {
@@ -23,6 +24,9 @@ export function ensureRunFxState(run) {
   }
   if (!Array.isArray(run.fx.pendingSkillApplications)) {
     run.fx.pendingSkillApplications = [];
+  }
+  if (!Array.isArray(run.fx.objectDissolves)) {
+    run.fx.objectDissolves = [];
   }
   if (run.fx.environmentNextStepAtMs == null) {
     run.fx.environmentNextStepAtMs = 0;
@@ -36,6 +40,64 @@ function getNowMs() {
     return performance.now();
   }
   return Date.now();
+}
+
+/** Длительность визуального «растворения» удалённого объекта на поле (мс). */
+export const OBJECT_DISSOLVE_DURATION_MS = 420;
+
+/**
+ * Снимок объекта для дорисовки после удаления из `run.objects` (только отображение).
+ * @param {import("../game/worldObjectModel.js").WorldObject|any} object
+ */
+function snapshotWorldObjectForDissolve(object) {
+  if (!object || typeof object !== "object") {
+    return null;
+  }
+  const data = object.data && typeof object.data === "object" ? { ...object.data } : {};
+  return {
+    ...object,
+    data,
+  };
+}
+
+/**
+ * Ставит короткую анимацию исчезновения для объекта, уже удалённого или вот-вот удаляемого из логики.
+ * @param {any} run
+ * @param {import("../game/worldObjectModel.js").WorldObject|any} object
+ * @param {number} [nowMs]
+ */
+export function enqueueObjectDissolve(run, object, nowMs) {
+  const fx = ensureRunFxState(run);
+  if (!fx || !object) {
+    return;
+  }
+  const ghost = snapshotWorldObjectForDissolve(object);
+  if (!ghost) {
+    return;
+  }
+  fx.objectDissolves.push({
+    startMs: Number.isFinite(Number(nowMs)) ? Number(nowMs) : getNowMs(),
+    durationMs: OBJECT_DISSOLVE_DURATION_MS,
+    ghost,
+  });
+}
+
+/**
+ * Убирает завершённые дорисовки, чтобы массив не рос без ограничений.
+ * @param {any} run
+ * @param {number} nowMs
+ */
+export function pruneFinishedObjectDissolves(run, nowMs) {
+  const fx = run?.fx;
+  if (!fx || !Array.isArray(fx.objectDissolves)) {
+    return;
+  }
+  const t = Number(nowMs);
+  fx.objectDissolves = fx.objectDissolves.filter((entry) => {
+    const start = Number(entry?.startMs || 0);
+    const durationMs = Math.max(1, Number(entry?.durationMs || OBJECT_DISSOLVE_DURATION_MS));
+    return t < start + durationMs;
+  });
 }
 
 /**

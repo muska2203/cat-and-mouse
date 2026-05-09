@@ -1,9 +1,9 @@
-import { floorHp } from "../rules.js?v=0.5.5-pre-alpha";
-import { inBounds, isWall } from "../nav/pathfinding.js?v=0.5.5-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.5.5-pre-alpha";
-import { randomInt } from "./rng.js?v=0.5.5-pre-alpha";
-import { enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.5-pre-alpha";
-import { createWorldObject } from "./worldObjectModel.js?v=0.5.5-pre-alpha";
+import { floorHp } from "../rules.js?v=0.5.6-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.5.6-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.6-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.6-pre-alpha";
+import { enqueueFloatingText, enqueueObjectDissolve } from "../runtime/runFxState.js?v=0.5.6-pre-alpha";
+import { createWorldObject } from "./worldObjectModel.js?v=0.5.6-pre-alpha";
 
 export function ensureEnemyStatus(enemy) {
   if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0, burnTurns: 0, burnPercent: 0 };
@@ -159,6 +159,11 @@ export function tickTemporaryObjects(run) {
     if (turnsLeft > 0) {
       object.data.durationTurns = turnsLeft;
       alive.push(object);
+    } else {
+      const nowMs = typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+      enqueueObjectDissolve(run, object, nowMs);
     }
   }
   run.objects = alive;

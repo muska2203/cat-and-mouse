@@ -1,6 +1,8 @@
 /** Кто на клетке и кто блокирует ход для игрока / врага. */
 
-import { bumpRunTotal } from "./runTotals.js?v=0.5.5-pre-alpha";
+import { refreshPlayerVisibilityAndFogMemory } from "./playerVisibility.js?v=0.5.6-pre-alpha";
+import { enqueueObjectDissolve } from "../runtime/runFxState.js?v=0.5.6-pre-alpha";
+import { bumpRunTotal } from "./runTotals.js?v=0.5.6-pre-alpha";
 
 export const ACTOR_KIND = {
   PLAYER: "player",
@@ -67,5 +69,17 @@ export function removeObject(run, objectId) {
   } else if (removed?.type === "chest") {
     bumpRunTotal(run, "chestsOpened", 1);
   }
+  if (removed && removed.type === "enemy") {
+    const nowMs = typeof performance !== "undefined" && typeof performance.now === "function"
+      ? performance.now()
+      : Date.now();
+    enqueueObjectDissolve(run, removed, nowMs);
+  }
   run.objects = objects.filter((object) => object.id !== objectId);
+  if (run.fogObjectMemory && objectId) {
+    delete run.fogObjectMemory[objectId];
+  }
+  if (run?.player) {
+    refreshPlayerVisibilityAndFogMemory(run, run.visionRange ?? 6);
+  }
 }

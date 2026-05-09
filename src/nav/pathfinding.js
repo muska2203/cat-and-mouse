@@ -157,12 +157,15 @@ export function buildPathTowardTarget(run, start, target, isCellBlocked) {
   return path;
 }
 
-export function buildPathToNearestEnemyAttackCell(run, enemy, isCellBlocked) {
-  if (!run?.player || !enemy) {
+/**
+ * Путь к ближайшей «ударной» клетке вокруг focus (игрок или последняя известная позиция).
+ */
+export function buildPathToNearestAttackCellAroundFocus(run, enemy, focus, isCellBlocked) {
+  if (!run || !enemy || !focus) {
     return [];
   }
   const attackCellsAll = DIRS_8
-    .map((dir) => ({ x: run.player.x + dir.x, y: run.player.y + dir.y }))
+    .map((dir) => ({ x: focus.x + dir.x, y: focus.y + dir.y }))
     .filter((cell) => inBounds(cell.x, cell.y, run))
     .filter((cell) => !isWall(cell.x, cell.y, run))
     .filter((cell) => !(run.goal?.x === cell.x && run.goal?.y === cell.y));
@@ -172,7 +175,7 @@ export function buildPathToNearestEnemyAttackCell(run, enemy, isCellBlocked) {
     return [];
   }
 
-  const currentDistanceToPlayer = chebyshevDistance(enemy, run.player);
+  const currentDistanceToFocus = chebyshevDistance(enemy, focus);
   const candidates = [];
   for (const attackCell of attackCells) {
     const path = buildPathTowardTarget(run, { x: enemy.x, y: enemy.y }, attackCell, isCellBlocked);
@@ -188,11 +191,11 @@ export function buildPathToNearestEnemyAttackCell(run, enemy, isCellBlocked) {
       continue;
     }
     const distanceToTarget = chebyshevDistance(end, attackCell);
-    const nextDistanceToPlayer = chebyshevDistance(nextStep, run.player);
+    const nextDistanceToFocus = chebyshevDistance(nextStep, focus);
     candidates.push({
       path,
       distanceToTarget,
-      nextDistanceToPlayer,
+      nextDistanceToFocus,
       pathLength: path.length,
     });
   }
@@ -201,7 +204,7 @@ export function buildPathToNearestEnemyAttackCell(run, enemy, isCellBlocked) {
   }
 
   const nonRetreatCandidates = candidates.filter(
-    (candidate) => candidate.nextDistanceToPlayer <= currentDistanceToPlayer
+    (candidate) => candidate.nextDistanceToFocus <= currentDistanceToFocus
   );
   const pool = nonRetreatCandidates.length > 0 ? nonRetreatCandidates : candidates;
 
@@ -209,10 +212,17 @@ export function buildPathToNearestEnemyAttackCell(run, enemy, isCellBlocked) {
     if (a.distanceToTarget !== b.distanceToTarget) {
       return a.distanceToTarget - b.distanceToTarget;
     }
-    if (a.nextDistanceToPlayer !== b.nextDistanceToPlayer) {
-      return a.nextDistanceToPlayer - b.nextDistanceToPlayer;
+    if (a.nextDistanceToFocus !== b.nextDistanceToFocus) {
+      return a.nextDistanceToFocus - b.nextDistanceToFocus;
     }
     return a.pathLength - b.pathLength;
   });
   return pool[0]?.path || [];
+}
+
+export function buildPathToNearestEnemyAttackCell(run, enemy, isCellBlocked) {
+  if (!run?.player || !enemy) {
+    return [];
+  }
+  return buildPathToNearestAttackCellAroundFocus(run, enemy, run.player, isCellBlocked);
 }

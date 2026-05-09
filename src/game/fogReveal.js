@@ -1,5 +1,7 @@
-import { inBounds } from "../nav/pathfinding.js?v=0.5.5-pre-alpha";
-import { hasLineOfSightOnGrid } from "../nav/lineOfSight.js?v=0.5.5-pre-alpha";
+import { inBounds } from "../nav/pathfinding.js?v=0.5.6-pre-alpha";
+import { hasLineOfSightOnGrid } from "../nav/lineOfSight.js?v=0.5.6-pre-alpha";
+import { checkAggroAfterPlayerAction } from "./enemyAggro.js?v=0.5.6-pre-alpha";
+import { refreshPlayerVisibilityAndFogMemory } from "./playerVisibility.js?v=0.5.6-pre-alpha";
 
 export function revealAroundPlayer(run, visionRange) {
   const px = run.player.x;
@@ -16,4 +18,6 @@ export function revealAroundPlayer(run, visionRange) {
       }
     }
   }
+  refreshPlayerVisibilityAndFogMemory(run, visionRange);
+  checkAggroAfterPlayerAction(run);
 }

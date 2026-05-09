@@ -1,6 +1,13 @@
-import { roundStat } from "./rules.js?v=0.5.5-pre-alpha";
-import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.5-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.5-pre-alpha";
+import { cellVisibleFromActor, ensureEnemyBrain } from "./game/enemyAggro.js?v=0.5.6-pre-alpha";
+import { isCellVisibleToPlayerNow } from "./game/playerVisibility.js?v=0.5.6-pre-alpha";
+import { inBounds } from "./nav/pathfinding.js?v=0.5.6-pre-alpha";
+import { roundStat } from "./rules.js?v=0.5.6-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.6-pre-alpha";
+import {
+  ensureRunFxState,
+  OBJECT_DISSOLVE_DURATION_MS,
+  pruneFinishedObjectDissolves,
+} from "./runtime/runFxState.js?v=0.5.6-pre-alpha";
 import {
   getLoadedSprite,
   resolveEnemySpriteUrl,
@@ -13,17 +20,44 @@ import {
   resolvePoisonCloudSpriteUrl,
   resolveRandomFloorTileSpriteUrl,
   resolveTileSpriteUrl,
-} from "./runtime/spriteAssets.js?v=0.5.5-pre-alpha";
+} from "./runtime/spriteAssets.js?v=0.5.6-pre-alpha";
 
-const WORLD_OBJECT_SPRITE_SCALE = 0.65;
+const WORLD_OBJECT_SPRITE_SCALE = 0.8;
+/** Ядовитое облако: слой за актёрами (150% тайла). */
+const POISON_CLOUD_FIELD_SPRITE_SCALE_BACK = 1.5;
+/** Ядовитое облако: слой перед актёрами (120% тайла). */
+const POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT = 1.1;
 /** Спрайт игрока на поле: 150% от размера клетки (в терминах UI-масштаба «150%»). */
 const PLAYER_FIELD_SPRITE_SCALE = 1.5;
+
+/** Непрозрачность «призраков» объектов в тусклом тумане. */
+const FOG_MEMORY_OBJECT_ALPHA = 0.44;
+
+/** Малый отступ спрайтов от нижней границы клетки (px канваса, растёт с размером тайла). */
+function getFieldSpriteBottomInset(tile) {
+  return Math.max(1, Math.floor(tile * 0.035));
+}
+
+/** Y нижнего края спрайта, «приземлённого» в ячейку (py — верхний край клетки по Y). */
+function cellSpriteAnchorBottomY(py, tile) {
+  return py + tile - getFieldSpriteBottomInset(tile);
+}
+
+function getObjectDissolveAlpha(entry, nowMs) {
+  const durationMs = Math.max(1, Number(entry?.durationMs || OBJECT_DISSOLVE_DURATION_MS));
+  const t = Math.min(1, Math.max(0, (nowMs - Number(entry?.startMs || 0)) / durationMs));
+  return Math.max(0, 1 - t);
+}
 
 export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.now(), zoomScale = 1, overlay = null) {
   if (!canvas || !run) {
     return;
   }
   ensureRunFxState(run);
+  pruneFinishedObjectDissolves(run, nowMs);
+
+  /** Рисуем после актёров, чтобы туман перекрывал спрайты на клетке. */
+  let deferredPoisonCloudObjects = [];
 
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
@@ -81,64 +115,186 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   ctx.textBaseline = "middle";
   ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
 
+  function cellLitForPlayer(x, y) {
+    return isCellVisibleToPlayerNow(run, x, y);
+  }
+
+  for (let y = minY; y <= maxY; y += 1) {
+    for (let x = minX; x <= maxX; x += 1) {
+      if (!run.discovered?.[y]?.[x]) continue;
+      if (cellLitForPlayer(x, y)) continue;
+      const px = Math.floor(cameraOffsetX + x * tile);
+      const py = Math.floor(cameraOffsetY + y * tile);
+      ctx.fillStyle = "rgba(1, 3, 10, 0.5)";
+      ctx.fillRect(px, py, tile, tile);
+    }
+  }
+
+  if (Array.isArray(run.objects)) {
+    for (const enemy of run.objects) {
+      if (!enemy || enemy.type !== "enemy") continue;
+      if (!cellLitForPlayer(enemy.x, enemy.y)) continue;
+      ensureEnemyBrain(enemy);
+      const er = Number(enemy.data.visionRange) || 6;
+      const ex = enemy.x;
+      const ey = enemy.y;
+      for (let cy = ey - er; cy <= ey + er; cy += 1) {
+        for (let cx = ex - er; cx <= ex + er; cx += 1) {
+          if (!inBounds(cx, cy, run)) continue;
+          if (!run.discovered?.[cy]?.[cx]) continue;
+          if (!cellVisibleFromActor(run, ex, ey, er, cx, cy)) continue;
+          const px = Math.floor(cameraOffsetX + cx * tile);
+          const py = Math.floor(cameraOffsetY + cy * tile);
+          ctx.fillStyle = "rgba(239, 68, 68, 0.16)";
+          ctx.fillRect(px + 1, py + 1, tile - 2, tile - 2);
+        }
+      }
+    }
+  }
+
   drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, overlay);
 
   if (Array.isArray(run.objects)) {
-    const visibleObjects = run.objects.filter((object) => run.discovered?.[object.y]?.[object.x]);
-    const regularObjects = visibleObjects.filter(
-      (object) => object.type !== "enemy" && object.type !== "poison_cloud",
-    );
-    const poisonCloudObjects = visibleObjects.filter((object) => object.type === "poison_cloud");
-    const enemies = visibleObjects.filter((object) => object.type === "enemy");
+    const fogMemory = run.fogObjectMemory || {};
 
-    for (const object of regularObjects) {
+    const brightRegular = [];
+    const ghostRegular = [];
+    let brightPoison = [];
+    const ghostPoisonPairs = [];
+
+    for (const object of run.objects) {
+      if (!object) continue;
+      if (object.type === "enemy") continue;
+      if (object.type === "poison_cloud") {
+        if (cellLitForPlayer(object.x, object.y)) {
+          brightPoison.push(object);
+        } else {
+          const mem = fogMemory[object.id];
+          if (mem && run.discovered?.[mem.y]?.[mem.x]) {
+            ghostPoisonPairs.push({ object, mem });
+          }
+        }
+        continue;
+      }
+      if (cellLitForPlayer(object.x, object.y)) {
+        brightRegular.push(object);
+      } else {
+        const mem = fogMemory[object.id];
+        if (mem && run.discovered?.[mem.y]?.[mem.x]) {
+          ghostRegular.push({ object, mem });
+        }
+      }
+    }
+
+    for (const { object, mem } of ghostRegular) {
+      drawObjectIcon(
+        ctx,
+        run,
+        object,
+        cameraOffsetX,
+        cameraOffsetY,
+        tile,
+        nowMs,
+        mem,
+        FOG_MEMORY_OBJECT_ALPHA,
+      );
+    }
+
+    for (const object of brightRegular) {
       drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, nowMs);
     }
 
-    for (const cloud of poisonCloudObjects) {
+    deferredPoisonCloudObjects = brightPoison;
+
+    const dissolves = Array.isArray(run.fx?.objectDissolves) ? run.fx.objectDissolves : [];
+
+    for (const cloud of deferredPoisonCloudObjects) {
       const cloudVisual = getObjectVisualPosition(run, cloud, nowMs);
-      drawPoisonCloud(ctx, cameraOffsetX, cameraOffsetY, tile, cloudVisual, nowMs, cloud.icon || "☠");
+      drawPoisonCloudLayer(
+        ctx,
+        cameraOffsetX,
+        cameraOffsetY,
+        tile,
+        cloudVisual,
+        nowMs,
+        cloud.icon || "☠",
+        POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
+        true,
+      );
     }
 
-    for (const enemy of enemies) {
-      const enemyVisual = getObjectVisualPosition(run, enemy, nowMs);
-      if (isEnemyBurning(enemy)) {
-        drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, enemyVisual.x, enemyVisual.y, nowMs);
-      }
-      const enemyIsMovingNow = isObjectInActiveMotion(run, enemy, nowMs);
-      const enemyMovePhase = nowMs * 0.025 + (String(enemy?.id || "").length * 0.6);
-      const enemyMoveLeanRad = enemyIsMovingNow
-        ? Math.sin(enemyMovePhase) * 0.2
-        : 0;
-      const enemyMoveHopY = enemyIsMovingNow
-        ? -Math.abs(Math.sin(enemyMovePhase)) * Math.max(0.8, tile * 0.05)
-        : 0;
-      const enemyIdleOffsetY = enemyIsMovingNow
-        ? 0
-        : getIdleBobOffsetY(tile, nowMs, enemy?.id || `${enemyVisual.x}:${enemyVisual.y}`);
-      const cx = cameraOffsetX + enemyVisual.x * tile + tile / 2;
-      const cy = cameraOffsetY + enemyVisual.y * tile + tile / 2 + enemyIdleOffsetY + enemyMoveHopY;
-
-      const enemyType = String(enemy?.data?.enemyType || "").trim();
-      const enemySpriteUrl = resolveEnemySpriteUrl(enemyType);
-      const hasEnemySprite = drawCenteredSpriteWithRotation(
+    for (const { object, mem } of ghostPoisonPairs) {
+      const cloudVisual = { x: mem.x, y: mem.y };
+      ctx.save();
+      ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
+      drawPoisonCloudLayer(
         ctx,
-        enemySpriteUrl,
-        cx,
-        cy,
+        cameraOffsetX,
+        cameraOffsetY,
         tile,
-        enemyMoveLeanRad,
+        cloudVisual,
+        nowMs,
+        object.icon || "☠",
+        POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
+        true,
       );
-      if (!hasEnemySprite) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(enemyMoveLeanRad);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
-        ctx.fillText(enemy.icon || "?", 0, 0);
-        ctx.restore();
-      }
+      ctx.restore();
+    }
 
+    for (const entry of dissolves) {
+      const ghost = entry?.ghost;
+      if (!ghost || ghost.type !== "poison_cloud") continue;
+      if (!run.discovered?.[ghost.y]?.[ghost.x]) continue;
+      const cloudVisual = getObjectVisualPosition(run, ghost, nowMs);
+      ctx.save();
+      ctx.globalAlpha = getObjectDissolveAlpha(entry, nowMs);
+      drawPoisonCloudLayer(
+        ctx,
+        cameraOffsetX,
+        cameraOffsetY,
+        tile,
+        cloudVisual,
+        nowMs,
+        ghost.icon || "☠",
+        POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
+        true,
+      );
+      ctx.restore();
+    }
+
+    const brightEnemies = run.objects.filter(
+      (object) => object?.type === "enemy" && cellLitForPlayer(object.x, object.y),
+    );
+    for (const enemy of brightEnemies) {
+      drawEnemyFieldSpriteLayer(ctx, run, enemy, cameraOffsetX, cameraOffsetY, tile, nowMs);
+    }
+
+    for (const enemy of run.objects) {
+      if (!enemy || enemy.type !== "enemy") continue;
+      if (cellLitForPlayer(enemy.x, enemy.y)) continue;
+      const mem = fogMemory[enemy.id];
+      if (!mem || !run.discovered?.[mem.y]?.[mem.x]) continue;
+      drawEnemyFieldSpriteLayer(
+        ctx,
+        run,
+        enemy,
+        cameraOffsetX,
+        cameraOffsetY,
+        tile,
+        nowMs,
+        mem,
+        FOG_MEMORY_OBJECT_ALPHA,
+      );
+    }
+
+    for (const entry of dissolves) {
+      const ghost = entry?.ghost;
+      if (!ghost || ghost.type !== "enemy") continue;
+      if (!run.discovered?.[ghost.y]?.[ghost.x]) continue;
+      ctx.save();
+      ctx.globalAlpha = getObjectDissolveAlpha(entry, nowMs);
+      drawEnemyFieldSpriteLayer(ctx, run, ghost, cameraOffsetX, cameraOffsetY, tile, nowMs);
+      ctx.restore();
     }
   }
 
@@ -146,6 +302,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   if (Array.isArray(skillTargetCells) && skillTargetCells.length > 0) {
     for (const cell of skillTargetCells) {
       if (!run.discovered?.[cell.y]?.[cell.x]) continue;
+      if (!cellLitForPlayer(cell.x, cell.y)) continue;
       const px = Math.floor(cameraOffsetX + cell.x * tile);
       const py = Math.floor(cameraOffsetY + cell.y * tile);
       ctx.fillStyle = "rgba(96, 165, 250, 0.25)";
@@ -159,6 +316,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   if (skillTargetAffectedCells.length > 0) {
     for (const cell of skillTargetAffectedCells) {
       if (!run.discovered?.[cell.y]?.[cell.x]) continue;
+      if (!cellLitForPlayer(cell.x, cell.y)) continue;
       const px = Math.floor(cameraOffsetX + cell.x * tile);
       const py = Math.floor(cameraOffsetY + cell.y * tile);
       const isEpicenter = cell.role === "epicenter";
@@ -178,6 +336,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     const fromY = cameraOffsetY + run.player.y * tile + tile / 2;
     for (const line of targetingLines) {
       if (!run.discovered?.[line.y]?.[line.x]) continue;
+      if (!cellLitForPlayer(line.x, line.y)) continue;
       const toX = cameraOffsetX + line.x * tile + tile / 2;
       const toY = cameraOffsetY + line.y * tile + tile / 2;
       ctx.beginPath();
@@ -195,17 +354,24 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
     ctx.fillStyle = "#ffffff";
     const goalCx = cameraOffsetX + run.goal.x * tile + tile / 2;
-    const goalCy = cameraOffsetY + run.goal.y * tile + tile / 2;
-    const hasGoalSprite = drawCenteredSprite(
+    const goalBottomY = cellSpriteAnchorBottomY(cameraOffsetY + run.goal.y * tile, tile);
+    const goalSpriteSize = Math.max(8, Math.floor(tile * WORLD_OBJECT_SPRITE_SCALE));
+    const goalLit = cellLitForPlayer(run.goal.x, run.goal.y);
+    ctx.save();
+    if (!goalLit) {
+      ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
+    }
+    const hasGoalSprite = drawBottomCenteredSprite(
       ctx,
       resolveGoalSpriteUrl(),
       goalCx,
-      goalCy,
-      tile * WORLD_OBJECT_SPRITE_SCALE,
+      goalBottomY,
+      goalSpriteSize,
     );
     if (!hasGoalSprite) {
-      ctx.fillText("🕳", goalCx, goalCy);
+      ctx.fillText("🕳", goalCx, goalBottomY - goalSpriteSize / 2);
     }
+    ctx.restore();
   }
 
   ctx.font = `${Math.max(12, Math.floor(tile * 0.62))}px Arial`;
@@ -223,42 +389,112 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     : getIdleBobOffsetY(tile, nowMs, "player");
   const playerSpriteSizePx = Math.max(8, Math.floor(tile * PLAYER_FIELD_SPRITE_SCALE));
   // Якорь: центр по горизонтали на середине клетки; по вертикали низ спрайта — на нижней границе клетки (+ покачивание/прыжок).
-  const playerTileBottomY = cameraOffsetY + playerVisual.y * tile + tile;
+  const playerTileBottomY = cellSpriteAnchorBottomY(cameraOffsetY + playerVisual.y * tile, tile);
   const spriteBottomY = playerTileBottomY + playerIdleOffsetY + moveHopY;
-  const mouseScreenY = spriteBottomY - playerSpriteSizePx / 2;
 
   if (isPlayerBurning(run)) {
     drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, playerVisual.x, playerVisual.y, nowMs);
   }
-  const hasPlayerSprite = drawCenteredSpriteWithRotation(
+  const hasPlayerSprite = drawBottomCenteredSpriteWithRotation(
     ctx,
     resolvePlayerSpriteUrl(run?.playerPortraitId),
     mouseScreenX,
-    mouseScreenY,
+    spriteBottomY,
     playerSpriteSizePx,
     moveLeanRad,
   );
   if (!hasPlayerSprite) {
     ctx.save();
-    ctx.translate(mouseScreenX, mouseScreenY);
+    ctx.translate(mouseScreenX, spriteBottomY - playerSpriteSizePx / 2);
     ctx.rotate(moveLeanRad);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     ctx.font = `${Math.max(12, Math.floor(tile * 0.62 * PLAYER_FIELD_SPRITE_SCALE))}px Arial`;
     ctx.fillText("🐭", 0, 0);
     ctx.restore();
   }
 
+  const fogMemFront = run.fogObjectMemory || {};
+  for (const object of run.objects || []) {
+    if (!object || object.type !== "poison_cloud") continue;
+    if (cellLitForPlayer(object.x, object.y)) continue;
+    const mem = fogMemFront[object.id];
+    if (!mem || !run.discovered?.[mem.y]?.[mem.x]) continue;
+    const cloudVisual = { x: mem.x, y: mem.y };
+    ctx.save();
+    ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
+    drawPoisonCloudLayer(
+      ctx,
+      cameraOffsetX,
+      cameraOffsetY,
+      tile,
+      cloudVisual,
+      nowMs,
+      object.icon || "☠",
+      POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
+      false,
+    );
+    ctx.restore();
+  }
+
+  for (const cloud of deferredPoisonCloudObjects) {
+    const cloudVisual = getObjectVisualPosition(run, cloud, nowMs);
+    drawPoisonCloudLayer(
+      ctx,
+      cameraOffsetX,
+      cameraOffsetY,
+      tile,
+      cloudVisual,
+      nowMs,
+      cloud.icon || "☠",
+      POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
+      false,
+    );
+  }
+
+  const dissolvesFront = Array.isArray(run.fx?.objectDissolves) ? run.fx.objectDissolves : [];
+  for (const entry of dissolvesFront) {
+    const ghost = entry?.ghost;
+    if (!ghost || ghost.type !== "poison_cloud") continue;
+    if (!run.discovered?.[ghost.y]?.[ghost.x]) continue;
+    const cloudVisual = getObjectVisualPosition(run, ghost, nowMs);
+    ctx.save();
+    ctx.globalAlpha = getObjectDissolveAlpha(entry, nowMs);
+    drawPoisonCloudLayer(
+      ctx,
+      cameraOffsetX,
+      cameraOffsetY,
+      tile,
+      cloudVisual,
+      nowMs,
+      ghost.icon || "☠",
+      POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
+      false,
+    );
+    ctx.restore();
+  }
+
   if (Array.isArray(run.objects)) {
     const visibleEnemies = run.objects.filter(
-      (object) => object.type === "enemy" && run.discovered?.[object.y]?.[object.x],
+      (object) => object.type === "enemy" && cellLitForPlayer(object.x, object.y),
     );
     for (const enemy of visibleEnemies) {
       const enemyVisual = getObjectVisualPosition(run, enemy, nowMs);
-      const enemyIdleOffsetY = isObjectInActiveMotion(run, enemy, nowMs)
+      const enemyIsMovingNow = isObjectInActiveMotion(run, enemy, nowMs);
+      const enemyMovePhase = nowMs * 0.025 + (String(enemy?.id || "").length * 0.6);
+      const enemyMoveHopY = enemyIsMovingNow
+        ? -Math.abs(Math.sin(enemyMovePhase)) * Math.max(0.8, tile * 0.05)
+        : 0;
+      const enemyIdleOffsetY = enemyIsMovingNow
         ? 0
         : getIdleBobOffsetY(tile, nowMs, enemy?.id || `${enemyVisual.x}:${enemyVisual.y}`);
       const cx = cameraOffsetX + enemyVisual.x * tile + tile / 2;
-      const cy = cameraOffsetY + enemyVisual.y * tile + tile / 2 + enemyIdleOffsetY;
-      drawEnemyHpBarIfNeeded(ctx, enemy, cx, cy, tile);
+      const enemySpriteBottomY =
+        cellSpriteAnchorBottomY(cameraOffsetY + enemyVisual.y * tile, tile)
+        + enemyIdleOffsetY
+        + enemyMoveHopY;
+      const enemySpriteCy = enemySpriteBottomY - Math.max(8, Math.floor(tile)) / 2;
+      drawEnemyHpBarIfNeeded(ctx, enemy, cx, enemySpriteCy, tile);
     }
   }
 
@@ -269,7 +505,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     const grouped = new Map();
     for (const entry of skillTargetingPreviews) {
       const isPlayerCell = entry.x === run.player?.x && entry.y === run.player?.y;
-      if (!isPlayerCell && !run.discovered?.[entry.y]?.[entry.x]) continue;
+      if (!isPlayerCell && (!run.discovered?.[entry.y]?.[entry.x] || !cellLitForPlayer(entry.x, entry.y))) continue;
       const key = `${entry.x}:${entry.y}`;
       const current = grouped.get(key) || [];
       current.push(entry);
@@ -351,7 +587,8 @@ function drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, x, y, nowMs) {
   const px = cameraOffsetX + x * tile;
   const py = cameraOffsetY + y * tile;
   const cx = px + tile / 2;
-  const cy = py + tile / 2;
+  const spriteAnchorBottom = cellSpriteAnchorBottomY(py, tile);
+  const auraFootY = spriteAnchorBottom - tile * 0.02;
   const pulse = (Math.sin(nowMs * 0.012 + x * 0.9 + y * 0.7) + 1) / 2;
   const alpha = 0.2 + pulse * 0.14;
   const radius = tile * (0.34 + pulse * 0.08);
@@ -359,14 +596,14 @@ function drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, x, y, nowMs) {
   ctx.save();
   ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
   ctx.beginPath();
-  ctx.ellipse(cx, cy + tile * 0.12, radius, radius * 0.62, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, auraFootY, radius, radius * 0.62, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const sparks = 3;
   for (let index = 0; index < sparks; index += 1) {
     const phase = nowMs * 0.008 + index * 1.9 + x * 0.5 + y * 0.3;
     const sx = cx + Math.sin(phase) * tile * 0.24;
-    const sy = cy + tile * 0.12 - Math.abs(Math.cos(phase * 1.2)) * tile * 0.28;
+    const sy = auraFootY - Math.abs(Math.cos(phase * 1.2)) * tile * 0.28;
     const sr = tile * (0.05 + ((Math.sin(phase * 1.6) + 1) / 2) * 0.025);
     ctx.fillStyle = "rgba(251, 146, 60, 0.82)";
     ctx.beginPath();
@@ -414,7 +651,13 @@ function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, ov
       ctx.lineTo(cameraOffsetX + cell.x * tile + tile / 2, cameraOffsetY + cell.y * tile + tile / 2);
     }
     if (lockedEnemyTarget && lockedEnemy) {
-      const enemyVisual = getObjectVisualPosition(run, lockedEnemy, nowMs);
+      let enemyVisual = getObjectVisualPosition(run, lockedEnemy, nowMs);
+      if (!isCellVisibleToPlayerNow(run, lockedEnemy.x, lockedEnemy.y)) {
+        const mem = run.fogObjectMemory?.[lockedEnemy.id];
+        if (mem && run.discovered?.[mem.y]?.[mem.x]) {
+          enemyVisual = { x: mem.x, y: mem.y };
+        }
+      }
       ctx.lineTo(
         cameraOffsetX + enemyVisual.x * tile + tile / 2,
         cameraOffsetY + enemyVisual.y * tile + tile / 2,
@@ -428,8 +671,14 @@ function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, ov
     let targetVisual = { x: lockedTarget.x, y: lockedTarget.y };
     if (lockedEnemyTarget) {
       if (lockedEnemy && run.discovered?.[lockedEnemy.y]?.[lockedEnemy.x]) {
-        // Для автопути на врага привязываем рамку к визуальной позиции объекта (с анимацией).
-        targetVisual = getObjectVisualPosition(run, lockedEnemy, nowMs);
+        if (isCellVisibleToPlayerNow(run, lockedEnemy.x, lockedEnemy.y)) {
+          targetVisual = getObjectVisualPosition(run, lockedEnemy, nowMs);
+        } else {
+          const mem = run.fogObjectMemory?.[lockedEnemy.id];
+          if (mem && run.discovered?.[mem.y]?.[mem.x]) {
+            targetVisual = { x: mem.x, y: mem.y };
+          }
+        }
       }
     }
     const px = Math.floor(cameraOffsetX + targetVisual.x * tile);
@@ -440,7 +689,14 @@ function drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, ov
   }
 }
 
-function getObjectVisualPosition(run, object, nowMs) {
+function getObjectVisualPosition(run, object, nowMs, fixedGridPos = null) {
+  if (
+    fixedGridPos
+    && Number.isFinite(Number(fixedGridPos.x))
+    && Number.isFinite(Number(fixedGridPos.y))
+  ) {
+    return { x: fixedGridPos.x, y: fixedGridPos.y };
+  }
   const motion = run?.fx?.environmentMotion;
   if (!motion) {
     return { x: object.x, y: object.y };
@@ -480,6 +736,71 @@ function getObjectVisualPosition(run, object, nowMs) {
     return { x, y };
   }
   return { x: object.x, y: object.y };
+}
+
+function drawEnemyFieldSpriteLayer(
+  ctx,
+  run,
+  enemy,
+  cameraOffsetX,
+  cameraOffsetY,
+  tile,
+  nowMs,
+  fixedGridPos = null,
+  ghostAlpha = 1,
+) {
+  const enemyVisual = getObjectVisualPosition(run, enemy, nowMs, fixedGridPos);
+  if (!fixedGridPos && isEnemyBurning(enemy)) {
+    drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, enemyVisual.x, enemyVisual.y, nowMs);
+  }
+  const enemyIsMovingNow = fixedGridPos ? false : isObjectInActiveMotion(run, enemy, nowMs);
+  const enemyMovePhase = nowMs * 0.025 + (String(enemy?.id || "").length * 0.6);
+  const enemyMoveLeanRad = enemyIsMovingNow
+    ? Math.sin(enemyMovePhase) * 0.2
+    : 0;
+  const enemyMoveHopY = enemyIsMovingNow
+    ? -Math.abs(Math.sin(enemyMovePhase)) * Math.max(0.8, tile * 0.05)
+    : 0;
+  const enemyIdleOffsetY = enemyIsMovingNow
+    ? 0
+    : getIdleBobOffsetY(tile, nowMs, enemy?.id || `${enemyVisual.x}:${enemyVisual.y}`);
+  const cx = cameraOffsetX + enemyVisual.x * tile + tile / 2;
+  const enemySpriteBottomY =
+    cellSpriteAnchorBottomY(cameraOffsetY + enemyVisual.y * tile, tile)
+    + enemyIdleOffsetY
+    + enemyMoveHopY;
+  const enemySpriteSize = Math.max(8, Math.floor(tile));
+  const enemySpriteCy = enemySpriteBottomY - enemySpriteSize / 2;
+
+  const enemyType = String(enemy?.data?.enemyType || "").trim();
+  const enemySpriteUrl = resolveEnemySpriteUrl(enemyType);
+  const ghostLayer = ghostAlpha < 0.999;
+  if (ghostLayer) {
+    ctx.save();
+    ctx.globalAlpha *= ghostAlpha;
+  }
+  const hasEnemySprite = drawBottomCenteredSpriteWithRotation(
+    ctx,
+    enemySpriteUrl,
+    cx,
+    enemySpriteBottomY,
+    enemySpriteSize,
+    enemyMoveLeanRad,
+  );
+  if (!hasEnemySprite) {
+    ctx.save();
+    ctx.translate(cx, enemySpriteCy);
+    ctx.rotate(enemyMoveLeanRad);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(enemy.icon || "?", 0, 0);
+    ctx.restore();
+  }
+  if (ghostLayer) {
+    ctx.restore();
+  }
 }
 
 function isMotionActive(motion, nowMs) {
@@ -522,12 +843,28 @@ function getIdleBobOffsetY(tile, nowMs, seedKey = "") {
   return -2 * amplitude * normalized;
 }
 
-function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, nowMs) {
-  const objectVisual = getObjectVisualPosition(run, object, nowMs);
+function drawObjectIcon(
+  ctx,
+  run,
+  object,
+  cameraOffsetX,
+  cameraOffsetY,
+  tile,
+  nowMs,
+  fixedGridPos = null,
+  ghostAlpha = 1,
+) {
+  const ghostLayer = ghostAlpha < 0.999;
+  if (ghostLayer) {
+    ctx.save();
+    ctx.globalAlpha *= ghostAlpha;
+  }
+  try {
+  const objectVisual = getObjectVisualPosition(run, object, nowMs, fixedGridPos);
   const px = cameraOffsetX + objectVisual.x * tile;
   const py = cameraOffsetY + objectVisual.y * tile;
-  const cx = cameraOffsetX + objectVisual.x * tile + tile / 2;
-  const cy = cameraOffsetY + objectVisual.y * tile + tile / 2;
+  const cx = px + tile / 2;
+  const cellBottomY = cellSpriteAnchorBottomY(py, tile);
   if (object.type === "ground_loot") {
     const icon = object?.data?.itemIcon || "?";
     const itemForSprite = object?.data?.item
@@ -540,9 +877,11 @@ function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, no
     const rarityColors = getGroundLootRarityColors(rarity);
     const containerSpriteUrl = resolveGroundLootContainerSpriteUrl(rarity);
     const fallbackFrameSpriteUrl = resolveLootFrameSpriteUrl(rarity);
-    const hasContainerSprite = drawCenteredSprite(ctx, containerSpriteUrl, cx, cy, tile * WORLD_OBJECT_SPRITE_SCALE)
-      || drawCenteredSprite(ctx, fallbackFrameSpriteUrl, cx, cy, tile * WORLD_OBJECT_SPRITE_SCALE);
-    const hasItemSprite = drawCenteredSprite(ctx, itemSpriteUrl, cx, cy, tile * 0.8);
+    const containerSize = Math.max(8, Math.floor(tile * WORLD_OBJECT_SPRITE_SCALE));
+    const itemSize = Math.max(8, Math.floor(tile * 0.8));
+    const hasContainerSprite = drawBottomCenteredSprite(ctx, containerSpriteUrl, cx, cellBottomY, containerSize)
+      || drawBottomCenteredSprite(ctx, fallbackFrameSpriteUrl, cx, cellBottomY, containerSize);
+    const hasItemSprite = drawBottomCenteredSprite(ctx, itemSpriteUrl, cx, cellBottomY, itemSize);
     if (hasContainerSprite && hasItemSprite) {
       return;
     }
@@ -556,31 +895,45 @@ function drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, no
     ctx.lineWidth = Math.max(1, Math.floor(tile * 0.04));
     const boxPad = Math.max(2, Math.floor(tile * 0.1));
     const boxSize = tile - boxPad * 2;
-    ctx.fillRect(px + boxPad, py + boxPad, boxSize, boxSize);
-    ctx.strokeRect(px + boxPad, py + boxPad, boxSize, boxSize);
+    const boxBottom = cellBottomY - boxPad;
+    const boxTop = boxBottom - boxSize;
+    ctx.fillRect(px + boxPad, boxTop, boxSize, boxSize);
+    ctx.strokeRect(px + boxPad, boxTop, boxSize, boxSize);
 
     ctx.fillStyle = rarityColors.badgeFill;
     const badgeSize = Math.max(12, Math.floor(tile * 0.52));
-    ctx.fillRect(cx - badgeSize / 2, cy - badgeSize / 2, badgeSize, badgeSize);
+    const badgeCy = boxTop + boxSize / 2;
+    ctx.fillRect(cx - badgeSize / 2, badgeCy - badgeSize / 2, badgeSize, badgeSize);
     ctx.strokeStyle = rarityColors.badgeStroke;
-    ctx.strokeRect(cx - badgeSize / 2, cy - badgeSize / 2, badgeSize, badgeSize);
+    ctx.strokeRect(cx - badgeSize / 2, badgeCy - badgeSize / 2, badgeSize, badgeSize);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = `${Math.max(11, Math.floor(tile * 0.42))}px Arial`;
-    ctx.fillText(icon, cx, cy);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(icon, cx, badgeCy);
     ctx.restore();
     return;
   }
   const objectSpriteKey = getWorldObjectSpriteKey(object);
   const objectSpriteUrl = resolveObjectSpriteUrl(objectSpriteKey);
-  const objectSpriteScale = object?.type === "anvil" ? 1 : WORLD_OBJECT_SPRITE_SCALE;
-  const hasObjectSprite = drawCenteredSprite(ctx, objectSpriteUrl, cx, cy, tile * objectSpriteScale);
+  const objectSpriteSize = Math.max(8, Math.floor(tile * WORLD_OBJECT_SPRITE_SCALE));
+  const glowSalt = objectVisual.x * 31 + objectVisual.y * 17 + String(object?.id || "").length * 0.13;
+  drawWorldObjectFieldGlow(ctx, cx, cellBottomY, objectSpriteSize, object.fieldGlowColor, nowMs, glowSalt);
+  const hasObjectSprite = drawBottomCenteredSprite(ctx, objectSpriteUrl, cx, cellBottomY, objectSpriteSize);
   if (hasObjectSprite) {
     return;
   }
   ctx.fillStyle = "#ffffff";
   ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
-  ctx.fillText(object.icon || "?", cx, cy);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(object.icon || "?", cx, cellBottomY - objectSpriteSize / 2);
+  } finally {
+    if (ghostLayer) {
+      ctx.restore();
+    }
+  }
 }
 
 function getItemRarityById(itemId) {
@@ -621,40 +974,55 @@ function getGroundLootRarityColors(rarity) {
   };
 }
 
-function drawPoisonCloud(ctx, cameraOffsetX, cameraOffsetY, tile, cloudVisual, nowMs, icon) {
+/** Один слой спрайта ядовитого облака; задний и передний слои — разные частоты фаз (не синхронно). */
+function drawPoisonCloudLayer(
+  ctx,
+  cameraOffsetX,
+  cameraOffsetY,
+  tile,
+  cloudVisual,
+  nowMs,
+  icon,
+  scale,
+  isBackLayer,
+) {
   const px = cameraOffsetX + cloudVisual.x * tile;
   const py = cameraOffsetY + cloudVisual.y * tile;
   const cx = px + tile / 2;
-  const cy = py + tile / 2;
-  const pulse = (Math.sin(nowMs * 0.006 + cloudVisual.x * 0.8 + cloudVisual.y * 1.1) + 1) / 2;
-
-  ctx.fillStyle = `rgba(110, 231, 183, ${0.13 + pulse * 0.08})`;
-  ctx.fillRect(px + 1, py + 1, tile - 2, tile - 2);
-
-  const puffs = [
-    { ox: -0.22, oy: -0.12, base: 0.2, speed: 0.004, alpha: 0.2 },
-    { ox: 0.18, oy: -0.18, base: 0.16, speed: 0.005, alpha: 0.16 },
-    { ox: -0.02, oy: 0.14, base: 0.22, speed: 0.0036, alpha: 0.18 },
-    { ox: 0.26, oy: 0.08, base: 0.14, speed: 0.0048, alpha: 0.14 },
-  ];
-
-  for (let i = 0; i < puffs.length; i += 1) {
-    const puff = puffs[i];
-    const phase = nowMs * puff.speed + i * 1.7 + cloudVisual.x * 0.9 + cloudVisual.y * 0.5;
-    const driftX = Math.sin(phase) * tile * 0.06;
-    const driftY = Math.cos(phase * 1.2) * tile * 0.05;
-    const radius = tile * (puff.base + (Math.sin(phase * 0.9) + 1) * 0.04);
-    ctx.fillStyle = `rgba(74, 222, 128, ${puff.alpha})`;
-    ctx.beginPath();
-    ctx.arc(cx + puff.ox * tile + driftX, cy + puff.oy * tile + driftY, radius, 0, Math.PI * 2);
-    ctx.fill();
+  const cellBottomY = cellSpriteAnchorBottomY(py, tile);
+  const cloudSpriteSize = Math.max(8, Math.floor(tile * scale));
+  let swayPhase;
+  let swayRad;
+  let swayOffsetX;
+  if (isBackLayer) {
+    swayPhase = nowMs * 0.00225 + cloudVisual.x * 0.91 + cloudVisual.y * 0.73;
+    swayRad = Math.sin(swayPhase) * 0.065;
+    swayOffsetX = Math.sin(swayPhase * 0.86 + 0.35) * tile * 0.018;
+  } else {
+    swayPhase = nowMs * 0.00158 + cloudVisual.x * 1.06 + cloudVisual.y * 0.59 + 2.71;
+    swayRad = Math.sin(swayPhase * 1.12 + 0.62) * 0.056;
+    swayOffsetX = Math.sin(swayPhase * 0.74 + 1.08) * tile * 0.021;
   }
+  const drawCx = cx + swayOffsetX;
 
-  const cloudSprite = drawCenteredSprite(ctx, resolvePoisonCloudSpriteUrl(), cx, cy, tile * WORLD_OBJECT_SPRITE_SCALE);
-  if (!cloudSprite) {
-    ctx.fillStyle = `rgba(240, 253, 250, ${0.62 + pulse * 0.18})`;
+  const hasSprite = drawBottomCenteredSpriteWithRotation(
+    ctx,
+    resolvePoisonCloudSpriteUrl(),
+    drawCx,
+    cellBottomY,
+    cloudSpriteSize,
+    swayRad,
+  );
+  if (!hasSprite) {
+    ctx.save();
+    ctx.translate(drawCx, cellBottomY - cloudSpriteSize / 2);
+    ctx.rotate(swayRad);
+    ctx.fillStyle = "rgba(240, 253, 250, 0.88)";
     ctx.font = `${Math.max(11, Math.floor(tile * 0.42))}px Arial`;
-    ctx.fillText(icon, cx, cy);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(icon, 0, 0);
+    ctx.restore();
   }
 }
 
@@ -684,18 +1052,57 @@ function drawEnemyHpBarIfNeeded(ctx, enemy, cx, cy, tile) {
   ctx.fillRect(barX, barY, hpFill, barHeight);
 }
 
-function drawCenteredSprite(ctx, spriteUrl, cx, cy, sizePx) {
+/** Пульсирующее свечение под объектом поля; `fieldGlowColor` — #RGB или #RRGGBB, иначе не рисуем. */
+function drawWorldObjectFieldGlow(ctx, cx, bottomY, spriteSizePx, glowHex, nowMs, phaseSalt = 0) {
+  const hex = glowHex == null ? "" : String(glowHex).trim();
+  if (!hex.startsWith("#")) return;
+  const body = hex.slice(1);
+  if (!/^[0-9a-fA-F]{3}$/.test(body) && !/^[0-9a-fA-F]{6}$/.test(body)) return;
+
+  const size = Math.max(8, Math.floor(spriteSizePx));
+  const cy = bottomY - size / 2;
+  const pulse = (Math.sin(nowMs * 0.0048 + phaseSalt) + 1) / 2;
+  const pulseSlow = (Math.sin(nowMs * 0.0029 + phaseSalt * 0.6 + 0.8) + 1) / 2;
+  const rMax = size * (0.48 + pulse * 0.16);
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  const g = ctx.createRadialGradient(cx, cy, Math.max(2, size * 0.05), cx, cy, rMax);
+  g.addColorStop(0, withAlpha(hex, 0.2 + pulse * 0.22));
+  g.addColorStop(0.42, withAlpha(hex, 0.09 + pulseSlow * 0.08));
+  g.addColorStop(1, withAlpha(hex, 0));
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, rMax, 0, Math.PI * 2);
+  ctx.fill();
+
+  const haloR = size * (0.62 + pulseSlow * 0.14);
+  const g2 = ctx.createRadialGradient(cx, cy, rMax * 0.55, cx, cy, haloR);
+  g2.addColorStop(0, withAlpha(hex, 0));
+  g2.addColorStop(0.72, withAlpha(hex, 0.045 + pulse * 0.06));
+  g2.addColorStop(1, withAlpha(hex, 0));
+  ctx.fillStyle = g2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, haloR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** Спрайт объекта на поле: центр по горизонтали, нижний край на нижней границе клетки (bottomY). */
+function drawBottomCenteredSprite(ctx, spriteUrl, cx, bottomY, sizePx) {
   const sprite = getLoadedSprite(spriteUrl);
   if (!sprite) return false;
   const size = Math.max(8, Math.floor(sizePx));
+  const cy = bottomY - size / 2;
   ctx.drawImage(sprite, Math.floor(cx - size / 2), Math.floor(cy - size / 2), size, size);
   return true;
 }
 
-function drawCenteredSpriteWithRotation(ctx, spriteUrl, cx, cy, sizePx, angleRad = 0) {
+function drawBottomCenteredSpriteWithRotation(ctx, spriteUrl, cx, bottomY, sizePx, angleRad = 0) {
   const sprite = getLoadedSprite(spriteUrl);
   if (!sprite) return false;
   const size = Math.max(8, Math.floor(sizePx));
+  const cy = bottomY - size / 2;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(angleRad);

@@ -7,6 +7,8 @@ const ENEMY_DEFS = {
     hp: 18,
     damage: 2,
     xp: 6,
+    visionRange: 5,
+    searchWanderTurns: 3,
   },
   cat_mid: {
     idPrefix: "cat_mid",
@@ -16,6 +18,8 @@ const ENEMY_DEFS = {
     hp: 27,
     damage: 5,
     xp: 10,
+    visionRange: 6,
+    searchWanderTurns: 3,
   },
   cat_big: {
     idPrefix: "cat_big",
@@ -25,6 +29,8 @@ const ENEMY_DEFS = {
     hp: 38,
     damage: 7,
     xp: 15,
+    visionRange: 7,
+    searchWanderTurns: 3,
   },
 };
 

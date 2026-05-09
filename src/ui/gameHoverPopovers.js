@@ -1,5 +1,5 @@
-import { createHoverPopoverController } from "./hoverPopover.js?v=0.5.5-pre-alpha";
-import { buildWorldObjectDetailHtml, pickPriorityWorldObject } from "./worldObjectHover.js?v=0.5.5-pre-alpha";
+import { createHoverPopoverController } from "./hoverPopover.js?v=0.5.6-pre-alpha";
+import { buildWorldObjectDetailHtml, pickPriorityWorldObject } from "./worldObjectHover.js?v=0.5.6-pre-alpha";
 
 export function createSkillHoverPopoverController(options) {
   const {

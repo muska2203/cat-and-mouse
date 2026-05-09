@@ -30,6 +30,7 @@
  * @property {WorldObjectTurnTick|null} turnTick
  * @property {number} x
  * @property {number} y
+ * @property {string} fieldGlowColor Цвет свечения спрайта на поле (#RRGGBB). Пустая строка — без эффекта.
  * @property {Object<string, any>} data
  */
 
@@ -74,6 +75,7 @@ export function createWorldObject(raw) {
     turnTick: normalizeTurnTick(raw?.turnTick),
     x: Number(raw?.x || 0),
     y: Number(raw?.y || 0),
+    fieldGlowColor: typeof raw?.fieldGlowColor === "string" ? String(raw.fieldGlowColor).trim() : "",
     data: raw?.data && typeof raw.data === "object" ? { ...raw.data } : {},
   };
 }

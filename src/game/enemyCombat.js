@@ -1,5 +1,9 @@
-import { removeObject } from "./cellObjects.js?v=0.5.5-pre-alpha";
-import { applyXpGain, getXpForEnemy } from "./xp.js?v=0.5.5-pre-alpha";
+import { removeObject } from "./cellObjects.js?v=0.5.6-pre-alpha";
+import {
+  broadcastIntelFromSource,
+  enterPursuit,
+} from "./enemyAggro.js?v=0.5.6-pre-alpha";
+import { applyXpGain, getXpForEnemy } from "./xp.js?v=0.5.6-pre-alpha";
 
 export function applyDamageToEnemyAndResolveDefeat(run, playerSheet, enemy, damage) {
   if (!run || !playerSheet || !enemy || enemy.type !== "enemy") {
@@ -17,6 +21,8 @@ export function applyDamageToEnemyAndResolveDefeat(run, playerSheet, enemy, dama
   const enemyHp = Math.max(0, hpNow - safeDamage);
   enemy.data.hp = enemyHp;
   if (enemyHp > 0) {
+    enterPursuit(enemy, run.player.x, run.player.y);
+    broadcastIntelFromSource(run, enemy, run.player.x, run.player.y);
     return {
       enemyHp,
       defeated: false,

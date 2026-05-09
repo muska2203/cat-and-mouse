@@ -1,24 +1,41 @@
-import { floorHp } from "../rules.js?v=0.5.5-pre-alpha";
+import { floorHp } from "../rules.js?v=0.5.6-pre-alpha";
 import {
   chebyshevDistance,
+  inBounds,
+  isWall,
+  DIRS_8,
   buildPathToNearestEnemyAttackCell as buildPathToNearestEnemyAttackCellNav,
-} from "../nav/pathfinding.js?v=0.5.5-pre-alpha";
-import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.5.5-pre-alpha";
-import { getEnemyById } from "./enemies.js?v=0.5.5-pre-alpha";
-import { getEnemyMaxHp } from "./enemyDefs.js?v=0.5.5-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.5.5-pre-alpha";
+  buildPathTowardTarget,
+  buildPathToNearestAttackCellAroundFocus,
+} from "../nav/pathfinding.js?v=0.5.6-pre-alpha";
+import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.5.6-pre-alpha";
+import { getEnemyById } from "./enemies.js?v=0.5.6-pre-alpha";
+import { getEnemyMaxHp } from "./enemyDefs.js?v=0.5.6-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.6-pre-alpha";
 import {
   ensureEnemyStatus,
   ensurePlayerStatus,
   tickTemporaryObjects,
-} from "./trapsAndClouds.js?v=0.5.5-pre-alpha";
-import { applyEndOfEnvironmentObjectEffects, applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.5-pre-alpha";
+} from "./trapsAndClouds.js?v=0.5.6-pre-alpha";
+import { applyEndOfEnvironmentObjectEffects, applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.6-pre-alpha";
 import {
   isCellBlockedForEnemyWithReservations,
-} from "./cellBlocking.js?v=0.5.5-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.5.5-pre-alpha";
-import { processTurnEffects } from "./turnEffects.js?v=0.5.5-pre-alpha";
-import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.5-pre-alpha";
+} from "./cellBlocking.js?v=0.5.6-pre-alpha";
+import {
+  AI_IDLE,
+  AI_PURSUIT,
+  AI_SEARCH,
+  broadcastPursuitIntel,
+  checkAggroAfterPlayerAction,
+  ensureEnemyBrain,
+  enemyAtHome,
+  enemyInLastKnownVicinity,
+  enemySeesPlayer,
+} from "./enemyAggro.js?v=0.5.6-pre-alpha";
+import { randomFloat } from "./rng.js?v=0.5.6-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.5.6-pre-alpha";
+import { processTurnEffects } from "./turnEffects.js?v=0.5.6-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.6-pre-alpha";
 
 function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
   const stunnedEnemyIds = new Set();
@@ -81,11 +98,32 @@ function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
   return { stunnedEnemyIds, effectCount };
 }
 
+function pickRandomSearchStep(run, enemy, isCellBlocked) {
+  const dirs = [...DIRS_8];
+  for (let i = dirs.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(randomFloat(run.rng) * (i + 1));
+    const tmp = dirs[i];
+    dirs[i] = dirs[j];
+    dirs[j] = tmp;
+  }
+  for (const dir of dirs) {
+    const nx = enemy.x + dir.x;
+    const ny = enemy.y + dir.y;
+    if (!inBounds(nx, ny, run)) continue;
+    if (isWall(nx, ny, run)) continue;
+    if (isCellBlocked(nx, ny)) continue;
+    return [{ x: enemy.x, y: enemy.y }, { x: nx, y: ny }];
+  }
+  return [];
+}
+
 export function beginEnvironmentTurn(run) {
   const fx = ensureRunFxState(run);
   if (!run || run.status !== "running") {
     return run;
   }
+  /** Пропуск хода не вызывает tryStep/reveal — всё равно проверяем, кто видит героя. */
+  checkAggroAfterPlayerAction(run);
   const queue = (run.objects || [])
     .filter((object) => object.type === "enemy")
     .map((object) => object.id);
@@ -124,6 +162,26 @@ export function stepEnvironmentTurn(run, playerSheet) {
     let effectCount = prePhaseEffectCount;
     let lastAttackerName = "";
 
+    const enemyCellBlocked = (enemy, x, y) => isCellBlockedForEnemyWithReservations(
+      run,
+      x,
+      y,
+      enemy.id,
+      occupiedByCell,
+      reservedDestinations
+    );
+
+    for (const enemy of run.objects || []) {
+      if (!enemy || enemy.type !== "enemy") continue;
+      if (stunnedEnemyIds.has(enemy.id)) continue;
+      ensureEnemyBrain(enemy);
+      if (enemy.data.aiState === AI_PURSUIT && !enemySeesPlayer(run, enemy)) {
+        enemy.data.aiState = AI_SEARCH;
+        enemy.data.searchWanderRemaining = -1;
+      }
+    }
+    broadcastPursuitIntel(run);
+
     for (const enemyId of actionQueue) {
       const enemy = getEnemyById(run, enemyId);
       if (!enemy) {
@@ -133,54 +191,84 @@ export function stepEnvironmentTurn(run, playerSheet) {
         continue;
       }
 
-      if (!run.discovered?.[enemy.y]?.[enemy.x]) {
-        continue;
+      ensureEnemyBrain(enemy);
+      const seesPlayer = enemySeesPlayer(run, enemy);
+      const aiState = enemy.data.aiState;
+
+      let path = [];
+
+      if (aiState === AI_IDLE) {
+        if (!enemyAtHome(enemy)) {
+          path = buildPathTowardTarget(
+            run,
+            { x: enemy.x, y: enemy.y },
+            { x: enemy.data.homeX, y: enemy.data.homeY },
+            (x, y) => enemyCellBlocked(enemy, x, y),
+          );
+        }
+      } else if (aiState === AI_PURSUIT) {
+        if (!seesPlayer) {
+          continue;
+        }
+        enemy.data.lastSeenPlayer = { x: run.player.x, y: run.player.y };
+        const distance = chebyshevDistance(enemy, run.player);
+        if (distance === 1) {
+          const damageTaken = Math.max(0, enemy.data?.damage || 0);
+          const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
+          const nextHp = floorHp(hpNow - damageTaken);
+          syncPlayerHp(playerSheet, nextHp);
+          enqueueFloatingText(run, {
+            x: run.player.x,
+            y: run.player.y,
+            value: `-${damageTaken}`,
+            color: "#fca5a5",
+            durationMs: 620,
+            scale: 1.05,
+            startMs: null,
+          });
+          attackCount += 1;
+          lastAttackerName = enemy.name;
+          plannedAttacks.push({
+            actorId: enemy.id,
+            kind: "bounce",
+            from: { x: enemy.x, y: enemy.y },
+            target: { x: run.player.x, y: run.player.y },
+          });
+          if (nextHp <= 0) {
+            run.status = "defeat";
+            run.lastLog = `${enemy.name} атакует мышонка на ${damageTaken}.`;
+            return { run, playerSheet, finished: true, progressed: true };
+          }
+          continue;
+        }
+        path = buildPathToNearestEnemyAttackCellNav(run, enemy, (x, y) => enemyCellBlocked(enemy, x, y));
+      } else if (aiState === AI_SEARCH) {
+        const last = enemy.data.lastSeenPlayer;
+        if (!last) {
+          enemy.data.aiState = AI_IDLE;
+          enemy.data.searchWanderRemaining = -1;
+          continue;
+        }
+        if (!enemyInLastKnownVicinity(enemy, last)) {
+          enemy.data.searchWanderRemaining = -1;
+          path = buildPathToNearestAttackCellAroundFocus(run, enemy, last, (x, y) => enemyCellBlocked(enemy, x, y));
+        } else if (enemy.data.searchWanderRemaining < 0) {
+          enemy.data.searchWanderRemaining = Number(enemy.data.searchWanderTurns) || 3;
+          continue;
+        } else if (enemy.data.searchWanderRemaining > 0) {
+          path = pickRandomSearchStep(run, enemy, (x, y) => enemyCellBlocked(enemy, x, y));
+          enemy.data.searchWanderRemaining -= 1;
+          if (enemy.data.searchWanderRemaining === 0) {
+            enemy.data.aiState = AI_IDLE;
+            enemy.data.lastSeenPlayer = null;
+          }
+        } else {
+          enemy.data.aiState = AI_IDLE;
+          enemy.data.lastSeenPlayer = null;
+          enemy.data.searchWanderRemaining = -1;
+        }
       }
 
-      const distance = chebyshevDistance(enemy, run.player);
-      if (distance === 1) {
-        const damageTaken = Math.max(0, enemy.data?.damage || 0);
-        const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
-        const nextHp = floorHp(hpNow - damageTaken);
-        syncPlayerHp(playerSheet, nextHp);
-        enqueueFloatingText(run, {
-          x: run.player.x,
-          y: run.player.y,
-          value: `-${damageTaken}`,
-          color: "#fca5a5",
-          durationMs: 620,
-          scale: 1.05,
-          startMs: null,
-        });
-        attackCount += 1;
-        lastAttackerName = enemy.name;
-        plannedAttacks.push({
-          actorId: enemy.id,
-          kind: "bounce",
-          from: { x: enemy.x, y: enemy.y },
-          target: { x: run.player.x, y: run.player.y },
-        });
-        if (nextHp <= 0) {
-          run.status = "defeat";
-          run.lastLog = `${enemy.name} атакует мышонка на ${damageTaken}.`;
-          return { run, playerSheet, finished: true, progressed: true };
-        }
-        continue;
-      }
-
-      const path = buildPathToNearestEnemyAttackCellNav(run, enemy, (x, y) => {
-        if (!run.discovered?.[y]?.[x]) {
-          return true;
-        }
-        return isCellBlockedForEnemyWithReservations(
-          run,
-          x,
-          y,
-          enemy.id,
-          occupiedByCell,
-          reservedDestinations
-        );
-      });
       if (path.length > 1) {
         const nextCell = path[1];
         const from = { x: enemy.x, y: enemy.y };

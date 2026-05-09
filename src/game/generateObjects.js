@@ -1,9 +1,9 @@
-import { ACTOR_KIND } from "./cellObjects.js?v=0.5.5-pre-alpha";
-import { getChestCountsForLevel } from "./chestLoot.js?v=0.5.5-pre-alpha";
-import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.5.5-pre-alpha";
-import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.5-pre-alpha";
-import { randomInt } from "./rng.js?v=0.5.5-pre-alpha";
-import { createWorldObject } from "./worldObjectModel.js?v=0.5.5-pre-alpha";
+import { ACTOR_KIND } from "./cellObjects.js?v=0.5.6-pre-alpha";
+import { getChestCountsForLevel } from "./chestLoot.js?v=0.5.6-pre-alpha";
+import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.5.6-pre-alpha";
+import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.6-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.6-pre-alpha";
+import { createWorldObject } from "./worldObjectModel.js?v=0.5.6-pre-alpha";
 
 export function generateObjects(maze, level = 1, options = {}) {
   const rng = options.rng && typeof options.rng.nextFloat === "function" ? options.rng : null;
@@ -70,6 +70,7 @@ export function generateObjects(maze, level = 1, options = {}) {
       activateOnPathPass: false,
       activation: { by: [ACTOR_KIND.PLAYER], effect: "open_chest" },
       data: { chestRarity: "rare" },
+      fieldGlowColor: "#00d2ff",
     },
     chest_unique: {
       id: "chest_unique",
@@ -84,6 +85,7 @@ export function generateObjects(maze, level = 1, options = {}) {
       activateOnPathPass: false,
       activation: { by: [ACTOR_KIND.PLAYER], effect: "open_chest" },
       data: { chestRarity: "unique" },
+      fieldGlowColor: "#c445ff",
     },
     anvil: {
       id: "anvil",
@@ -101,6 +103,7 @@ export function generateObjects(maze, level = 1, options = {}) {
         remainingCrafts: 3,
         maxCrafts: 3,
       },
+      fieldGlowColor: "#c4a35a",
     },
   };
 
@@ -263,12 +266,18 @@ export function generateObjects(maze, level = 1, options = {}) {
         : { by: [], effect: null },
       x: cell.x,
       y: cell.y,
+      fieldGlowColor: typeof template.fieldGlowColor === "string" ? String(template.fieldGlowColor).trim() : "",
       data: enemyDef
         ? {
             hp: enemyDef.hp,
             maxHp: enemyDef.hp,
             damage: enemyDef.damage,
             enemyType: template.id,
+            visionRange: enemyDef.visionRange,
+            searchWanderTurns: enemyDef.searchWanderTurns,
+            aiState: "idle",
+            searchWanderRemaining: -1,
+            lastSeenPlayer: null,
           }
         : { ...template.data },
     }));

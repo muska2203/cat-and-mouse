@@ -1,9 +1,10 @@
-import { floorHp } from "./rules.js?v=0.5.5-pre-alpha";
-import { syncPlayerHp } from "./game/syncHp.js?v=0.5.5-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.5.5-pre-alpha";
-import { ensureRunFxState, enqueueFloatingText } from "./runtime/runFxState.js?v=0.5.5-pre-alpha";
-import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.5.5-pre-alpha";
-import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.5.5-pre-alpha";
+import { floorHp } from "./rules.js?v=0.5.6-pre-alpha";
+import { syncPlayerHp } from "./game/syncHp.js?v=0.5.6-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.5.6-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "./runtime/runFxState.js?v=0.5.6-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.5.6-pre-alpha";
+import { computePlayerVisibleMask } from "./game/playerVisibility.js?v=0.5.6-pre-alpha";
+import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.5.6-pre-alpha";
 
 const SKILL_DEFS = {
   fireball: {
@@ -178,6 +179,9 @@ function isWallCell(run, x, y) {
 
 export function getVisibleCellsForPlayer(run, options = {}) {
   if (!run?.player || !run?.grid || !Array.isArray(run?.discovered)) return [];
+  if (!Array.isArray(run.playerVisibleNow)) {
+    computePlayerVisibleMask(run, run.visionRange ?? 6);
+  }
   const fromX = Number(run.player.x);
   const fromY = Number(run.player.y);
   const maxRange = Number.isFinite(Number(options.maxRange)) ? Number(options.maxRange) : null;
@@ -186,6 +190,7 @@ export function getVisibleCellsForPlayer(run, options = {}) {
   for (let y = 0; y < run.height; y += 1) {
     for (let x = 0; x < run.width; x += 1) {
       if (!run.discovered?.[y]?.[x]) continue;
+      if (!run.playerVisibleNow?.[y]?.[x]) continue;
       if (!includeWalls && isWallCell(run, x, y)) continue;
       if (maxRange !== null) {
         const dx = Math.abs(x - fromX);

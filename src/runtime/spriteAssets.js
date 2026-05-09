@@ -1,7 +1,7 @@
-import { APP_VERSION } from "../app-config.js?v=0.5.5-pre-alpha";
-import { isKnownPlayerPortraitId, PLAYER_PORTRAITS } from "../game/playerPortraitsCatalog.js?v=0.5.5-pre-alpha";
-import { getAllLootItems } from "../loadout.js?v=0.5.5-pre-alpha";
-import { getAllSkillIds } from "../skillsRuntime.js?v=0.5.5-pre-alpha";
+import { APP_VERSION } from "../app-config.js?v=0.5.6-pre-alpha";
+import { isKnownPlayerPortraitId, PLAYER_PORTRAITS } from "../game/playerPortraitsCatalog.js?v=0.5.6-pre-alpha";
+import { getAllLootItems } from "../loadout.js?v=0.5.6-pre-alpha";
+import { getAllSkillIds } from "../skillsRuntime.js?v=0.5.6-pre-alpha";
 
 const spriteCache = new Map();
 

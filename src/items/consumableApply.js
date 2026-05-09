@@ -1,7 +1,7 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.5.5-pre-alpha";
-import { getConsumableApplyLog, getConsumableRecoveryPreview } from "./itemPresentation.js?v=0.5.5-pre-alpha";
-import { syncPlayerHp } from "../game/syncHp.js?v=0.5.5-pre-alpha";
-import { enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.5-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.5.6-pre-alpha";
+import { getConsumableApplyLog, getConsumableRecoveryPreview } from "./itemPresentation.js?v=0.5.6-pre-alpha";
+import { syncPlayerHp } from "../game/syncHp.js?v=0.5.6-pre-alpha";
+import { enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.6-pre-alpha";
 
 const FLOATING_RECOVERY_DURATION_MS = 700;
 const FLOATING_RECOVERY_SCALE = 1.1;

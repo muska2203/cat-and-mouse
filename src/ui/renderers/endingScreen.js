@@ -1,4 +1,4 @@
-import { getRunEndingSummaryMetrics } from "../../game/runTotals.js?v=0.5.5-pre-alpha";
+import { getRunEndingSummaryMetrics } from "../../game/runTotals.js?v=0.5.6-pre-alpha";
 
 export function buildEndingScreenHtml({
   portrait,
