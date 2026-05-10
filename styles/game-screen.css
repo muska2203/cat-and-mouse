@@ -33,9 +33,9 @@
   --font-panel-title: "Cinzel", "Palatino Linotype", Palatino, Georgia, serif;
   /* Лёгкое зерно поверх панелей (SVG noise) */
   --wood-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E");
-  --inv-cell: 52px;
-  --inv-gap: 4px;
-  --inv-cols: 5;
+  --inv-cell: 64px;
+  --inv-gap: 6px;
+  --inv-cols: 4;
   /* Высота области прокрутки: число видимых рядов без изменений */
   --inv-visible-rows: 4;
   --inv-viewport-height: calc(

@@ -1,8 +1,8 @@
 import {
-  resolveItemSubtypeSpriteUrl,
+  resolveItemSpriteUrl,
   resolveLootFrameSpriteUrl,
   resolveSkillSpriteUrl,
-} from "../runtime/spriteAssets.js?v=0.5.6-pre-alpha";
+} from "../runtime/spriteAssets.js?v=0.5.7-pre-alpha";
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -24,7 +24,7 @@ export function buildItemSpriteStackHtml(item, options = {}) {
   if (!item) return `<span class="cm-sprite-fallback">${escapeHtml(options.fallbackText || "•")}</span>`;
   const rarity = options.rarity || getItemRarityById(item.id);
   const frameUrl = resolveLootFrameSpriteUrl(rarity);
-  const bodyUrl = resolveItemSubtypeSpriteUrl(item);
+  const bodyUrl = resolveItemSpriteUrl(item);
   const fallback = escapeHtml(options.fallbackText || item.icon || "•");
   const includeFrame = options.includeFrame !== false;
   return `<span class="cm-sprite-stack cm-sprite-stack--item" aria-hidden="true">${includeFrame ? `<img class="cm-sprite-stack__frame" src="${frameUrl}" alt="" loading="lazy" decoding="async" />` : ""}<img class="cm-sprite-stack__body" src="${bodyUrl}" alt="" loading="lazy" decoding="async" /><span class="cm-sprite-fallback">${fallback}</span></span>`;

@@ -1,6 +1,6 @@
-import { floorHp, floorHpMax } from "../rules.js?v=0.5.6-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.5.6-pre-alpha";
-import { enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.6-pre-alpha";
+import { floorHp, floorHpMax } from "../rules.js?v=0.5.7-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.7-pre-alpha";
+import { enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.7-pre-alpha";
 
 export function processTurnEffects(run, playerSheet) {
   if (!run || !playerSheet) {

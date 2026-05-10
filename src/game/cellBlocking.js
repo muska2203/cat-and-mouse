@@ -1,5 +1,5 @@
-import { inBounds, isWall } from "../nav/pathfinding.js?v=0.5.6-pre-alpha";
-import { ACTOR_KIND, getBlockingObjectAt } from "./cellObjects.js?v=0.5.6-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.5.7-pre-alpha";
+import { ACTOR_KIND, getBlockingObjectAt } from "./cellObjects.js?v=0.5.7-pre-alpha";
 
 export function defaultCellBlocked(run, x, y, options = {}) {
   if (!inBounds(x, y, run) || isWall(x, y, run)) {

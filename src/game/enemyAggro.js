@@ -1,6 +1,6 @@
-import { inBounds, chebyshevDistance } from "../nav/pathfinding.js?v=0.5.6-pre-alpha";
-import { hasLineOfSightOnGrid } from "../nav/lineOfSight.js?v=0.5.6-pre-alpha";
-import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.6-pre-alpha";
+import { inBounds, chebyshevDistance } from "../nav/pathfinding.js?v=0.5.7-pre-alpha";
+import { hasLineOfSightOnGrid } from "../nav/lineOfSightPermissive.js?v=0.5.7-pre-alpha";
+import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.7-pre-alpha";
 
 /** Покой: идёт к точке спавна. */
 export const AI_IDLE = "idle";

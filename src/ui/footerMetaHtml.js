@@ -3,7 +3,7 @@ import {
   APP_DEVELOPER_NAME,
   APP_TITLE,
   APP_VERSION,
-} from "../app-config.js?v=0.5.6-pre-alpha";
+} from "../app-config.js?v=0.5.7-pre-alpha";
 
 export function buildFooterMetaHtml() {
   return `

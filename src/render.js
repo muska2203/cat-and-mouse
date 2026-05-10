@@ -1,26 +1,30 @@
-import { cellVisibleFromActor, ensureEnemyBrain } from "./game/enemyAggro.js?v=0.5.6-pre-alpha";
-import { isCellVisibleToPlayerNow } from "./game/playerVisibility.js?v=0.5.6-pre-alpha";
-import { inBounds } from "./nav/pathfinding.js?v=0.5.6-pre-alpha";
-import { roundStat } from "./rules.js?v=0.5.6-pre-alpha";
-import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.6-pre-alpha";
+import { cellVisibleFromActor, ensureEnemyBrain } from "./game/enemyAggro.js?v=0.5.7-pre-alpha";
+import { isCellVisibleToPlayerNow } from "./game/playerVisibility.js?v=0.5.7-pre-alpha";
+import { inBounds } from "./nav/pathfinding.js?v=0.5.7-pre-alpha";
+import { roundStat } from "./rules.js?v=0.5.7-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.7-pre-alpha";
+import {
+  drawEnemyAiBehaviorBadge,
+  pruneStaleEnemyAiBadgeEntries,
+} from "./runtime/enemyAiFieldBadge.js?v=0.5.7-pre-alpha";
 import {
   ensureRunFxState,
   OBJECT_DISSOLVE_DURATION_MS,
   pruneFinishedObjectDissolves,
-} from "./runtime/runFxState.js?v=0.5.6-pre-alpha";
+} from "./runtime/runFxState.js?v=0.5.7-pre-alpha";
 import {
   getLoadedSprite,
   resolveEnemySpriteUrl,
   resolveGroundLootContainerSpriteUrl,
   resolveGoalSpriteUrl,
-  resolveItemSubtypeSpriteUrl,
+  resolveItemSpriteUrl,
   resolveLootFrameSpriteUrl,
   resolveObjectSpriteUrl,
   resolvePlayerSpriteUrl,
   resolvePoisonCloudSpriteUrl,
   resolveRandomFloorTileSpriteUrl,
   resolveTileSpriteUrl,
-} from "./runtime/spriteAssets.js?v=0.5.6-pre-alpha";
+} from "./runtime/spriteAssets.js?v=0.5.7-pre-alpha";
 
 const WORLD_OBJECT_SPRITE_SCALE = 0.8;
 /** Ядовитое облако: слой за актёрами (150% тайла). */
@@ -33,14 +37,21 @@ const PLAYER_FIELD_SPRITE_SCALE = 1.5;
 /** Непрозрачность «призраков» объектов в тусклом тумане. */
 const FOG_MEMORY_OBJECT_ALPHA = 0.44;
 
-/** Малый отступ спрайтов от нижней границы клетки (px канваса, растёт с размером тайла). */
-function getFieldSpriteBottomInset(tile) {
-  return Math.max(1, Math.floor(tile * 0.035));
+/**
+ * Временно: не затемнять открытые, но сейчас не освещённые клетки;
+ * при true враги на открытых клетках рисуются полным спрайтом (не призраком в памяти тумана).
+ */
+const DISABLE_DIM_UNLIT_DISCOVERED_CELLS = true;
+
+/** Y нижнего края спрайта на поле: совпадает с вертикальным центром ячейки (py — верхний край клетки по Y). */
+function cellSpriteAnchorBottomY(py, tile) {
+  return py + tile * 3 / 4;
 }
 
-/** Y нижнего края спрайта, «приземлённого» в ячейку (py — верхний край клетки по Y). */
-function cellSpriteAnchorBottomY(py, tile) {
-  return py + tile - getFieldSpriteBottomInset(tile);
+/** Один слой: сначала клетки выше на поле (меньший Y), при равном Y — левее (меньший X). */
+function compareFieldDrawOrder2D(yA, xA, yB, xB) {
+  if (yA !== yB) return yA - yB;
+  return xA - xB;
 }
 
 function getObjectDissolveAlpha(entry, nowMs) {
@@ -55,6 +66,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   }
   ensureRunFxState(run);
   pruneFinishedObjectDissolves(run, nowMs);
+  pruneStaleEnemyAiBadgeEntries(run, nowMs);
 
   /** Рисуем после актёров, чтобы туман перекрывал спрайты на клетке. */
   let deferredPoisonCloudObjects = [];
@@ -119,42 +131,52 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     return isCellVisibleToPlayerNow(run, x, y);
   }
 
-  for (let y = minY; y <= maxY; y += 1) {
-    for (let x = minX; x <= maxX; x += 1) {
-      if (!run.discovered?.[y]?.[x]) continue;
-      if (cellLitForPlayer(x, y)) continue;
-      const px = Math.floor(cameraOffsetX + x * tile);
-      const py = Math.floor(cameraOffsetY + y * tile);
-      ctx.fillStyle = "rgba(1, 3, 10, 0.5)";
-      ctx.fillRect(px, py, tile, tile);
+  /** Спрайт врага как в освещённой клетке: видимость сейчас или режим «все на открытой карте видны». */
+  function enemyUsesLitFieldDraw(enemy) {
+    if (!enemy || enemy.type !== "enemy") return false;
+    if (cellLitForPlayer(enemy.x, enemy.y)) return true;
+    if (DISABLE_DIM_UNLIT_DISCOVERED_CELLS && run.discovered?.[enemy.y]?.[enemy.x]) return true;
+    return false;
+  }
+
+  const objectsList = Array.isArray(run.objects) ? run.objects : [];
+
+  if (!DISABLE_DIM_UNLIT_DISCOVERED_CELLS) {
+    for (let y = minY; y <= maxY; y += 1) {
+      for (let x = minX; x <= maxX; x += 1) {
+        if (!run.discovered?.[y]?.[x]) continue;
+        if (cellLitForPlayer(x, y)) continue;
+        const px = Math.floor(cameraOffsetX + x * tile);
+        const py = Math.floor(cameraOffsetY + y * tile);
+        ctx.fillStyle = "rgba(1, 3, 10, 0.5)";
+        ctx.fillRect(px, py, tile, tile);
+      }
     }
   }
 
-  if (Array.isArray(run.objects)) {
-    for (const enemy of run.objects) {
-      if (!enemy || enemy.type !== "enemy") continue;
-      if (!cellLitForPlayer(enemy.x, enemy.y)) continue;
-      ensureEnemyBrain(enemy);
-      const er = Number(enemy.data.visionRange) || 6;
-      const ex = enemy.x;
-      const ey = enemy.y;
-      for (let cy = ey - er; cy <= ey + er; cy += 1) {
-        for (let cx = ex - er; cx <= ex + er; cx += 1) {
-          if (!inBounds(cx, cy, run)) continue;
-          if (!run.discovered?.[cy]?.[cx]) continue;
-          if (!cellVisibleFromActor(run, ex, ey, er, cx, cy)) continue;
-          const px = Math.floor(cameraOffsetX + cx * tile);
-          const py = Math.floor(cameraOffsetY + cy * tile);
-          ctx.fillStyle = "rgba(239, 68, 68, 0.16)";
-          ctx.fillRect(px + 1, py + 1, tile - 2, tile - 2);
-        }
+  for (const enemy of objectsList) {
+    if (!enemy || enemy.type !== "enemy") continue;
+    if (!cellLitForPlayer(enemy.x, enemy.y)) continue;
+    ensureEnemyBrain(enemy);
+    const er = Number(enemy.data.visionRange) || 6;
+    const ex = enemy.x;
+    const ey = enemy.y;
+    for (let cy = ey - er; cy <= ey + er; cy += 1) {
+      for (let cx = ex - er; cx <= ex + er; cx += 1) {
+        if (!inBounds(cx, cy, run)) continue;
+        if (!run.discovered?.[cy]?.[cx]) continue;
+        if (!cellVisibleFromActor(run, ex, ey, er, cx, cy)) continue;
+        const px = Math.floor(cameraOffsetX + cx * tile);
+        const py = Math.floor(cameraOffsetY + cy * tile);
+        ctx.fillStyle = "rgba(239, 68, 68, 0.16)";
+        ctx.fillRect(px + 1, py + 1, tile - 2, tile - 2);
       }
     }
   }
 
   drawPathPreview(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, overlay);
 
-  if (Array.isArray(run.objects)) {
+  {
     const fogMemory = run.fogObjectMemory || {};
 
     const brightRegular = [];
@@ -162,7 +184,7 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     let brightPoison = [];
     const ghostPoisonPairs = [];
 
-    for (const object of run.objects) {
+    for (const object of objectsList) {
       if (!object) continue;
       if (object.type === "enemy") continue;
       if (object.type === "poison_cloud") {
@@ -186,121 +208,235 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
       }
     }
 
+    const worldObjectDrawItems = [];
     for (const { object, mem } of ghostRegular) {
-      drawObjectIcon(
-        ctx,
-        run,
+      worldObjectDrawItems.push({
+        kind: "world_fog",
         object,
-        cameraOffsetX,
-        cameraOffsetY,
-        tile,
-        nowMs,
         mem,
-        FOG_MEMORY_OBJECT_ALPHA,
-      );
+        sortY: mem.y,
+        sortX: mem.x,
+      });
     }
-
     for (const object of brightRegular) {
-      drawObjectIcon(ctx, run, object, cameraOffsetX, cameraOffsetY, tile, nowMs);
+      const v = getObjectVisualPosition(run, object, nowMs);
+      worldObjectDrawItems.push({
+        kind: "world_lit",
+        object,
+        sortY: v.y,
+        sortX: v.x,
+      });
+    }
+    if (run.discovered?.[run.goal.y]?.[run.goal.x]) {
+      worldObjectDrawItems.push({
+        kind: "world_goal",
+        sortY: run.goal.y,
+        sortX: run.goal.x,
+      });
+    }
+    worldObjectDrawItems.sort((a, b) => compareFieldDrawOrder2D(a.sortY, a.sortX, b.sortY, b.sortX));
+    for (const item of worldObjectDrawItems) {
+      if (item.kind === "world_fog") {
+        drawObjectIcon(
+          ctx,
+          run,
+          item.object,
+          cameraOffsetX,
+          cameraOffsetY,
+          tile,
+          nowMs,
+          item.mem,
+          FOG_MEMORY_OBJECT_ALPHA,
+        );
+      } else if (item.kind === "world_lit") {
+        drawObjectIcon(ctx, run, item.object, cameraOffsetX, cameraOffsetY, tile, nowMs);
+      } else if (item.kind === "world_goal") {
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
+        ctx.fillStyle = "#ffffff";
+        const goalCx = cameraOffsetX + run.goal.x * tile + tile / 2;
+        const goalBottomY = cellSpriteAnchorBottomY(cameraOffsetY + run.goal.y * tile, tile);
+        const goalSpriteSize = Math.max(8, Math.floor(tile * WORLD_OBJECT_SPRITE_SCALE));
+        const goalLit = cellLitForPlayer(run.goal.x, run.goal.y);
+        if (!goalLit) {
+          ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
+        }
+        const hasGoalSprite = drawBottomCenteredSprite(
+          ctx,
+          resolveGoalSpriteUrl(),
+          goalCx,
+          goalBottomY,
+          goalSpriteSize,
+        );
+        if (!hasGoalSprite) {
+          ctx.fillText("🕳", goalCx, goalBottomY - goalSpriteSize / 2);
+        }
+        ctx.restore();
+      }
     }
 
     deferredPoisonCloudObjects = brightPoison;
 
     const dissolves = Array.isArray(run.fx?.objectDissolves) ? run.fx.objectDissolves : [];
 
+    const poisonBackDrawItems = [];
     for (const cloud of deferredPoisonCloudObjects) {
-      const cloudVisual = getObjectVisualPosition(run, cloud, nowMs);
-      drawPoisonCloudLayer(
-        ctx,
-        cameraOffsetX,
-        cameraOffsetY,
-        tile,
-        cloudVisual,
-        nowMs,
-        cloud.icon || "☠",
-        POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
-        true,
-      );
+      const v = getObjectVisualPosition(run, cloud, nowMs);
+      poisonBackDrawItems.push({
+        kind: "poison_back_lit",
+        cloud,
+        sortY: v.y,
+        sortX: v.x,
+      });
     }
-
     for (const { object, mem } of ghostPoisonPairs) {
-      const cloudVisual = { x: mem.x, y: mem.y };
-      ctx.save();
-      ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
-      drawPoisonCloudLayer(
-        ctx,
-        cameraOffsetX,
-        cameraOffsetY,
-        tile,
-        cloudVisual,
-        nowMs,
-        object.icon || "☠",
-        POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
-        true,
-      );
-      ctx.restore();
+      poisonBackDrawItems.push({
+        kind: "poison_back_fog",
+        object,
+        mem,
+        sortY: mem.y,
+        sortX: mem.x,
+      });
     }
-
     for (const entry of dissolves) {
       const ghost = entry?.ghost;
       if (!ghost || ghost.type !== "poison_cloud") continue;
       if (!run.discovered?.[ghost.y]?.[ghost.x]) continue;
-      const cloudVisual = getObjectVisualPosition(run, ghost, nowMs);
-      ctx.save();
-      ctx.globalAlpha = getObjectDissolveAlpha(entry, nowMs);
-      drawPoisonCloudLayer(
-        ctx,
-        cameraOffsetX,
-        cameraOffsetY,
-        tile,
-        cloudVisual,
-        nowMs,
-        ghost.icon || "☠",
-        POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
-        true,
-      );
-      ctx.restore();
+      const v = getObjectVisualPosition(run, ghost, nowMs);
+      poisonBackDrawItems.push({
+        kind: "poison_back_dissolve",
+        entry,
+        ghost,
+        sortY: v.y,
+        sortX: v.x,
+      });
+    }
+    poisonBackDrawItems.sort((a, b) => compareFieldDrawOrder2D(a.sortY, a.sortX, b.sortY, b.sortX));
+    for (const item of poisonBackDrawItems) {
+      if (item.kind === "poison_back_lit") {
+        const cloudVisual = getObjectVisualPosition(run, item.cloud, nowMs);
+        drawPoisonCloudLayer(
+          ctx,
+          cameraOffsetX,
+          cameraOffsetY,
+          tile,
+          cloudVisual,
+          nowMs,
+          item.cloud.icon || "☠",
+          POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
+          true,
+        );
+      } else if (item.kind === "poison_back_fog") {
+        const cloudVisual = { x: item.mem.x, y: item.mem.y };
+        ctx.save();
+        ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
+        drawPoisonCloudLayer(
+          ctx,
+          cameraOffsetX,
+          cameraOffsetY,
+          tile,
+          cloudVisual,
+          nowMs,
+          item.object.icon || "☠",
+          POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
+          true,
+        );
+        ctx.restore();
+      } else {
+        const cloudVisual = getObjectVisualPosition(run, item.ghost, nowMs);
+        ctx.save();
+        ctx.globalAlpha = getObjectDissolveAlpha(item.entry, nowMs);
+        drawPoisonCloudLayer(
+          ctx,
+          cameraOffsetX,
+          cameraOffsetY,
+          tile,
+          cloudVisual,
+          nowMs,
+          item.ghost.icon || "☠",
+          POISON_CLOUD_FIELD_SPRITE_SCALE_BACK,
+          true,
+        );
+        ctx.restore();
+      }
     }
 
-    const brightEnemies = run.objects.filter(
-      (object) => object?.type === "enemy" && cellLitForPlayer(object.x, object.y),
-    );
-    for (const enemy of brightEnemies) {
-      drawEnemyFieldSpriteLayer(ctx, run, enemy, cameraOffsetX, cameraOffsetY, tile, nowMs);
-    }
-
-    for (const enemy of run.objects) {
+    const enemyFieldDrawItems = [];
+    for (const enemy of objectsList) {
       if (!enemy || enemy.type !== "enemy") continue;
-      if (cellLitForPlayer(enemy.x, enemy.y)) continue;
+      if (!enemyUsesLitFieldDraw(enemy)) continue;
+      const v = getObjectVisualPosition(run, enemy, nowMs);
+      enemyFieldDrawItems.push({
+        kind: "enemy_lit",
+        enemy,
+        sortY: v.y,
+        sortX: v.x,
+      });
+    }
+    for (const enemy of objectsList) {
+      if (!enemy || enemy.type !== "enemy") continue;
+      if (enemyUsesLitFieldDraw(enemy)) continue;
       const mem = fogMemory[enemy.id];
       if (!mem || !run.discovered?.[mem.y]?.[mem.x]) continue;
-      drawEnemyFieldSpriteLayer(
-        ctx,
-        run,
+      enemyFieldDrawItems.push({
+        kind: "enemy_fog",
         enemy,
-        cameraOffsetX,
-        cameraOffsetY,
-        tile,
-        nowMs,
         mem,
-        FOG_MEMORY_OBJECT_ALPHA,
-      );
+        sortY: mem.y,
+        sortX: mem.x,
+      });
     }
-
     for (const entry of dissolves) {
       const ghost = entry?.ghost;
       if (!ghost || ghost.type !== "enemy") continue;
       if (!run.discovered?.[ghost.y]?.[ghost.x]) continue;
-      ctx.save();
-      ctx.globalAlpha = getObjectDissolveAlpha(entry, nowMs);
-      drawEnemyFieldSpriteLayer(ctx, run, ghost, cameraOffsetX, cameraOffsetY, tile, nowMs);
-      ctx.restore();
+      const v = getObjectVisualPosition(run, ghost, nowMs);
+      enemyFieldDrawItems.push({
+        kind: "enemy_dissolve",
+        entry,
+        ghost,
+        sortY: v.y,
+        sortX: v.x,
+      });
+    }
+    enemyFieldDrawItems.push({
+      kind: "player",
+      sortY: playerVisual.y,
+      sortX: playerVisual.x,
+    });
+    enemyFieldDrawItems.sort((a, b) => compareFieldDrawOrder2D(a.sortY, a.sortX, b.sortY, b.sortX));
+    for (const item of enemyFieldDrawItems) {
+      if (item.kind === "enemy_lit") {
+        drawEnemyFieldSpriteLayer(ctx, run, item.enemy, cameraOffsetX, cameraOffsetY, tile, nowMs);
+      } else if (item.kind === "enemy_fog") {
+        drawEnemyFieldSpriteLayer(
+          ctx,
+          run,
+          item.enemy,
+          cameraOffsetX,
+          cameraOffsetY,
+          tile,
+          nowMs,
+          item.mem,
+          FOG_MEMORY_OBJECT_ALPHA,
+        );
+      } else if (item.kind === "player") {
+        drawPlayerFieldLayer(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, playerVisual);
+      } else {
+        ctx.save();
+        ctx.globalAlpha = getObjectDissolveAlpha(item.entry, nowMs);
+        drawEnemyFieldSpriteLayer(ctx, run, item.ghost, cameraOffsetX, cameraOffsetY, tile, nowMs);
+        ctx.restore();
+      }
     }
   }
 
   const skillTargetCells = Array.isArray(overlay?.skillTargetCells) ? overlay.skillTargetCells : (run.skillTargetCells || []);
   if (Array.isArray(skillTargetCells) && skillTargetCells.length > 0) {
-    for (const cell of skillTargetCells) {
+    const skillTargetCellsSorted = [...skillTargetCells].sort((a, b) => compareFieldDrawOrder2D(a.y, a.x, b.y, b.x));
+    for (const cell of skillTargetCellsSorted) {
       if (!run.discovered?.[cell.y]?.[cell.x]) continue;
       if (!cellLitForPlayer(cell.x, cell.y)) continue;
       const px = Math.floor(cameraOffsetX + cell.x * tile);
@@ -314,7 +450,8 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
   }
   const skillTargetAffectedCells = Array.isArray(overlay?.skillTargetAffectedCells) ? overlay.skillTargetAffectedCells : [];
   if (skillTargetAffectedCells.length > 0) {
-    for (const cell of skillTargetAffectedCells) {
+    const skillAffectedSorted = [...skillTargetAffectedCells].sort((a, b) => compareFieldDrawOrder2D(a.y, a.x, b.y, b.x));
+    for (const cell of skillAffectedSorted) {
       if (!run.discovered?.[cell.y]?.[cell.x]) continue;
       if (!cellLitForPlayer(cell.x, cell.y)) continue;
       const px = Math.floor(cameraOffsetX + cell.x * tile);
@@ -334,7 +471,8 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     ctx.lineWidth = 2;
     const fromX = cameraOffsetX + run.player.x * tile + tile / 2;
     const fromY = cameraOffsetY + run.player.y * tile + tile / 2;
-    for (const line of targetingLines) {
+    const targetingLinesSorted = [...targetingLines].sort((a, b) => compareFieldDrawOrder2D(a.y, a.x, b.y, b.x));
+    for (const line of targetingLinesSorted) {
       if (!run.discovered?.[line.y]?.[line.x]) continue;
       if (!cellLitForPlayer(line.x, line.y)) continue;
       const toX = cameraOffsetX + line.x * tile + tile / 2;
@@ -348,136 +486,108 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     ctx.restore();
   }
 
-  if (run.discovered?.[run.goal.y]?.[run.goal.x]) {
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = `${Math.max(12, Math.floor(tile * 0.6))}px Arial`;
-    ctx.fillStyle = "#ffffff";
-    const goalCx = cameraOffsetX + run.goal.x * tile + tile / 2;
-    const goalBottomY = cellSpriteAnchorBottomY(cameraOffsetY + run.goal.y * tile, tile);
-    const goalSpriteSize = Math.max(8, Math.floor(tile * WORLD_OBJECT_SPRITE_SCALE));
-    const goalLit = cellLitForPlayer(run.goal.x, run.goal.y);
-    ctx.save();
-    if (!goalLit) {
-      ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
-    }
-    const hasGoalSprite = drawBottomCenteredSprite(
-      ctx,
-      resolveGoalSpriteUrl(),
-      goalCx,
-      goalBottomY,
-      goalSpriteSize,
-    );
-    if (!hasGoalSprite) {
-      ctx.fillText("🕳", goalCx, goalBottomY - goalSpriteSize / 2);
-    }
-    ctx.restore();
-  }
-
-  ctx.font = `${Math.max(12, Math.floor(tile * 0.62))}px Arial`;
-  const isPlayerMovingNow = isPlayerInActiveMotion(run, nowMs);
-  const movePhase = nowMs * 0.025;
-  const moveLeanRad = isPlayerMovingNow
-    ? Math.sin(movePhase) * 0.2
-    : 0;
-  const moveHopY = isPlayerMovingNow
-    ? -Math.abs(Math.sin(movePhase)) * Math.max(0.8, tile * 0.05)
-    : 0;
-  const mouseScreenX = cameraOffsetX + playerVisual.x * tile + tile / 2;
-  const playerIdleOffsetY = isPlayerInActiveMotion(run, nowMs)
-    ? 0
-    : getIdleBobOffsetY(tile, nowMs, "player");
-  const playerSpriteSizePx = Math.max(8, Math.floor(tile * PLAYER_FIELD_SPRITE_SCALE));
-  // Якорь: центр по горизонтали на середине клетки; по вертикали низ спрайта — на нижней границе клетки (+ покачивание/прыжок).
-  const playerTileBottomY = cellSpriteAnchorBottomY(cameraOffsetY + playerVisual.y * tile, tile);
-  const spriteBottomY = playerTileBottomY + playerIdleOffsetY + moveHopY;
-
-  if (isPlayerBurning(run)) {
-    drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, playerVisual.x, playerVisual.y, nowMs);
-  }
-  const hasPlayerSprite = drawBottomCenteredSpriteWithRotation(
-    ctx,
-    resolvePlayerSpriteUrl(run?.playerPortraitId),
-    mouseScreenX,
-    spriteBottomY,
-    playerSpriteSizePx,
-    moveLeanRad,
-  );
-  if (!hasPlayerSprite) {
-    ctx.save();
-    ctx.translate(mouseScreenX, spriteBottomY - playerSpriteSizePx / 2);
-    ctx.rotate(moveLeanRad);
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = `${Math.max(12, Math.floor(tile * 0.62 * PLAYER_FIELD_SPRITE_SCALE))}px Arial`;
-    ctx.fillText("🐭", 0, 0);
-    ctx.restore();
-  }
-
   const fogMemFront = run.fogObjectMemory || {};
-  for (const object of run.objects || []) {
+  const fogPoisonFrontList = [];
+  for (const object of objectsList) {
     if (!object || object.type !== "poison_cloud") continue;
     if (cellLitForPlayer(object.x, object.y)) continue;
     const mem = fogMemFront[object.id];
     if (!mem || !run.discovered?.[mem.y]?.[mem.x]) continue;
-    const cloudVisual = { x: mem.x, y: mem.y };
-    ctx.save();
-    ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
-    drawPoisonCloudLayer(
-      ctx,
-      cameraOffsetX,
-      cameraOffsetY,
-      tile,
-      cloudVisual,
-      nowMs,
-      object.icon || "☠",
-      POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
-      false,
-    );
-    ctx.restore();
-  }
-
-  for (const cloud of deferredPoisonCloudObjects) {
-    const cloudVisual = getObjectVisualPosition(run, cloud, nowMs);
-    drawPoisonCloudLayer(
-      ctx,
-      cameraOffsetX,
-      cameraOffsetY,
-      tile,
-      cloudVisual,
-      nowMs,
-      cloud.icon || "☠",
-      POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
-      false,
-    );
+    fogPoisonFrontList.push({ object, mem });
   }
 
   const dissolvesFront = Array.isArray(run.fx?.objectDissolves) ? run.fx.objectDissolves : [];
+  const poisonFrontDrawItems = [];
+  for (const { object, mem } of fogPoisonFrontList) {
+    poisonFrontDrawItems.push({
+      kind: "poison_front_fog",
+      object,
+      mem,
+      sortY: mem.y,
+      sortX: mem.x,
+    });
+  }
+  for (const cloud of deferredPoisonCloudObjects) {
+    const v = getObjectVisualPosition(run, cloud, nowMs);
+    poisonFrontDrawItems.push({
+      kind: "poison_front_lit",
+      cloud,
+      sortY: v.y,
+      sortX: v.x,
+    });
+  }
   for (const entry of dissolvesFront) {
     const ghost = entry?.ghost;
     if (!ghost || ghost.type !== "poison_cloud") continue;
     if (!run.discovered?.[ghost.y]?.[ghost.x]) continue;
-    const cloudVisual = getObjectVisualPosition(run, ghost, nowMs);
-    ctx.save();
-    ctx.globalAlpha = getObjectDissolveAlpha(entry, nowMs);
-    drawPoisonCloudLayer(
-      ctx,
-      cameraOffsetX,
-      cameraOffsetY,
-      tile,
-      cloudVisual,
-      nowMs,
-      ghost.icon || "☠",
-      POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
-      false,
-    );
-    ctx.restore();
+    const v = getObjectVisualPosition(run, ghost, nowMs);
+    poisonFrontDrawItems.push({
+      kind: "poison_front_dissolve",
+      entry,
+      ghost,
+      sortY: v.y,
+      sortX: v.x,
+    });
+  }
+  poisonFrontDrawItems.sort((a, b) => compareFieldDrawOrder2D(a.sortY, a.sortX, b.sortY, b.sortX));
+  for (const item of poisonFrontDrawItems) {
+    if (item.kind === "poison_front_fog") {
+      const cloudVisual = { x: item.mem.x, y: item.mem.y };
+      ctx.save();
+      ctx.globalAlpha = FOG_MEMORY_OBJECT_ALPHA;
+      drawPoisonCloudLayer(
+        ctx,
+        cameraOffsetX,
+        cameraOffsetY,
+        tile,
+        cloudVisual,
+        nowMs,
+        item.object.icon || "☠",
+        POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
+        false,
+      );
+      ctx.restore();
+    } else if (item.kind === "poison_front_lit") {
+      const cloudVisual = getObjectVisualPosition(run, item.cloud, nowMs);
+      drawPoisonCloudLayer(
+        ctx,
+        cameraOffsetX,
+        cameraOffsetY,
+        tile,
+        cloudVisual,
+        nowMs,
+        item.cloud.icon || "☠",
+        POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
+        false,
+      );
+    } else {
+      const cloudVisual = getObjectVisualPosition(run, item.ghost, nowMs);
+      ctx.save();
+      ctx.globalAlpha = getObjectDissolveAlpha(item.entry, nowMs);
+      drawPoisonCloudLayer(
+        ctx,
+        cameraOffsetX,
+        cameraOffsetY,
+        tile,
+        cloudVisual,
+        nowMs,
+        item.ghost.icon || "☠",
+        POISON_CLOUD_FIELD_SPRITE_SCALE_FRONT,
+        false,
+      );
+      ctx.restore();
+    }
   }
 
-  if (Array.isArray(run.objects)) {
-    const visibleEnemies = run.objects.filter(
-      (object) => object.type === "enemy" && cellLitForPlayer(object.x, object.y),
+  {
+    const visibleEnemies = objectsList.filter(
+      (object) => object.type === "enemy" && enemyUsesLitFieldDraw(object),
     );
+    visibleEnemies.sort((a, b) => {
+      const va = getObjectVisualPosition(run, a, nowMs);
+      const vb = getObjectVisualPosition(run, b, nowMs);
+      return compareFieldDrawOrder2D(va.y, va.x, vb.y, vb.x);
+    });
     for (const enemy of visibleEnemies) {
       const enemyVisual = getObjectVisualPosition(run, enemy, nowMs);
       const enemyIsMovingNow = isObjectInActiveMotion(run, enemy, nowMs);
@@ -493,7 +603,8 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
         cellSpriteAnchorBottomY(cameraOffsetY + enemyVisual.y * tile, tile)
         + enemyIdleOffsetY
         + enemyMoveHopY;
-      const enemySpriteCy = enemySpriteBottomY - Math.max(8, Math.floor(tile)) / 2;
+      const enemySpriteCy =
+        enemySpriteBottomY - Math.max(8, Math.floor(tile * PLAYER_FIELD_SPRITE_SCALE)) / 2;
       drawEnemyHpBarIfNeeded(ctx, enemy, cx, enemySpriteCy, tile);
     }
   }
@@ -513,7 +624,13 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    for (const [key, entries] of grouped.entries()) {
+    const groupedKeysSorted = [...grouped.keys()].sort((ka, kb) => {
+      const [xa, ya] = ka.split(":").map(Number);
+      const [xb, yb] = kb.split(":").map(Number);
+      return compareFieldDrawOrder2D(ya, xa, yb, xb);
+    });
+    for (const key of groupedKeysSorted) {
+      const entries = grouped.get(key);
       const [xText, yText] = key.split(":");
       const x = Number(xText);
       const y = Number(yText);
@@ -738,6 +855,48 @@ function getObjectVisualPosition(run, object, nowMs, fixedGridPos = null) {
   return { x: object.x, y: object.y };
 }
 
+/** Спрайт героя на поле: тот же слой глубины, что у врагов (порядок по Y/X задаётся снаружи). */
+function drawPlayerFieldLayer(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs, playerVisual) {
+  ctx.font = `${Math.max(12, Math.floor(tile * 0.62))}px Arial`;
+  const isPlayerMovingNow = isPlayerInActiveMotion(run, nowMs);
+  const movePhase = nowMs * 0.025;
+  const moveLeanRad = isPlayerMovingNow
+    ? Math.sin(movePhase) * 0.2
+    : 0;
+  const moveHopY = isPlayerMovingNow
+    ? -Math.abs(Math.sin(movePhase)) * Math.max(0.8, tile * 0.05)
+    : 0;
+  const mouseScreenX = cameraOffsetX + playerVisual.x * tile + tile / 2;
+  const playerIdleOffsetY = isPlayerInActiveMotion(run, nowMs)
+    ? 0
+    : getIdleBobOffsetY(tile, nowMs, "player");
+  const playerSpriteSizePx = Math.max(8, Math.floor(tile * PLAYER_FIELD_SPRITE_SCALE));
+  const playerTileBottomY = cellSpriteAnchorBottomY(cameraOffsetY + playerVisual.y * tile, tile);
+  const spriteBottomY = playerTileBottomY + playerIdleOffsetY + moveHopY;
+
+  if (isPlayerBurning(run)) {
+    drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, playerVisual.x, playerVisual.y, nowMs);
+  }
+  const hasPlayerSprite = drawBottomCenteredSpriteWithRotation(
+    ctx,
+    resolvePlayerSpriteUrl(run?.playerPortraitId),
+    mouseScreenX,
+    spriteBottomY,
+    playerSpriteSizePx,
+    moveLeanRad,
+  );
+  if (!hasPlayerSprite) {
+    ctx.save();
+    ctx.translate(mouseScreenX, spriteBottomY - playerSpriteSizePx / 2);
+    ctx.rotate(moveLeanRad);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `${Math.max(12, Math.floor(tile * 0.62 * PLAYER_FIELD_SPRITE_SCALE))}px Arial`;
+    ctx.fillText("🐭", 0, 0);
+    ctx.restore();
+  }
+}
+
 function drawEnemyFieldSpriteLayer(
   ctx,
   run,
@@ -749,6 +908,7 @@ function drawEnemyFieldSpriteLayer(
   fixedGridPos = null,
   ghostAlpha = 1,
 ) {
+  ensureEnemyBrain(enemy);
   const enemyVisual = getObjectVisualPosition(run, enemy, nowMs, fixedGridPos);
   if (!fixedGridPos && isEnemyBurning(enemy)) {
     drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, enemyVisual.x, enemyVisual.y, nowMs);
@@ -769,7 +929,7 @@ function drawEnemyFieldSpriteLayer(
     cellSpriteAnchorBottomY(cameraOffsetY + enemyVisual.y * tile, tile)
     + enemyIdleOffsetY
     + enemyMoveHopY;
-  const enemySpriteSize = Math.max(8, Math.floor(tile));
+  const enemySpriteSize = Math.max(8, Math.floor(tile * PLAYER_FIELD_SPRITE_SCALE));
   const enemySpriteCy = enemySpriteBottomY - enemySpriteSize / 2;
 
   const enemyType = String(enemy?.data?.enemyType || "").trim();
@@ -792,12 +952,23 @@ function drawEnemyFieldSpriteLayer(
     ctx.translate(cx, enemySpriteCy);
     ctx.rotate(enemyMoveLeanRad);
     ctx.fillStyle = "#ffffff";
-    ctx.font = `${Math.max(12, Math.floor(tile * 0.55))}px Arial`;
+    ctx.font = `${Math.max(12, Math.floor(tile * 0.62 * PLAYER_FIELD_SPRITE_SCALE))}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(enemy.icon || "?", 0, 0);
     ctx.restore();
   }
+  drawEnemyAiBehaviorBadge(
+    ctx,
+    run,
+    enemy,
+    cx,
+    enemySpriteCy,
+    enemySpriteSize,
+    enemyMoveLeanRad,
+    tile,
+    nowMs,
+  );
   if (ghostLayer) {
     ctx.restore();
   }
@@ -872,7 +1043,7 @@ function drawObjectIcon(
         type: object?.data?.itemType,
         subtype: object?.data?.itemSubtype,
       };
-    const itemSpriteUrl = resolveItemSubtypeSpriteUrl(itemForSprite);
+    const itemSpriteUrl = resolveItemSpriteUrl(itemForSprite);
     const rarity = getItemRarityById(object?.data?.itemId);
     const rarityColors = getGroundLootRarityColors(rarity);
     const containerSpriteUrl = resolveGroundLootContainerSpriteUrl(rarity);
@@ -1159,7 +1330,13 @@ function drawFloatingTexts(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowMs) 
     return;
   }
 
-  for (const text of floatingTexts) {
+  const floatingSorted = [...floatingTexts].sort((a, b) => compareFieldDrawOrder2D(
+    Number(a.y),
+    Number(a.x),
+    Number(b.y),
+    Number(b.x),
+  ));
+  for (const text of floatingSorted) {
     if (text.startMs == null) continue;
     if (nowMs < text.startMs) continue;
     const t = (nowMs - text.startMs) / text.durationMs;
@@ -1258,7 +1435,9 @@ function drawSkillImpactSegment(ctx, cameraOffsetX, cameraOffsetY, tile, segment
   ctx.save();
   if (segment.style === "fireball_blast_3x3") {
     const alpha = 1 - progress;
-    const cells = Array.isArray(segment.affectedCells) ? segment.affectedCells : [];
+    const cells = Array.isArray(segment.affectedCells)
+      ? [...segment.affectedCells].sort((a, b) => compareFieldDrawOrder2D(Number(a.y), Number(a.x), Number(b.y), Number(b.x)))
+      : [];
     for (const cell of cells) {
       const px = cameraOffsetX + Number(cell.x) * tile;
       const py = cameraOffsetY + Number(cell.y) * tile;

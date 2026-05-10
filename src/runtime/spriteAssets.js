@@ -1,7 +1,7 @@
-import { APP_VERSION } from "../app-config.js?v=0.5.6-pre-alpha";
-import { isKnownPlayerPortraitId, PLAYER_PORTRAITS } from "../game/playerPortraitsCatalog.js?v=0.5.6-pre-alpha";
-import { getAllLootItems } from "../loadout.js?v=0.5.6-pre-alpha";
-import { getAllSkillIds } from "../skillsRuntime.js?v=0.5.6-pre-alpha";
+import { APP_VERSION } from "../app-config.js?v=0.5.7-pre-alpha";
+import { isKnownPlayerPortraitId, PLAYER_PORTRAITS } from "../game/playerPortraitsCatalog.js?v=0.5.7-pre-alpha";
+import { getAllLootItems } from "../loadout.js?v=0.5.7-pre-alpha";
+import { getAllSkillIds } from "../skillsRuntime.js?v=0.5.7-pre-alpha";
 
 const spriteCache = new Map();
 
@@ -31,10 +31,28 @@ export function getItemSubtypeSpriteKey(item) {
   return `${type}_${subtype}`.replaceAll("/", "_");
 }
 
-export function resolveItemSubtypeSpriteUrl(item) {
-  const key = getItemSubtypeSpriteKey(item);
+export function getItemSpriteKey(item) {
+  const id = String(item?.id || "").trim();
+  if (!id) return "";
+  return id.replaceAll("/", "_");
+}
+
+export function resolveItemSpriteUrl(item) {
+  const key = getItemSpriteKey(item);
   if (!key) return "";
-  return withVersion(`./src/assets/sprites/items_by_subtype/${key}.png`);
+  return withVersion(`./src/assets/sprites/items/${key}.png`);
+}
+
+/**
+ * Backward-compatible alias: раньше спрайт выбирался по подтипу.
+ * Теперь — по id предмета.
+ */
+export function resolveItemSubtypeSpriteUrl(item) {
+  const byIdUrl = resolveItemSpriteUrl(item);
+  if (byIdUrl) return byIdUrl;
+  const fallbackKey = getItemSubtypeSpriteKey(item);
+  if (!fallbackKey) return "";
+  return withVersion(`./src/assets/sprites/items_by_subtype/${fallbackKey}.png`);
 }
 
 export function resolveLootFrameSpriteUrl(rarity) {
@@ -131,7 +149,7 @@ export function preloadAllRunSprites() {
   const lootItems = getAllLootItems();
   const uniqueItemUrls = new Set();
   for (const item of lootItems) {
-    const url = resolveItemSubtypeSpriteUrl(item);
+    const url = resolveItemSpriteUrl(item);
     if (url) uniqueItemUrls.add(url);
   }
   for (const url of uniqueItemUrls) preloadSpriteByUrl(url);

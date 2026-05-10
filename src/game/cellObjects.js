@@ -1,8 +1,8 @@
 /** Кто на клетке и кто блокирует ход для игрока / врага. */
 
-import { refreshPlayerVisibilityAndFogMemory } from "./playerVisibility.js?v=0.5.6-pre-alpha";
-import { enqueueObjectDissolve } from "../runtime/runFxState.js?v=0.5.6-pre-alpha";
-import { bumpRunTotal } from "./runTotals.js?v=0.5.6-pre-alpha";
+import { refreshPlayerVisibilityAndFogMemory } from "./playerVisibility.js?v=0.5.7-pre-alpha";
+import { enqueueObjectDissolve } from "../runtime/runFxState.js?v=0.5.7-pre-alpha";
+import { bumpRunTotal } from "./runTotals.js?v=0.5.7-pre-alpha";
 
 export const ACTOR_KIND = {
   PLAYER: "player",

@@ -1,5 +1,5 @@
-import { inBounds } from "../nav/pathfinding.js?v=0.5.6-pre-alpha";
-import { hasLineOfSightOnGrid } from "../nav/lineOfSight.js?v=0.5.6-pre-alpha";
+import { inBounds } from "../nav/pathfinding.js?v=0.5.7-pre-alpha";
+import { hasLineOfSightOnGrid } from "../nav/lineOfSightPermissive.js?v=0.5.7-pre-alpha";
 
 function ensureBooleanMask(run) {
   const w = run.width;

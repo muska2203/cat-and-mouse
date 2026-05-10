@@ -1,10 +1,10 @@
-import { floorHp } from "./rules.js?v=0.5.6-pre-alpha";
-import { syncPlayerHp } from "./game/syncHp.js?v=0.5.6-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.5.6-pre-alpha";
-import { ensureRunFxState, enqueueFloatingText } from "./runtime/runFxState.js?v=0.5.6-pre-alpha";
-import { hasLineOfSightOnGrid } from "./nav/lineOfSight.js?v=0.5.6-pre-alpha";
-import { computePlayerVisibleMask } from "./game/playerVisibility.js?v=0.5.6-pre-alpha";
-import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.5.6-pre-alpha";
+import { floorHp } from "./rules.js?v=0.5.7-pre-alpha";
+import { syncPlayerHp } from "./game/syncHp.js?v=0.5.7-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.5.7-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "./runtime/runFxState.js?v=0.5.7-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSightPermissive.js?v=0.5.7-pre-alpha";
+import { computePlayerVisibleMask } from "./game/playerVisibility.js?v=0.5.7-pre-alpha";
+import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.5.7-pre-alpha";
 
 const SKILL_DEFS = {
   fireball: {

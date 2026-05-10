@@ -1,5 +1,5 @@
-import { getSkillManaCost } from "../skillsRuntime.js?v=0.5.6-pre-alpha";
-import { buildItemSpriteStackHtml, buildSkillSpriteHtml } from "./spriteIconHtml.js?v=0.5.6-pre-alpha";
+import { getSkillManaCost } from "../skillsRuntime.js?v=0.5.7-pre-alpha";
+import { buildItemSpriteStackHtml, buildSkillSpriteHtml } from "./spriteIconHtml.js?v=0.5.7-pre-alpha";
 
 export function buildSkillsListHtml({ skills, sheet, esc }) {
   const skillsHtml = (skills || [])

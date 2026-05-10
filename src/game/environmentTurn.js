@@ -1,4 +1,4 @@
-import { floorHp } from "../rules.js?v=0.5.6-pre-alpha";
+import { floorHp } from "../rules.js?v=0.5.7-pre-alpha";
 import {
   chebyshevDistance,
   inBounds,
@@ -7,20 +7,20 @@ import {
   buildPathToNearestEnemyAttackCell as buildPathToNearestEnemyAttackCellNav,
   buildPathTowardTarget,
   buildPathToNearestAttackCellAroundFocus,
-} from "../nav/pathfinding.js?v=0.5.6-pre-alpha";
-import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.5.6-pre-alpha";
-import { getEnemyById } from "./enemies.js?v=0.5.6-pre-alpha";
-import { getEnemyMaxHp } from "./enemyDefs.js?v=0.5.6-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.5.6-pre-alpha";
+} from "../nav/pathfinding.js?v=0.5.7-pre-alpha";
+import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.5.7-pre-alpha";
+import { getEnemyById } from "./enemies.js?v=0.5.7-pre-alpha";
+import { getEnemyMaxHp } from "./enemyDefs.js?v=0.5.7-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.7-pre-alpha";
 import {
   ensureEnemyStatus,
   ensurePlayerStatus,
   tickTemporaryObjects,
-} from "./trapsAndClouds.js?v=0.5.6-pre-alpha";
-import { applyEndOfEnvironmentObjectEffects, applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.6-pre-alpha";
+} from "./trapsAndClouds.js?v=0.5.7-pre-alpha";
+import { applyEndOfEnvironmentObjectEffects, applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.7-pre-alpha";
 import {
   isCellBlockedForEnemyWithReservations,
-} from "./cellBlocking.js?v=0.5.6-pre-alpha";
+} from "./cellBlocking.js?v=0.5.7-pre-alpha";
 import {
   AI_IDLE,
   AI_PURSUIT,
@@ -31,11 +31,11 @@ import {
   enemyAtHome,
   enemyInLastKnownVicinity,
   enemySeesPlayer,
-} from "./enemyAggro.js?v=0.5.6-pre-alpha";
-import { randomFloat } from "./rng.js?v=0.5.6-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.5.6-pre-alpha";
-import { processTurnEffects } from "./turnEffects.js?v=0.5.6-pre-alpha";
-import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.6-pre-alpha";
+} from "./enemyAggro.js?v=0.5.7-pre-alpha";
+import { randomFloat } from "./rng.js?v=0.5.7-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.5.7-pre-alpha";
+import { processTurnEffects } from "./turnEffects.js?v=0.5.7-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.7-pre-alpha";
 
 function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
   const stunnedEnemyIds = new Set();

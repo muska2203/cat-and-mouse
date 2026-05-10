@@ -1,9 +1,9 @@
-import { ACTOR_KIND } from "./cellObjects.js?v=0.5.6-pre-alpha";
-import { getChestCountsForLevel } from "./chestLoot.js?v=0.5.6-pre-alpha";
-import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.5.6-pre-alpha";
-import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.6-pre-alpha";
-import { randomInt } from "./rng.js?v=0.5.6-pre-alpha";
-import { createWorldObject } from "./worldObjectModel.js?v=0.5.6-pre-alpha";
+import { ACTOR_KIND } from "./cellObjects.js?v=0.5.7-pre-alpha";
+import { getChestCountsForLevel } from "./chestLoot.js?v=0.5.7-pre-alpha";
+import { getEnemyCountsForLevel } from "./enemySpawn.js?v=0.5.7-pre-alpha";
+import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.7-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.7-pre-alpha";
+import { createWorldObject } from "./worldObjectModel.js?v=0.5.7-pre-alpha";
 
 export function generateObjects(maze, level = 1, options = {}) {
   const rng = options.rng && typeof options.rng.nextFloat === "function" ? options.rng : null;
@@ -45,8 +45,9 @@ export function generateObjects(maze, level = 1, options = {}) {
     },
     chest_common: {
       id: "chest_common",
-      name: "Обычный сундук",
-      description: "Сундук с добычей. Открывается при заходе на клетку.",
+      name: "Сундук Голодной лапы",
+      description:
+        "Железные обручи зажимают доски, будто лапы только что отпустили добычу: говорят, сюда падали остатки тех, кто шёл из Норы раньше тебя. Открывается при заходе на клетку.",
       type: "chest",
       purpose: "chest",
       icon: "📦",
@@ -59,8 +60,9 @@ export function generateObjects(maze, level = 1, options = {}) {
     },
     chest_rare: {
       id: "chest_rare",
-      name: "Редкий сундук",
-      description: "Сундук с более ценной добычей. Открывается при заходе на клетку.",
+      name: "Лазурный ларец Кошачьего двора",
+      description:
+        "Синее дерево и холодный замок — почти герб дома, где мышь только гость; ждёт тех, кто осмелился пройти лабиринт до конца. Открывается при заходе на клетку.",
       type: "chest",
       purpose: "chest",
       icon: "🎁",
@@ -74,8 +76,9 @@ export function generateObjects(maze, level = 1, options = {}) {
     },
     chest_unique: {
       id: "chest_unique",
-      name: "Уникальный сундук",
-      description: "Редкий сундук с ценной добычей. Открывается при заходе на клетку.",
+      name: "Реликварий ордена Ночной шерсти",
+      description:
+        "Бронза по углам потемнела от стольких лап: хранилище трофеев самых старых охотников подземья. Открывается при заходе на клетку.",
       type: "chest",
       purpose: "chest",
       icon: "👑",
@@ -89,8 +92,9 @@ export function generateObjects(maze, level = 1, options = {}) {
     },
     anvil: {
       id: "anvil",
-      name: "Наковальня",
-      description: "Позволяет перерабатывать и улучшать экипировку.",
+      name: "Наковальня Крысолома",
+      description:
+        "Легендарная подпольная наковальня: когда-то на ней выправляли зубцы ловушек и обручи от мышиных сундуков. Позволяет перерабатывать и улучшать экипировку.",
       type: "anvil",
       purpose: "anvil",
       icon: "⚒",

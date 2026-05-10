@@ -1,9 +1,9 @@
-import { removeObject } from "./cellObjects.js?v=0.5.6-pre-alpha";
+import { removeObject } from "./cellObjects.js?v=0.5.7-pre-alpha";
 import {
   broadcastIntelFromSource,
   enterPursuit,
-} from "./enemyAggro.js?v=0.5.6-pre-alpha";
-import { applyXpGain, getXpForEnemy } from "./xp.js?v=0.5.6-pre-alpha";
+} from "./enemyAggro.js?v=0.5.7-pre-alpha";
+import { applyXpGain, getXpForEnemy } from "./xp.js?v=0.5.7-pre-alpha";
 
 export function applyDamageToEnemyAndResolveDefeat(run, playerSheet, enemy, damage) {
   if (!run || !playerSheet || !enemy || enemy.type !== "enemy") {
