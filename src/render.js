@@ -41,7 +41,7 @@ const FOG_MEMORY_OBJECT_ALPHA = 0.44;
  * Временно: не затемнять открытые, но сейчас не освещённые клетки;
  * при true враги на открытых клетках рисуются полным спрайтом (не призраком в памяти тумана).
  */
-const DISABLE_DIM_UNLIT_DISCOVERED_CELLS = true;
+const DISABLE_DIM_UNLIT_DISCOVERED_CELLS = false;
 
 /** Y нижнего края спрайта на поле: совпадает с вертикальным центром ячейки (py — верхний край клетки по Y). */
 function cellSpriteAnchorBottomY(py, tile) {
