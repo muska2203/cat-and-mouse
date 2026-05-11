@@ -1,17 +1,33 @@
-import { floorHp } from "./rules.js?v=0.5.7-pre-alpha";
-import { syncPlayerHp } from "./game/syncHp.js?v=0.5.7-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.5.7-pre-alpha";
-import { ensureRunFxState, enqueueFloatingText } from "./runtime/runFxState.js?v=0.5.7-pre-alpha";
-import { hasLineOfSightOnGrid } from "./nav/lineOfSightPermissive.js?v=0.5.7-pre-alpha";
-import { computePlayerVisibleMask } from "./game/playerVisibility.js?v=0.5.7-pre-alpha";
-import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.5.7-pre-alpha";
+import { floorHp } from "./rules.js?v=0.5.8-pre-alpha";
+import { syncPlayerHp } from "./game/syncHp.js?v=0.5.8-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./game/enemyCombat.js?v=0.5.8-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "./runtime/runFxState.js?v=0.5.8-pre-alpha";
+import { hasLineOfSightOnGrid } from "./nav/lineOfSightPermissive.js?v=0.5.8-pre-alpha";
+import { computePlayerVisibleMask } from "./game/playerVisibility.js?v=0.5.8-pre-alpha";
+import { ensureEnemyStatus } from "./game/trapsAndClouds.js?v=0.5.8-pre-alpha";
+import { destroyStoneWallsAlongCasterSegment } from "./game/stoneWallRay.js?v=0.5.8-pre-alpha";
+import {
+  EXTENSION_SKILL_IDS,
+  aggregateExtendedSkillPreview,
+  applyExtensionSkillPrepared,
+  getExtensionSkillTargets,
+  getExtensionSkillAffectedCells,
+  getMeteorSkillNumbers,
+} from "./game/skillsPreparedCast.js?v=0.5.8-pre-alpha";
+
+/** Длительности сегментов и сдвиг корней для fireball / magic_slap: общий источник для motion и pending apply. */
+const FIREBALL_ROOT_STAGGER_MS = 102;
+const FIREBALL_PROJECTILE_MS = 230;
+const FIREBALL_IMPACT_MS = 250;
+const MAGIC_SLAP_PROJECTILE_MS = 190;
+const MAGIC_SLAP_IMPACT_MS = 130;
 
 const SKILL_DEFS = {
   fireball: {
     id: "fireball",
     name: "Огненный шар",
     icon: "🔥",
-    manaCost: 24,
+    manaCost: 12,
     rarity: "rare",
     target: "visible_cell",
     targeting: {
@@ -26,7 +42,7 @@ const SKILL_DEFS = {
     id: "magic_slap",
     name: "Магический шлепок",
     icon: "💫",
-    manaCost: 15,
+    manaCost: 8,
     rarity: "common",
     target: "single_unit",
     targeting: {
@@ -36,6 +52,150 @@ const SKILL_DEFS = {
     },
     description: "Серия магических шлепков по врагам: количество применений растет с уровнем скилла (можно повторять одну и ту же цель).",
     compatibleItems: [{ type: "weapon", subtype: "staff" }],
+  },
+  ice_spike: {
+    id: "ice_spike",
+    name: "Ледяной шип",
+    icon: "❄",
+    manaCost: 11,
+    rarity: "rare",
+    target: "direction_ray_5",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Укажи любую видимую клетку (мышью или клавишами — ближайшая к стрелке). Луч по прямой от тебя к точке прицела, до 5 проходимых клеток; урон по цепочке врагов ослабевает вдвое на каждом следующем.",
+    compatibleItems: [{ type: "weapon", subtype: "staff" }],
+  },
+  stone_wall: {
+    id: "stone_wall",
+    name: "Метеорит",
+    icon: "☄",
+    manaCost: 13,
+    rarity: "rare",
+    target: "visible_cell",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Любая видимая клетка в обзоре: удар по центру, все враги в 8 соседних клетках отталкиваются на 1 клетку от центра (со столкновениями). Если после удара центр свободен — на 3 хода окружения там появляется каменная стена.",
+    compatibleItems: [{ type: "weapon", subtype: "staff" }],
+  },
+  shock_wave: {
+    id: "shock_wave",
+    name: "Ударная волна",
+    icon: "💨",
+    manaCost: 14,
+    rarity: "unique",
+    target: "ring_8_self",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Урон по всем врагам в 8 соседних клетках и отталкивание на 2 клетки от героя (с учётом столкновений). Каменные стены в кольце тоже отталкиваются: при столкновении с котом он получает урон как при столкновении котов; во всех прочих столкновениях стена рассыпается. Цель: своя клетка.",
+    compatibleItems: [{ type: "weapon", subtype: "staff" }],
+  },
+  chain_lightning: {
+    id: "chain_lightning",
+    name: "Цепная молния",
+    icon: "⚡",
+    manaCost: 15,
+    rarity: "unique",
+    target: "visible_enemy",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Видимый враг, затем цепочка ударов по области (до 4 попаданий): урон растёт с каждым прыжком. В цепь могут попасть другие коты или вы.",
+    compatibleItems: [{ type: "weapon", subtype: "staff" }],
+  },
+  steel_stance: {
+    id: "steel_stance",
+    name: "Стальная стойка",
+    icon: "🛡",
+    manaCost: 9,
+    rarity: "common",
+    target: "self_buff",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Бафф на 2 ваших хода: при ударе кота по вам есть шанс контратаки уроном как у обычного удара мечом.",
+    compatibleItems: [{ type: "weapon", subtype: "sword" }],
+  },
+  whirlwind: {
+    id: "whirlwind",
+    name: "Вихрь",
+    icon: "🌀",
+    manaCost: 11,
+    rarity: "rare",
+    target: "ring_8_self",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Урон по мечу по всем врагам вокруг с одним общим броском крита на весь каст. Цель: своя клетка.",
+    compatibleItems: [{ type: "weapon", subtype: "sword" }],
+  },
+  lunge: {
+    id: "lunge",
+    name: "Выпад",
+    icon: "🗡",
+    manaCost: 8,
+    rarity: "rare",
+    target: "enemy_axis_diag_2",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Рывок на клетку врага на манхэттенской или диагональной дистанции ровно 2, удар мечом и отбрасывание его на 2 клетки по лучу от вас; если на пути другой кот — столкновение с уроном, вы отступаете на свободную клетку рядом с целью.",
+    compatibleItems: [{ type: "weapon", subtype: "sword" }],
+  },
+  cleave: {
+    id: "cleave",
+    name: "Рассечение",
+    icon: "✴",
+    manaCost: 10,
+    rarity: "rare",
+    target: "enemy_adjacent_8",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Сильный удар по соседнему врагу и кровотечение на 3 хода: урон со временем, слабее атаки кота по вам и выше шанс вашего крита по этой цели.",
+    compatibleItems: [{ type: "weapon", subtype: "sword" }],
+  },
+  supremacy: {
+    id: "supremacy",
+    name: "Превосходство",
+    icon: "👑",
+    manaCost: 12,
+    rarity: "unique",
+    target: "enemy_visible_point",
+    targeting: {
+      charges: 1,
+      allowRepeatTarget: false,
+      shape: "single",
+    },
+    description:
+      "Видимый враг получает берсерк на несколько фаз: пока рядом есть другие видимые коты, бьёт их вместо вас.",
+    compatibleItems: [{ type: "weapon", subtype: "sword" }],
   },
 };
 
@@ -106,7 +266,6 @@ function buildBlockingSkillMotion(skillId, run, selectedRoots = []) {
   if (!run?.player || roots.length === 0) return null;
 
   const segmentGroups = [];
-  const castStaggerMs = 102;
   const from = { x: Number(run.player.x), y: Number(run.player.y) };
   for (let index = 0; index < roots.length; index += 1) {
     const root = roots[index];
@@ -118,14 +277,14 @@ function buildBlockingSkillMotion(skillId, run, selectedRoots = []) {
         style: "fireball",
         from,
         to,
-        durationMs: 230,
+        durationMs: FIREBALL_PROJECTILE_MS,
       });
       groupSegments.push({
         kind: "impact",
         style: "fireball_blast_3x3",
         center: to,
         affectedCells: getSkillAffectedCellsForRoot(run, skillId, to.x, to.y),
-        durationMs: 250,
+        durationMs: FIREBALL_IMPACT_MS,
       });
     } else if (skillId === "magic_slap") {
       groupSegments.push({
@@ -133,18 +292,18 @@ function buildBlockingSkillMotion(skillId, run, selectedRoots = []) {
         style: "magic_hand",
         from,
         to,
-        durationMs: 190,
+        durationMs: MAGIC_SLAP_PROJECTILE_MS,
       });
       groupSegments.push({
         kind: "impact",
         style: "magic_slap_hit",
         center: to,
-        durationMs: 130,
+        durationMs: MAGIC_SLAP_IMPACT_MS,
       });
     }
     if (groupSegments.length === 0) continue;
     segmentGroups.push({
-      startOffsetMs: index * castStaggerMs,
+      startOffsetMs: index * FIREBALL_ROOT_STAGGER_MS,
       segments: groupSegments,
     });
   }
@@ -317,23 +476,50 @@ export function createSkillInstanceDataForItem(item, rng = Math.random) {
   };
 }
 
+/** Нормализация данных скиллов экземпляра: сохранённые skillIds не перебрасываются заново при каждом вызове — только валидация по пулу предмета и добор до двух слотов. */
 export function normalizeSkillInstanceData(item, instanceData, rng = Math.random) {
   if (!isEquipItem(item)) return null;
   const base = instanceData && typeof instanceData === "object" ? instanceData : {};
-  const rolledIds = rollSkillIdsForItem(item, rng);
-  const existingIds = Array.isArray(base.skillIds)
-    ? base.skillIds.filter((id) => SKILL_DEFS[id] && rolledIds.includes(id))
-    : [];
-  const skillIds = existingIds.length > 0 ? existingIds.slice(0, 2) : rolledIds;
+  const allowedPool = getSkillIdsForItem(item);
+  const allowed = new Set(allowedPool);
+
+  const rawSavedIds = Array.isArray(base.skillIds) ? base.skillIds : [];
+  const preservedOrder = rawSavedIds.filter((id) => SKILL_DEFS[id] && allowed.has(id));
+  const preservedUnique = [...new Set(preservedOrder)].slice(0, 2);
+
+  let skillIds;
+
+  if (preservedUnique.length >= 2) {
+    skillIds = preservedUnique;
+  } else if (preservedUnique.length === 1) {
+    const first = preservedUnique[0];
+    const rest = allowedPool.filter((id) => id !== first);
+    if (rest.length === 0) {
+      skillIds = [first];
+    } else if (rest.length === 1) {
+      skillIds = [first, rest[0]];
+    } else {
+      const extra = pickNRandomUnique(rest, 1, rng)[0];
+      skillIds = extra ? [first, extra] : [first];
+    }
+  } else {
+    skillIds = rollSkillIdsForItem(item, rng);
+  }
+
+  const originalPersisted = new Set(rawSavedIds.filter((id) => SKILL_DEFS[id] && allowed.has(id)));
+
   const sourceLevels = base.skillLevels && typeof base.skillLevels === "object"
     ? base.skillLevels
     : {};
   const skillLevels = {};
   for (const skillId of skillIds) {
-    const sourceLevel = Number(sourceLevels[skillId] || 0);
     const maxLevel = getMaxSkillLevelForEquip(item);
+    const sourceLevel = Number(sourceLevels[skillId]);
     if (sourceLevel >= 1 && sourceLevel <= maxLevel) {
       skillLevels[skillId] = Math.floor(sourceLevel);
+    } else if (originalPersisted.has(skillId)) {
+      const clamped = Number.isFinite(sourceLevel) ? Math.floor(sourceLevel) : 1;
+      skillLevels[skillId] = Math.min(maxLevel, Math.max(1, clamped));
     } else {
       skillLevels[skillId] = rollSkillLevelForItem(item, rng);
     }
@@ -374,6 +560,9 @@ export function getSkillTargetingProfile(skillId, skillLevel = 1) {
 export function getSkillAffectedCellsForRoot(run, skillId, rootX, rootY) {
   const skill = getSkillById(skillId);
   if (!skill) return [];
+  if (EXTENSION_SKILL_IDS.has(skillId)) {
+    return getExtensionSkillAffectedCells(run, skillId, rootX, rootY);
+  }
   const offsets = getTemplateOffsets(skill);
   const seen = new Set();
   const out = [];
@@ -408,6 +597,19 @@ export function buildPreparedSkillCastState(run, skillId, selectedRoots = []) {
 }
 
 export const SKILLS_APPLY_BY_ID = {
+  stone_wall: {
+    getHoverData: (skill, item, playerSheet) => {
+      const skillLevel = Math.max(1, Number(skill?.level || 1));
+      const { centerDamage, wallBonusSpell } = getMeteorSkillNumbers(skillLevel, playerSheet);
+      return {
+        formula:
+          "Урон по центру: как у базового посохового заклинания (8 + ИНТ×0,35 + 2 за уровень скилла после первого, минимум 1). Порождённая стена даёт бонус к урону заклинаниям, разбивающим стены на луче: 35% от того же базового значения, минимум 1.",
+        targets: "Любая видимая клетка в обзоре, кроме клетки героя. По кольцу из 8 клеток вокруг центра — только отталкивание.",
+        skillLevel,
+        damageCenter: centerDamage,
+      };
+    },
+  },
   fireball: {
     getTargets: (run, playerSheet) => {
       return getVisibleCellsForPlayer(run, { maxRange: 6, includeWalls: false });
@@ -500,6 +702,9 @@ export const SKILLS_APPLY_BY_ID = {
 
 export function getSkillTargetCells(run, playerSheet, skillId) {
   if (!run || !playerSheet || !skillId) return [];
+  if (EXTENSION_SKILL_IDS.has(skillId)) {
+    return getExtensionSkillTargets(run, playerSheet, skillId);
+  }
   const resolver = SKILLS_APPLY_BY_ID[skillId];
   if (resolver && resolver.getTargets) {
     return resolver.getTargets(run, playerSheet);
@@ -518,8 +723,27 @@ export function buildSkillHoverData(skill, item, playerSheet) {
 
 function aggregatePreparedSkillEffects(run, playerSheet, item, instanceData, skillId, selectedRoots = []) {
   const skill = getSkillById(skillId);
+  if (!skill || !Array.isArray(selectedRoots)) {
+    return null;
+  }
+  const previewWithoutRoots = skillId === "shock_wave" || skillId === "whirlwind";
+  if (selectedRoots.length === 0 && !previewWithoutRoots) {
+    return null;
+  }
+  if (EXTENSION_SKILL_IDS.has(skillId)) {
+    const agg = aggregateExtendedSkillPreview(run, playerSheet, skill, instanceData, skillId, selectedRoots);
+    if (!agg?.byCell?.length) {
+      return null;
+    }
+    return {
+      byCell: agg.byCell.map((entry) => ({
+        ...entry,
+        statusEffects: Array.isArray(entry.statusEffects) ? entry.statusEffects : [],
+      })),
+    };
+  }
   const resolver = SKILLS_APPLY_BY_ID[skillId];
-  if (!skill || !resolver || !Array.isArray(selectedRoots) || selectedRoots.length === 0) {
+  if (!resolver) {
     return null;
   }
   const byCell = new Map();
@@ -571,6 +795,9 @@ function buildPendingSkillApplications(run, playerSheet, item, instanceData, ski
     if (!root || !group) continue;
     const aggregated = aggregatePreparedSkillEffects(run, playerSheet, item, instanceData, skillId, [root]);
     if (!aggregated) continue;
+    const wallRayBonusDamage = skillId === "fireball"
+      ? destroyStoneWallsAlongCasterSegment(run, run.player.x, run.player.y, root.x, root.y)
+      : 0;
     const groupDurationMs = (group.segments || []).reduce(
       (sum, segment) => sum + Math.max(1, Number(segment.durationMs || 0)),
       0,
@@ -579,6 +806,7 @@ function buildPendingSkillApplications(run, playerSheet, item, instanceData, ski
       skillId,
       applyAtMs: Number(castStartMs) + Math.max(0, Number(group.startOffsetMs || 0)) + groupDurationMs,
       aggregated,
+      wallRayBonusDamage,
       applied: false,
     });
   }
@@ -591,10 +819,16 @@ function applyAggregatedEffects(run, playerSheet, skill, aggregated, options = {
   const fx = ensureRunFxState(run);
   const floatingStartDelayMs = Math.max(0, Number(options.floatingStartDelayMs || 0));
   const floatingStartMs = getNowMs() + floatingStartDelayMs;
+  let wallBonusRemain = Math.max(0, floorHp(options.wallRayBonusDamage || 0));
   for (const target of aggregated.byCell) {
     const x = Number(target.x);
     const y = Number(target.y);
-    const damage = Math.max(0, floorHp(target.targetDamage || 0));
+    let damage = Math.max(0, floorHp(target.targetDamage || 0));
+    if (wallBonusRemain > 0 && target.role === "epicenter") {
+      damage += wallBonusRemain;
+      logs.push(`Каменная стена на пути разбивается: +${wallBonusRemain} к урону центра.`);
+      wallBonusRemain = 0;
+    }
     if (damage <= 0) continue;
     const burningEffects = Array.isArray(target.statusEffects)
       ? target.statusEffects.filter((effect) => effect?.type === "burning")
@@ -682,7 +916,9 @@ export function processPendingSkillApplications(run, playerSheet, nowMs = getNow
       entry.applied = true;
       continue;
     }
-    const result = applyAggregatedEffects(run, playerSheet, skill, entry.aggregated);
+    const result = applyAggregatedEffects(run, playerSheet, skill, entry.aggregated, {
+      wallRayBonusDamage: entry.wallRayBonusDamage || 0,
+    });
     entry.applied = true;
     if (result?.log) logs.push(result.log);
   }
@@ -707,6 +943,34 @@ export function usePreparedSkillSelections(run, playerSheet, item, instanceData,
     return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: "Недостаточно маны." };
   }
   playerSheet.mana = roundManaValue(currentMana - actualManaCost);
+
+  if (EXTENSION_SKILL_IDS.has(skillId)) {
+    const skillWithLevel = {
+      ...skill,
+      level: Math.max(1, Number(instanceData?.skillLevels?.[skillId] || 1)),
+    };
+    const ext = applyExtensionSkillPrepared(run, playerSheet, skillWithLevel, instanceData, selectedRoots, actualManaCost);
+    if (!ext.ok) {
+      playerSheet.mana = roundManaValue((playerSheet.mana || 0) + actualManaCost);
+      return {
+        run,
+        playerSheet,
+        instanceData,
+        ok: false,
+        actionConsumed: false,
+        log: ext.log || "",
+      };
+    }
+    return {
+      run,
+      playerSheet,
+      instanceData,
+      ok: true,
+      actionConsumed: ext.actionConsumed !== false,
+      log: ext.log || "",
+    };
+  }
+
   const fx = ensureRunFxState(run);
   const blockingSkillMotion = buildBlockingSkillMotion(skillId, run, selectedRoots);
   if (fx) {
@@ -732,7 +996,12 @@ export function usePreparedSkillSelections(run, playerSheet, item, instanceData,
     }
   }
   const aggregated = aggregatePreparedSkillEffects(run, playerSheet, item, instanceData, skillId, selectedRoots);
-  const result = applyAggregatedEffects(run, playerSheet, skill, aggregated);
+  let wallRayBonusDamage = 0;
+  if (skillId === "fireball" && Array.isArray(selectedRoots) && selectedRoots.length > 0) {
+    const r0 = selectedRoots[0];
+    wallRayBonusDamage = destroyStoneWallsAlongCasterSegment(run, run.player.x, run.player.y, r0.x, r0.y);
+  }
+  const result = applyAggregatedEffects(run, playerSheet, skill, aggregated, { wallRayBonusDamage });
   if (!result.ok) {
     playerSheet.mana = roundManaValue((playerSheet.mana || 0) + actualManaCost);
     return { run, playerSheet, instanceData, ok: false, actionConsumed: false, log: result.log };

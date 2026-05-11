@@ -1,4 +1,4 @@
-import { floorHp } from "../rules.js?v=0.5.7-pre-alpha";
+import { floorHp } from "../rules.js?v=0.5.8-pre-alpha";
 import {
   chebyshevDistance,
   inBounds,
@@ -7,20 +7,20 @@ import {
   buildPathToNearestEnemyAttackCell as buildPathToNearestEnemyAttackCellNav,
   buildPathTowardTarget,
   buildPathToNearestAttackCellAroundFocus,
-} from "../nav/pathfinding.js?v=0.5.7-pre-alpha";
-import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.5.7-pre-alpha";
-import { getEnemyById } from "./enemies.js?v=0.5.7-pre-alpha";
-import { getEnemyMaxHp } from "./enemyDefs.js?v=0.5.7-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.5.7-pre-alpha";
+} from "../nav/pathfinding.js?v=0.5.8-pre-alpha";
+import { ACTOR_KIND, isObjectBlockingForActor, removeObject } from "./cellObjects.js?v=0.5.8-pre-alpha";
+import { getEnemyById } from "./enemies.js?v=0.5.8-pre-alpha";
+import { getEnemyMaxHp } from "./enemyDefs.js?v=0.5.8-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.8-pre-alpha";
 import {
   ensureEnemyStatus,
   ensurePlayerStatus,
   tickTemporaryObjects,
-} from "./trapsAndClouds.js?v=0.5.7-pre-alpha";
-import { applyEndOfEnvironmentObjectEffects, applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.7-pre-alpha";
+} from "./trapsAndClouds.js?v=0.5.8-pre-alpha";
+import { applyEndOfEnvironmentObjectEffects, applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.8-pre-alpha";
 import {
   isCellBlockedForEnemyWithReservations,
-} from "./cellBlocking.js?v=0.5.7-pre-alpha";
+} from "./cellBlocking.js?v=0.5.8-pre-alpha";
 import {
   AI_IDLE,
   AI_PURSUIT,
@@ -29,13 +29,18 @@ import {
   checkAggroAfterPlayerAction,
   ensureEnemyBrain,
   enemyAtHome,
+  enemyHasSeenCell,
   enemyInLastKnownVicinity,
   enemySeesPlayer,
-} from "./enemyAggro.js?v=0.5.7-pre-alpha";
-import { randomFloat } from "./rng.js?v=0.5.7-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.5.7-pre-alpha";
-import { processTurnEffects } from "./turnEffects.js?v=0.5.7-pre-alpha";
-import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.7-pre-alpha";
+  enemySeesEnemy,
+  refreshAllEnemiesVisionMemory,
+} from "./enemyAggro.js?v=0.5.8-pre-alpha";
+import { computeBasicMeleeDamage } from "../rules.js?v=0.5.8-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./enemyCombat.js?v=0.5.8-pre-alpha";
+import { randomFloat } from "./rng.js?v=0.5.8-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.5.8-pre-alpha";
+import { processTurnEffects } from "./turnEffects.js?v=0.5.8-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.8-pre-alpha";
 
 function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
   const stunnedEnemyIds = new Set();
@@ -89,6 +94,29 @@ function processEnvironmentStartEffects(run, playerSheet, actionQueue, fx) {
       continue;
     }
 
+    if ((status.bleedTurns || 0) > 0) {
+      const enemyHpMax = Math.max(1, Number(getEnemyMaxHp(enemy) || 1));
+      const pct = Math.max(0, Number(status.bleedDotPercent || 0.2));
+      const bleedDamage = Math.max(2, Math.floor(enemyHpMax * pct));
+      enemy.data.hp = Math.max(0, (enemy.data?.hp || 0) - bleedDamage);
+      status.bleedTurns = Math.max(0, (status.bleedTurns || 0) - 1);
+      enqueueFloatingText(run, {
+        x: enemy.x,
+        y: enemy.y,
+        value: `-${bleedDamage}`,
+        color: "#dc2626",
+        durationMs: 620,
+        scale: 1.0,
+        startMs: null,
+      });
+      effectCount += 1;
+    }
+
+    if ((enemy.data?.hp || 0) <= 0) {
+      removeObject(run, enemy.id);
+      continue;
+    }
+
     if ((status.stunTurns || 0) > 0) {
       status.stunTurns = Math.max(0, (status.stunTurns || 0) - 1);
       stunnedEnemyIds.add(enemy.id);
@@ -110,11 +138,36 @@ function pickRandomSearchStep(run, enemy, isCellBlocked) {
     const nx = enemy.x + dir.x;
     const ny = enemy.y + dir.y;
     if (!inBounds(nx, ny, run)) continue;
+    if (!enemyHasSeenCell(enemy, nx, ny)) continue;
     if (isWall(nx, ny, run)) continue;
     if (isCellBlocked(nx, ny)) continue;
     return [{ x: enemy.x, y: enemy.y }, { x: nx, y: ny }];
   }
   return [];
+}
+
+/**
+ * Скилл «Превосходство»: если у атакующего активен берсерк и он видит другого кота в соседней клетке,
+ * цель удара — этот кот (при нескольких кандидатах выбор стабильный по id и координатам).
+ */
+function pickBerserkAdjacentPeerTarget(run, attacker) {
+  const st = ensureEnemyStatus(attacker);
+  if ((st.berserkTurns || 0) <= 0) return null;
+  const peers = (run.objects || []).filter((o) => o?.type === "enemy" && o.id !== attacker.id);
+  const adjacentVisible = [];
+  for (const peer of peers) {
+    if (!enemySeesEnemy(run, attacker, peer)) continue;
+    if (chebyshevDistance(attacker, peer) !== 1) continue;
+    adjacentVisible.push(peer);
+  }
+  if (adjacentVisible.length === 0) return null;
+  adjacentVisible.sort((a, b) => {
+    const cmpId = String(a.id).localeCompare(String(b.id));
+    if (cmpId !== 0) return cmpId;
+    if (a.y !== b.y) return a.y - b.y;
+    return a.x - b.x;
+  });
+  return adjacentVisible[0];
 }
 
 export function beginEnvironmentTurn(run) {
@@ -171,6 +224,9 @@ export function stepEnvironmentTurn(run, playerSheet) {
       reservedDestinations
     );
 
+    const enemyCellBlockedWithMemory = (enemy, x, y) =>
+      !enemyHasSeenCell(enemy, x, y) || enemyCellBlocked(enemy, x, y);
+
     for (const enemy of run.objects || []) {
       if (!enemy || enemy.type !== "enemy") continue;
       if (stunnedEnemyIds.has(enemy.id)) continue;
@@ -181,6 +237,7 @@ export function stepEnvironmentTurn(run, playerSheet) {
       }
     }
     broadcastPursuitIntel(run);
+    refreshAllEnemiesVisionMemory(run);
 
     for (const enemyId of actionQueue) {
       const enemy = getEnemyById(run, enemyId);
@@ -192,6 +249,31 @@ export function stepEnvironmentTurn(run, playerSheet) {
       }
 
       ensureEnemyBrain(enemy);
+
+      const berserkPeer = pickBerserkAdjacentPeerTarget(run, enemy);
+      if (berserkPeer) {
+        const catDamage = Math.max(0, enemy.data?.damage || 0);
+        applyDamageToEnemyAndResolveDefeat(run, playerSheet, berserkPeer, catDamage);
+        enqueueFloatingText(run, {
+          x: berserkPeer.x,
+          y: berserkPeer.y,
+          value: `-${catDamage}`,
+          color: "#fdba74",
+          durationMs: 620,
+          scale: 1.05,
+          startMs: null,
+        });
+        attackCount += 1;
+        lastAttackerName = enemy.name;
+        plannedAttacks.push({
+          actorId: enemy.id,
+          kind: "bounce",
+          from: { x: enemy.x, y: enemy.y },
+          target: { x: berserkPeer.x, y: berserkPeer.y },
+        });
+        continue;
+      }
+
       const seesPlayer = enemySeesPlayer(run, enemy);
       const aiState = enemy.data.aiState;
 
@@ -203,7 +285,7 @@ export function stepEnvironmentTurn(run, playerSheet) {
             run,
             { x: enemy.x, y: enemy.y },
             { x: enemy.data.homeX, y: enemy.data.homeY },
-            (x, y) => enemyCellBlocked(enemy, x, y),
+            (x, y) => enemyCellBlockedWithMemory(enemy, x, y),
           );
         }
       } else if (aiState === AI_PURSUIT) {
@@ -211,9 +293,14 @@ export function stepEnvironmentTurn(run, playerSheet) {
           continue;
         }
         enemy.data.lastSeenPlayer = { x: run.player.x, y: run.player.y };
+
         const distance = chebyshevDistance(enemy, run.player);
         if (distance === 1) {
-          const damageTaken = Math.max(0, enemy.data?.damage || 0);
+          let damageTaken = Math.max(0, enemy.data?.damage || 0);
+          const atkBleed = ensureEnemyStatus(enemy);
+          if ((atkBleed.bleedTurns || 0) > 0) {
+            damageTaken = Math.max(0, Math.floor(damageTaken * 0.8));
+          }
           const hpNow = floorHp(playerSheet.stats?.HP ?? playerSheet.baseStats?.HP ?? 0);
           const nextHp = floorHp(hpNow - damageTaken);
           syncPlayerHp(playerSheet, nextHp);
@@ -239,9 +326,50 @@ export function stepEnvironmentTurn(run, playerSheet) {
             run.lastLog = `${enemy.name} атакует мышонка на ${damageTaken}.`;
             return { run, playerSheet, finished: true, progressed: true };
           }
+          const stance = run.steelStanceBuff;
+          if (stance && damageTaken > 0) {
+            const lvl = Math.max(1, Number(stance.level || 1));
+            const chance = lvl >= 3 ? 0.8 : lvl >= 2 ? 0.6 : 0.4;
+            if (randomFloat(run.rng) < chance) {
+              const bonusPp = (ensureEnemyStatus(enemy).bleedTurns || 0) > 0 ? 20 : 0;
+              const hit = computeBasicMeleeDamage(playerSheet, 1, run.rng, { bonusCritChancePp: bonusPp });
+              const ctr = applyDamageToEnemyAndResolveDefeat(run, playerSheet, enemy, hit.damage);
+              const playerCell = { x: run.player.x, y: run.player.y };
+              const targetCell = { x: enemy.x, y: enemy.y };
+              enqueueFloatingText(run, {
+                x: enemy.x,
+                y: enemy.y,
+                value: `-${hit.damage}`,
+                color: hit.isCrit ? "#fde047" : "#fca5a5",
+                durationMs: hit.isCrit ? 800 : 650,
+                scale: hit.isCrit ? 1.45 : 1,
+                isCrit: Boolean(hit.isCrit),
+                startMs: null,
+              });
+              fx.motion = {
+                kind: "bounce",
+                from: playerCell,
+                target: targetCell,
+                durationMs: 170,
+                startMs: null,
+              };
+              if (hit.isCrit) {
+                fx.screenShake = {
+                  durationMs: 220,
+                  amplitudePx: 5,
+                  startMs: null,
+                };
+              }
+              if (ctr.defeated && ctr.defeatLog) {
+                run.lastLog = `Стальная стойка: контрудар.${ctr.defeatLog}`;
+              }
+            }
+          }
           continue;
         }
-        path = buildPathToNearestEnemyAttackCellNav(run, enemy, (x, y) => enemyCellBlocked(enemy, x, y));
+        path = buildPathToNearestEnemyAttackCellNav(run, enemy, (x, y) => enemyCellBlockedWithMemory(enemy, x, y), {
+          canUseAttackCell: (cell) => enemyHasSeenCell(enemy, cell.x, cell.y),
+        });
       } else if (aiState === AI_SEARCH) {
         const last = enemy.data.lastSeenPlayer;
         if (!last) {
@@ -251,12 +379,14 @@ export function stepEnvironmentTurn(run, playerSheet) {
         }
         if (!enemyInLastKnownVicinity(enemy, last)) {
           enemy.data.searchWanderRemaining = -1;
-          path = buildPathToNearestAttackCellAroundFocus(run, enemy, last, (x, y) => enemyCellBlocked(enemy, x, y));
+          path = buildPathToNearestAttackCellAroundFocus(run, enemy, last, (x, y) => enemyCellBlockedWithMemory(enemy, x, y), {
+            canUseAttackCell: (cell) => enemyHasSeenCell(enemy, cell.x, cell.y),
+          });
         } else if (enemy.data.searchWanderRemaining < 0) {
           enemy.data.searchWanderRemaining = Number(enemy.data.searchWanderTurns) || 3;
           continue;
         } else if (enemy.data.searchWanderRemaining > 0) {
-          path = pickRandomSearchStep(run, enemy, (x, y) => enemyCellBlocked(enemy, x, y));
+          path = pickRandomSearchStep(run, enemy, (x, y) => enemyCellBlockedWithMemory(enemy, x, y));
           enemy.data.searchWanderRemaining -= 1;
           if (enemy.data.searchWanderRemaining === 0) {
             enemy.data.aiState = AI_IDLE;
@@ -315,6 +445,19 @@ export function stepEnvironmentTurn(run, playerSheet) {
 
   run.turnPhase = "player";
   run.turns += 1;
+  if (run.steelStanceBuff?.turnsLeft > 0) {
+    run.steelStanceBuff.turnsLeft = Math.max(0, Number(run.steelStanceBuff.turnsLeft || 0) - 1);
+    if (run.steelStanceBuff.turnsLeft <= 0) {
+      delete run.steelStanceBuff;
+    }
+  }
+  for (const object of run.objects || []) {
+    if (object.type !== "enemy") continue;
+    const st = ensureEnemyStatus(object);
+    if ((st.berserkTurns || 0) > 0) {
+      st.berserkTurns = Math.max(0, (st.berserkTurns || 0) - 1);
+    }
+  }
   const objectTurnEffects = applyEndOfEnvironmentObjectEffects(run, playerSheet);
   playerSheet = objectTurnEffects.playerSheet || playerSheet;
   processTurnEffects(run, playerSheet);

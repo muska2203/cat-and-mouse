@@ -1,6 +1,6 @@
-import { inBounds, chebyshevDistance } from "../nav/pathfinding.js?v=0.5.7-pre-alpha";
-import { hasLineOfSightOnGrid } from "../nav/lineOfSightPermissive.js?v=0.5.7-pre-alpha";
-import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.7-pre-alpha";
+import { inBounds, chebyshevDistance } from "../nav/pathfinding.js?v=0.5.8-pre-alpha";
+import { hasLineOfSightOnGrid } from "../nav/lineOfSightPermissive.js?v=0.5.8-pre-alpha";
+import { getEnemyDefByType } from "./enemyDefs.js?v=0.5.8-pre-alpha";
 
 /** Покой: идёт к точке спавна. */
 export const AI_IDLE = "idle";
@@ -38,6 +38,50 @@ export function ensureEnemyBrain(enemy) {
   }
   if (!Number.isFinite(Number(d.searchWanderRemaining))) {
     d.searchWanderRemaining = -1;
+  }
+}
+
+/** Ключ клетки в памяти обзора кота (строка для объекта-set в data). */
+export function enemyMemoryCellKey(x, y) {
+  return `${Number(x)}:${Number(y)}`;
+}
+
+/** Клетка хоть раз попадала в поле зрения этого кота за забег. */
+export function enemyHasSeenCell(enemy, x, y) {
+  ensureEnemyBrain(enemy);
+  const bag = enemy.data.seenCellKeys;
+  if (!bag || typeof bag !== "object") return false;
+  return Boolean(bag[enemyMemoryCellKey(x, y)]);
+}
+
+/**
+ * Дополняет память: все клетки в радиусе зрения и с LOS из текущей позиции кота.
+ */
+export function refreshEnemyVisionMemory(run, enemy) {
+  ensureEnemyBrain(enemy);
+  if (!enemy.data.seenCellKeys || typeof enemy.data.seenCellKeys !== "object") {
+    enemy.data.seenCellKeys = Object.create(null);
+  }
+  const bag = enemy.data.seenCellKeys;
+  const range = Number(enemy.data.visionRange) || 6;
+  const ex = enemy.x;
+  const ey = enemy.y;
+  if (!run?.grid || !inBounds(ex, ey, run)) return;
+  for (let y = ey - range; y <= ey + range; y += 1) {
+    for (let x = ex - range; x <= ex + range; x += 1) {
+      if (!inBounds(x, y, run)) continue;
+      if (Math.hypot(x - ex, y - ey) > range + 1e-9) continue;
+      if (hasLineOfSightOnGrid(run.grid, ex, ey, x, y)) {
+        bag[enemyMemoryCellKey(x, y)] = true;
+      }
+    }
+  }
+}
+
+export function refreshAllEnemiesVisionMemory(run) {
+  if (!run?.objects) return;
+  for (const obj of run.objects) {
+    if (obj?.type === "enemy") refreshEnemyVisionMemory(run, obj);
   }
 }
 

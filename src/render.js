@@ -1,17 +1,17 @@
-import { cellVisibleFromActor, ensureEnemyBrain } from "./game/enemyAggro.js?v=0.5.7-pre-alpha";
-import { isCellVisibleToPlayerNow } from "./game/playerVisibility.js?v=0.5.7-pre-alpha";
-import { inBounds } from "./nav/pathfinding.js?v=0.5.7-pre-alpha";
-import { roundStat } from "./rules.js?v=0.5.7-pre-alpha";
-import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.7-pre-alpha";
+import { cellVisibleFromActor, ensureEnemyBrain } from "./game/enemyAggro.js?v=0.5.8-pre-alpha";
+import { isCellVisibleToPlayerNow } from "./game/playerVisibility.js?v=0.5.8-pre-alpha";
+import { inBounds } from "./nav/pathfinding.js?v=0.5.8-pre-alpha";
+import { roundStat } from "./rules.js?v=0.5.8-pre-alpha";
+import { getCanvasCameraOffset, getCanvasTileSize } from "./runtime/canvasCamera.js?v=0.5.8-pre-alpha";
 import {
   drawEnemyAiBehaviorBadge,
   pruneStaleEnemyAiBadgeEntries,
-} from "./runtime/enemyAiFieldBadge.js?v=0.5.7-pre-alpha";
+} from "./runtime/enemyAiFieldBadge.js?v=0.5.8-pre-alpha";
 import {
   ensureRunFxState,
   OBJECT_DISSOLVE_DURATION_MS,
   pruneFinishedObjectDissolves,
-} from "./runtime/runFxState.js?v=0.5.7-pre-alpha";
+} from "./runtime/runFxState.js?v=0.5.8-pre-alpha";
 import {
   getLoadedSprite,
   resolveEnemySpriteUrl,
@@ -24,7 +24,7 @@ import {
   resolvePoisonCloudSpriteUrl,
   resolveRandomFloorTileSpriteUrl,
   resolveTileSpriteUrl,
-} from "./runtime/spriteAssets.js?v=0.5.7-pre-alpha";
+} from "./runtime/spriteAssets.js?v=0.5.8-pre-alpha";
 
 const WORLD_OBJECT_SPRITE_SCALE = 0.8;
 /** Ядовитое облако: слой за актёрами (150% тайла). */
@@ -52,6 +52,42 @@ function cellSpriteAnchorBottomY(py, tile) {
 function compareFieldDrawOrder2D(yA, xA, yB, xB) {
   if (yA !== yB) return yA - yB;
   return xA - xB;
+}
+
+/** Стрелка предпросмотра сдвига: от центра клетки (from) к центру клетки (to), с наконечником. */
+function drawSkillMotionPreviewArrow(ctx, fromCx, fromCy, toCx, toCy, color, tile) {
+  const dx = toCx - fromCx;
+  const dy = toCy - fromCy;
+  const len = Math.hypot(dx, dy);
+  if (len < 6) return;
+  const shrink = Math.min(tile * 0.14, len * 0.12);
+  const ux = dx / len;
+  const uy = dy / len;
+  const x0 = fromCx + ux * shrink;
+  const y0 = fromCy + uy * shrink;
+  const x1 = toCx - ux * shrink;
+  const y1 = toCy - uy * shrink;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = Math.max(2, tile * 0.05);
+  ctx.setLineDash([]);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  const ah = Math.min(tile * 0.24, len * 0.32);
+  const px = -uy;
+  const py = ux;
+  const wing = ah * 0.42;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1 - ux * ah + px * wing, y1 - uy * ah + py * wing);
+  ctx.lineTo(x1 - ux * ah * 0.55, y1 - uy * ah * 0.55);
+  ctx.lineTo(x1 - ux * ah - px * wing, y1 - uy * ah - py * wing);
+  ctx.closePath();
+  ctx.fill();
 }
 
 function getObjectDissolveAlpha(entry, nowMs) {
@@ -486,6 +522,30 @@ export function drawRunToCanvas(canvas, run, playerSheet, nowMs = performance.no
     ctx.restore();
   }
 
+  const skillMotionPreviewArrows = Array.isArray(overlay?.skillMotionPreviewArrows)
+    ? overlay.skillMotionPreviewArrows
+    : [];
+  if (skillMotionPreviewArrows.length > 0) {
+    ctx.save();
+    const sortedArrows = [...skillMotionPreviewArrows].sort((a, b) =>
+      compareFieldDrawOrder2D(a.fromY, a.fromX, b.fromY, b.fromX),
+    );
+    for (const a of sortedArrows) {
+      const fx = Number(a.fromX);
+      const fy = Number(a.fromY);
+      const tx = Number(a.toX);
+      const ty = Number(a.toY);
+      if (!run.discovered?.[fy]?.[fx] || !cellLitForPlayer(fx, fy)) continue;
+      if (!run.discovered?.[ty]?.[tx] || !cellLitForPlayer(tx, ty)) continue;
+      const fromCx = cameraOffsetX + fx * tile + tile / 2;
+      const fromCy = cameraOffsetY + fy * tile + tile / 2;
+      const toCx = cameraOffsetX + tx * tile + tile / 2;
+      const toCy = cameraOffsetY + ty * tile + tile / 2;
+      drawSkillMotionPreviewArrow(ctx, fromCx, fromCy, toCx, toCy, a.color || "rgba(251, 191, 36, 0.9)", tile);
+    }
+    ctx.restore();
+  }
+
   const fogMemFront = run.fogObjectMemory || {};
   const fogPoisonFrontList = [];
   for (const object of objectsList) {
@@ -696,6 +756,10 @@ function isPlayerBurning(run) {
   return effects.some((effect) => effect?.type === "burning_player" && Number(effect?.turnsLeft || 0) > 0);
 }
 
+function isPlayerSteelStance(run) {
+  return Number(run?.steelStanceBuff?.turnsLeft || 0) > 0;
+}
+
 function isEnemyBurning(enemy) {
   return Number(enemy?.data?.status?.burnTurns || 0) > 0;
 }
@@ -727,6 +791,35 @@ function drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, x, y, nowMs) {
     ctx.arc(sx, sy, sr, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
+}
+
+/** Визуальный маркер баффа «Стальная стойка» у героя на поле. */
+function drawSteelStanceAura(ctx, cameraOffsetX, cameraOffsetY, tile, x, y, nowMs) {
+  const px = cameraOffsetX + x * tile;
+  const py = cameraOffsetY + y * tile;
+  const cx = px + tile / 2;
+  const spriteAnchorBottom = cellSpriteAnchorBottomY(py, tile);
+  const auraFootY = spriteAnchorBottom - tile * 0.02;
+  const pulse = (Math.sin(nowMs * 0.009 + x * 0.7 + y * 0.5) + 1) / 2;
+  const alpha = 0.18 + pulse * 0.12;
+  const radius = tile * (0.32 + pulse * 0.06);
+
+  ctx.save();
+  ctx.strokeStyle = `rgba(147, 197, 253, ${0.55 + pulse * 0.25})`;
+  ctx.lineWidth = Math.max(1.2, tile * 0.045);
+  ctx.beginPath();
+  ctx.ellipse(cx, auraFootY, radius * 1.05, radius * 0.58, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(226, 232, 240, ${0.35 + pulse * 0.2})`;
+  ctx.lineWidth = Math.max(1, tile * 0.028);
+  ctx.beginPath();
+  ctx.ellipse(cx, auraFootY, radius * 0.82, radius * 0.46, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`;
+  ctx.beginPath();
+  ctx.ellipse(cx, auraFootY, radius * 0.75, radius * 0.42, 0, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -814,6 +907,43 @@ function getObjectVisualPosition(run, object, nowMs, fixedGridPos = null) {
   ) {
     return { x: fixedGridPos.x, y: fixedGridPos.y };
   }
+  const playerMotion = run?.fx?.motion;
+  if (
+    playerMotion?.kind === "lunge_skill"
+    && playerMotion.enemyId
+    && object?.id === playerMotion.enemyId
+    && isMotionActive(playerMotion, nowMs)
+  ) {
+    const cells = Array.isArray(playerMotion.enemyCells) ? playerMotion.enemyCells : [{ ...playerMotion.enemyStart }];
+    if (playerMotion.startMs == null) {
+      return { x: cells[0].x, y: cells[0].y };
+    }
+    const dur = Math.max(1, Number(playerMotion.durationMs || 1));
+    const t = Math.min(1, (nowMs - playerMotion.startMs) / dur);
+    const tHit = Number(playerMotion.tPlayerHit ?? 0.28);
+    const tEn = Number(playerMotion.tEnemyDone ?? 0.76);
+    if (t < tHit) {
+      return { x: cells[0].x, y: cells[0].y };
+    }
+    if (t >= tEn) {
+      return { x: playerMotion.enemyEnd.x, y: playerMotion.enemyEnd.y };
+    }
+    const span = Math.max(1e-6, tEn - tHit);
+    const ue = (t - tHit) / span;
+    const segCount = cells.length - 1;
+    if (segCount <= 0) {
+      return { x: cells[0].x, y: cells[0].y };
+    }
+    const f = ue * segCount;
+    const i = Math.min(segCount - 1, Math.floor(f));
+    const segT = f - i;
+    const a = cells[i];
+    const b = cells[i + 1];
+    return {
+      x: a.x + (b.x - a.x) * segT,
+      y: a.y + (b.y - a.y) * segT,
+    };
+  }
   const motion = run?.fx?.environmentMotion;
   if (!motion) {
     return { x: object.x, y: object.y };
@@ -876,6 +1006,9 @@ function drawPlayerFieldLayer(ctx, run, cameraOffsetX, cameraOffsetY, tile, nowM
 
   if (isPlayerBurning(run)) {
     drawBurningAura(ctx, cameraOffsetX, cameraOffsetY, tile, playerVisual.x, playerVisual.y, nowMs);
+  }
+  if (isPlayerSteelStance(run)) {
+    drawSteelStanceAura(ctx, cameraOffsetX, cameraOffsetY, tile, playerVisual.x, playerVisual.y, nowMs);
   }
   const hasPlayerSprite = drawBottomCenteredSpriteWithRotation(
     ctx,
@@ -986,6 +1119,10 @@ function isPlayerInActiveMotion(run, nowMs) {
 }
 
 function isObjectInActiveMotion(run, object, nowMs) {
+  const pm = run?.fx?.motion;
+  if (pm?.kind === "lunge_skill" && pm.enemyId === object?.id && isMotionActive(pm, nowMs)) {
+    return true;
+  }
   const motion = run?.fx?.environmentMotion;
   if (!isMotionActive(motion, nowMs)) {
     return false;
@@ -1303,6 +1440,32 @@ function getPlayerVisual(run, nowMs) {
   if (!motion) {
     return { x: run.player.x, y: run.player.y };
   }
+  if (motion.kind === "lunge_skill") {
+    const ps = motion.playerStart;
+    const hit = motion.hitCell;
+    const pe = motion.playerEnd;
+    if (motion.startMs == null) return { x: ps.x, y: ps.y };
+    const dur = Math.max(1, Number(motion.durationMs || 1));
+    const t = Math.min(1, (nowMs - motion.startMs) / dur);
+    const tHit = Number(motion.tPlayerHit ?? 0.28);
+    const tEn = Number(motion.tEnemyDone ?? 0.76);
+    if (t < tHit) {
+      const u = tHit <= 0 ? 1 : t / tHit;
+      return {
+        x: ps.x + (hit.x - ps.x) * u,
+        y: ps.y + (hit.y - ps.y) * u,
+      };
+    }
+    if (t < tEn) {
+      return { x: hit.x, y: hit.y };
+    }
+    const denom = Math.max(1e-6, 1 - tEn);
+    const u = (t - tEn) / denom;
+    return {
+      x: hit.x + (pe.x - hit.x) * u,
+      y: hit.y + (pe.y - hit.y) * u,
+    };
+  }
   if (motion.startMs == null) return { x: motion.from.x, y: motion.from.y };
   const t = Math.min(1, (nowMs - motion.startMs) / motion.durationMs);
 
@@ -1424,6 +1587,142 @@ function drawSkillProjectileSegment(ctx, cameraOffsetX, cameraOffsetY, tile, seg
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#f8fafc";
     ctx.fillText("✋", cx, cy);
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "ice_spike") {
+    const pulse = 0.78 + Math.sin(progress * Math.PI * 5) * 0.1;
+    ctx.fillStyle = `rgba(103, 232, 249, ${0.88 * pulse})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * 0.15 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(224, 242, 254, 0.55)";
+    ctx.beginPath();
+    ctx.arc(cx - tile * 0.04, cy - tile * 0.04, tile * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "stone_wall") {
+    const bob = Math.sin(progress * Math.PI * 2) * tile * 0.035;
+    const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.1;
+    ctx.font = `${Math.max(8, Math.floor(tile * 0.19 * scale))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#a8a29e";
+    ctx.shadowColor = "rgba(120, 113, 108, 0.55)";
+    ctx.shadowBlur = tile * 0.12;
+    ctx.fillText("▨", cx, cy + bob);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "meteor") {
+    const trail = 1 - progress;
+    const scale = 0.72 + progress * 0.38;
+    ctx.font = `${Math.max(10, Math.floor(tile * 0.22 * scale))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = `rgba(251, 146, 60, ${0.35 + 0.55 * trail})`;
+    ctx.shadowColor = "rgba(234, 88, 12, 0.65)";
+    ctx.shadowBlur = tile * 0.14 * trail;
+    ctx.fillText("☄", cx, cy);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "chain_lightning") {
+    const ax = cameraOffsetX + Number(from.x) * tile + tile / 2;
+    const ay = cameraOffsetY + Number(from.y) * tile + tile / 2;
+    const bx = cameraOffsetX + Number(to.x) * tile + tile / 2;
+    const by = cameraOffsetY + Number(to.y) * tile + tile / 2;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = Math.max(1e-6, Math.hypot(dx, dy));
+    const ux = dx / len;
+    const uy = dy / len;
+    const px = -uy;
+    const py = ux;
+    const zigCount = Math.max(4, Math.min(16, Math.ceil(len / Math.max(8, tile * 0.11))));
+    ctx.strokeStyle = `rgba(254, 249, 195, ${0.42 + 0.28 * Math.sin(progress * Math.PI * 3)})`;
+    ctx.lineWidth = Math.max(2, tile * 0.042);
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    const drawn = Math.max(1, Math.ceil(zigCount * progress));
+    for (let s = 1; s <= drawn; s += 1) {
+      const t = Math.min(1, (s / zigCount) * progress);
+      const mx = ax + dx * t;
+      const my = ay + dy * t;
+      const side = s % 2 === 0 ? 1 : -1;
+      const off = tile * (0.07 + 0.03 * Math.sin(s * 1.8 + progress * 5));
+      ctx.lineTo(mx + px * off * side, my + py * off * side);
+    }
+    ctx.lineTo(cx, cy);
+    ctx.stroke();
+    const bob = Math.sin(progress * Math.PI * 2) * tile * 0.035;
+    const scale = 1 + Math.sin(progress * Math.PI * 4) * 0.1;
+    ctx.font = `${Math.max(8, Math.floor(tile * 0.19 * scale))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#fde047";
+    ctx.shadowColor = "rgba(250, 204, 21, 0.45)";
+    ctx.shadowBlur = tile * 0.12;
+    ctx.fillText("⚡", cx, cy + bob);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "lunge_blade") {
+    const from = segment.from || { x: 0, y: 0 };
+    const to = segment.to || from;
+    const dx = Number(to.x) - Number(from.x);
+    const dy = Number(to.y) - Number(from.y);
+    const ang = Math.atan2(dy, dx);
+    const pulse = 0.88 + Math.sin(progress * Math.PI * 4) * 0.1;
+    ctx.translate(cx, cy);
+    ctx.rotate(ang);
+    ctx.translate(-cx, -cy);
+    ctx.strokeStyle = `rgba(248, 250, 252, ${0.94 * pulse})`;
+    ctx.lineWidth = Math.max(2, tile * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(cx - tile * 0.38, cy);
+    ctx.lineTo(cx + tile * 0.48, cy);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(254, 215, 170, ${0.62 * pulse})`;
+    ctx.beginPath();
+    ctx.moveTo(cx + tile * 0.48, cy);
+    ctx.lineTo(cx + tile * 0.18, cy - tile * 0.16);
+    ctx.lineTo(cx + tile * 0.18, cy + tile * 0.16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "supremacy_glint") {
+    const from = segment.from || { x: 0, y: 0 };
+    const fx0 = cameraOffsetX + Number(from.x) * tile + tile / 2;
+    const fy0 = cameraOffsetY + Number(from.y) * tile + tile / 2;
+    const dx = Number(segment.to?.x ?? from.x) - Number(from.x);
+    const dy = Number(segment.to?.y ?? from.y) - Number(from.y);
+    const len = Math.max(0.001, Math.hypot(dx, dy));
+    const px = (-dy / len) * tile;
+    const py = (dx / len) * tile;
+    const wobble = Math.sin(progress * Math.PI * 6) * tile * 0.05;
+    const cx2 = cx + (px / tile) * wobble;
+    const cy2 = cy + (py / tile) * wobble;
+    ctx.strokeStyle = `rgba(216, 180, 254, ${0.45 + 0.45 * (1 - progress)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(fx0, fy0);
+    ctx.lineTo(cx2, cy2);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(250, 232, 255, ${0.85 + 0.1 * Math.sin(progress * Math.PI * 5)})`;
+    ctx.beginPath();
+    ctx.arc(cx2, cy2, tile * 0.085 * (1 - progress * 0.35), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
   }
   ctx.restore();
 }
@@ -1453,6 +1752,159 @@ function drawSkillImpactSegment(ctx, cameraOffsetX, cameraOffsetY, tile, segment
     ctx.beginPath();
     ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "ice_spike_hit") {
+    const alpha = 1 - progress;
+    ctx.fillStyle = `rgba(165, 243, 252, ${0.42 * alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * (0.32 + progress * 0.85), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "stone_wall_spawn") {
+    const alpha = 1 - progress;
+    ctx.fillStyle = `rgba(120, 113, 108, ${0.52 * alpha})`;
+    ctx.fillRect(cx - tile * 0.36, cy - tile * 0.36, tile * 0.72, tile * 0.72);
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "meteor_crater") {
+    const alpha = 1 - progress * 0.92;
+    const r0 = tile * (0.55 + progress * 1.15);
+    ctx.fillStyle = `rgba(251, 146, 60, ${0.42 * alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(87, 83, 78, ${0.38 * alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r0 * 0.45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "chain_lightning_hit") {
+    const alpha = 1 - progress;
+    ctx.strokeStyle = `rgba(250, 204, 21, ${0.82 * alpha})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * (0.22 + progress * 1.1), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "shock_wave_ring") {
+    const alpha = 1 - progress * 0.88;
+    const cells = Array.isArray(segment.affectedCells)
+      ? [...segment.affectedCells].sort((a, b) => compareFieldDrawOrder2D(Number(a.y), Number(a.x), Number(b.y), Number(b.x)))
+      : [];
+    const wave = 0.4 + 0.55 * Math.sin(progress * Math.PI);
+    for (const cell of cells) {
+      const px = cameraOffsetX + Number(cell.x) * tile;
+      const py = cameraOffsetY + Number(cell.y) * tile;
+      ctx.fillStyle = `rgba(251, 191, 36, ${0.2 * alpha * wave})`;
+      ctx.fillRect(px + 2, py + 2, tile - 4, tile - 4);
+      ctx.strokeStyle = `rgba(252, 211, 77, ${0.42 * alpha})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 3, py + 3, tile - 6, tile - 6);
+    }
+    const pulse = tile * (0.48 + progress * 1.35);
+    ctx.strokeStyle = `rgba(245, 158, 11, ${0.52 * alpha})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "whirlwind_spin") {
+    const alpha = 1 - progress * 0.78;
+    const cells = Array.isArray(segment.affectedCells)
+      ? [...segment.affectedCells].sort((a, b) => compareFieldDrawOrder2D(Number(a.y), Number(a.x), Number(b.y), Number(b.x)))
+      : [];
+    let idx = 0;
+    for (const cell of cells) {
+      const px = cameraOffsetX + Number(cell.x) * tile + tile / 2;
+      const py = cameraOffsetY + Number(cell.y) * tile + tile / 2;
+      const phase = progress * Math.PI * 3 + idx * 0.65;
+      ctx.strokeStyle = `rgba(226, 232, 240, ${0.58 * alpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, tile * 0.26, phase, phase + Math.PI * 0.9);
+      ctx.stroke();
+      idx += 1;
+    }
+    ctx.strokeStyle = `rgba(248, 250, 252, ${0.42 * alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * (0.32 + progress * 0.55), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "steel_stance_pulse") {
+    const alpha = 1 - progress * 0.82;
+    for (let ring = 0; ring < 3; ring += 1) {
+      const t = Math.min(1, progress + ring * 0.18);
+      const rad = tile * (0.22 + t * 1.05);
+      ctx.strokeStyle = `rgba(96, 165, 250, ${0.42 * (1 - t * 0.85) * alpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.font = `${Math.max(10, Math.floor(tile * 0.28))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = `rgba(191, 219, 254, ${0.88 * alpha})`;
+    ctx.fillText("🛡", cx, cy + Math.sin(progress * Math.PI * 2) * tile * 0.04);
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "lunge_impact") {
+    const alpha = 1 - progress;
+    ctx.strokeStyle = `rgba(248, 113, 113, ${0.88 * alpha})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * (0.22 + (1 - progress) * 0.52), -Math.PI * 0.35, Math.PI * 0.55);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(254, 226, 226, ${0.32 * alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * 0.52 * (1 - progress * 0.75), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "cleave_arc") {
+    const alpha = 1 - progress * 0.88;
+    ctx.strokeStyle = `rgba(239, 68, 68, ${0.9 * alpha})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * 0.36, -Math.PI * 1.05, Math.PI * 0.12);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(254, 202, 202, ${0.28 * alpha})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * 0.48 * (1 - progress * 0.65), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (segment.style === "supremacy_mark") {
+    const alpha = 1 - progress * 0.88;
+    ctx.strokeStyle = `rgba(167, 139, 250, ${0.72 * alpha})`;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([5, 7]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, tile * (0.4 + Math.sin(progress * Math.PI) * 0.06), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = `${Math.max(10, Math.floor(tile * 0.26))}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = `rgba(216, 180, 254, ${0.94 * alpha})`;
+    ctx.fillText("👑", cx, cy - tile * 0.06 * (1 - progress));
     ctx.restore();
     return;
   }

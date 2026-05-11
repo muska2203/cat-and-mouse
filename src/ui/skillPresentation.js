@@ -1,7 +1,7 @@
-import { buildSkillHoverData } from "../skillsRuntime.js?v=0.5.7-pre-alpha";
-import { getSkillManaCost } from "../skillsRuntime.js?v=0.5.7-pre-alpha";
-import { buildSkillSpriteHtml } from "./spriteIconHtml.js?v=0.5.7-pre-alpha";
-import { buildHoverCardHtml, escapeHtml } from "./hoverCardHtml.js?v=0.5.7-pre-alpha";
+import { buildSkillHoverData } from "../skillsRuntime.js?v=0.5.8-pre-alpha";
+import { getSkillManaCost } from "../skillsRuntime.js?v=0.5.8-pre-alpha";
+import { buildSkillSpriteHtml } from "./spriteIconHtml.js?v=0.5.8-pre-alpha";
+import { buildHoverCardHtml, escapeHtml } from "./hoverCardHtml.js?v=0.5.8-pre-alpha";
 
 export function buildSkillDetailHtml(skill, skillState, options = {}) {
   if (!skill) return "";

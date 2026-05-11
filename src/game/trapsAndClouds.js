@@ -1,18 +1,42 @@
-import { floorHp } from "../rules.js?v=0.5.7-pre-alpha";
-import { inBounds, isWall } from "../nav/pathfinding.js?v=0.5.7-pre-alpha";
-import { syncPlayerHp } from "./syncHp.js?v=0.5.7-pre-alpha";
-import { randomInt } from "./rng.js?v=0.5.7-pre-alpha";
-import { enqueueFloatingText, enqueueObjectDissolve } from "../runtime/runFxState.js?v=0.5.7-pre-alpha";
-import { createWorldObject } from "./worldObjectModel.js?v=0.5.7-pre-alpha";
+import { floorHp } from "../rules.js?v=0.5.8-pre-alpha";
+import { inBounds, isWall } from "../nav/pathfinding.js?v=0.5.8-pre-alpha";
+import { syncPlayerHp } from "./syncHp.js?v=0.5.8-pre-alpha";
+import { randomInt } from "./rng.js?v=0.5.8-pre-alpha";
+import { enqueueFloatingText, enqueueObjectDissolve } from "../runtime/runFxState.js?v=0.5.8-pre-alpha";
+import { createWorldObject } from "./worldObjectModel.js?v=0.5.8-pre-alpha";
 
 export function ensureEnemyStatus(enemy) {
-  if (!enemy?.data) return { stunTurns: 0, poisonTurns: 0, poisonDamage: 0, burnTurns: 0, burnPercent: 0 };
-  if (!enemy.data.status) {
-    enemy.data.status = { stunTurns: 0, poisonTurns: 0, poisonDamage: 0, burnTurns: 0, burnPercent: 0 };
+  if (!enemy?.data) {
+    return {
+      stunTurns: 0,
+      poisonTurns: 0,
+      poisonDamage: 0,
+      burnTurns: 0,
+      burnPercent: 0,
+      bleedTurns: 0,
+      bleedDotPercent: 0,
+      berserkTurns: 0,
+    };
   }
-  if (!Number.isFinite(enemy.data.status.burnTurns)) enemy.data.status.burnTurns = 0;
-  if (!Number.isFinite(enemy.data.status.burnPercent)) enemy.data.status.burnPercent = 0;
-  return enemy.data.status;
+  if (!enemy.data.status) {
+    enemy.data.status = {
+      stunTurns: 0,
+      poisonTurns: 0,
+      poisonDamage: 0,
+      burnTurns: 0,
+      burnPercent: 0,
+      bleedTurns: 0,
+      bleedDotPercent: 0,
+      berserkTurns: 0,
+    };
+  }
+  const status = enemy.data.status;
+  if (!Number.isFinite(status.burnTurns)) status.burnTurns = 0;
+  if (!Number.isFinite(status.burnPercent)) status.burnPercent = 0;
+  if (!Number.isFinite(status.bleedTurns)) status.bleedTurns = 0;
+  if (!Number.isFinite(status.bleedDotPercent)) status.bleedDotPercent = 0;
+  if (!Number.isFinite(status.berserkTurns)) status.berserkTurns = 0;
+  return status;
 }
 
 export function ensurePlayerStatus(run) {
@@ -150,21 +174,31 @@ export function spawnPoisonCloudObjects(run, centerX, centerY, sourceName, trapC
 export function tickTemporaryObjects(run) {
   const objects = run.objects || [];
   const alive = [];
+  const nowMs = typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
   for (const object of objects) {
-    if (object.type !== "poison_cloud") {
-      alive.push(object);
+    if (object.type === "poison_cloud") {
+      const turnsLeft = Math.max(0, (object.data?.durationTurns || 0) - 1);
+      if (turnsLeft > 0) {
+        object.data.durationTurns = turnsLeft;
+        alive.push(object);
+      } else {
+        enqueueObjectDissolve(run, object, nowMs);
+      }
       continue;
     }
-    const turnsLeft = Math.max(0, (object.data?.durationTurns || 0) - 1);
-    if (turnsLeft > 0) {
-      object.data.durationTurns = turnsLeft;
-      alive.push(object);
-    } else {
-      const nowMs = typeof performance !== "undefined" && typeof performance.now === "function"
-        ? performance.now()
-        : Date.now();
-      enqueueObjectDissolve(run, object, nowMs);
+    if (object.type === "stone_wall") {
+      const turnsLeft = Math.max(0, (object.data?.durationTurns || 0) - 1);
+      if (turnsLeft > 0) {
+        object.data.durationTurns = turnsLeft;
+        alive.push(object);
+      } else {
+        enqueueObjectDissolve(run, object, nowMs);
+      }
+      continue;
     }
+    alive.push(object);
   }
   run.objects = alive;
 }

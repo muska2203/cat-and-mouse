@@ -1,4 +1,4 @@
-import { randomFloat } from "./game/rng.js?v=0.5.7-pre-alpha";
+import { randomFloat } from "./game/rng.js?v=0.5.8-pre-alpha";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(value, max));
@@ -104,15 +104,23 @@ export function calculateWeaponDamage(weaponItem, stats) {
   return Math.max(1, Math.floor(roundStat(calculator(baseDamage, stats))));
 }
 
-export function computeBasicMeleeDamage(playerSheet, runNextHitMult = 1, rng = null) {
+export function computeBasicMeleeDamage(playerSheet, runNextHitMult = 1, rng = null, options = {}) {
   const weaponItem = playerSheet?.loadout?.find(item => item.type === "weapon");
   const stats = playerSheet?.stats || {};
   
   const base = calculateWeaponDamage(weaponItem, stats);
 
-  const critChance = clamp(playerSheet?.derived?.CRIT_CHANCE ?? 0, 0, 100);
+  const bonusCritPp = Number(options.bonusCritChancePp || 0);
+  const critChance = clamp((playerSheet?.derived?.CRIT_CHANCE ?? 0) + bonusCritPp, 0, 100);
   const critMult = Math.max(1, roundStat(playerSheet?.derived?.CRIT_MULT ?? 1));
-  const isCrit = randomFloat(rng) * 100 < critChance;
+  let isCrit;
+  if (options.forcedCrit === true) {
+    isCrit = true;
+  } else if (options.forcedCrit === false) {
+    isCrit = false;
+  } else {
+    isCrit = randomFloat(rng) * 100 < critChance;
+  }
   const totalMultiplier = (runNextHitMult || 1) * (isCrit ? critMult : 1);
   const damage = Math.max(1, Math.floor(base * totalMultiplier));
   return { damage, isCrit, baseBeforeCrit: base };

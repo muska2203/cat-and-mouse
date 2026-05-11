@@ -2,11 +2,11 @@ import {
   AI_IDLE,
   AI_PURSUIT,
   AI_SEARCH,
-} from "../game/enemyAggro.js?v=0.5.7-pre-alpha";
+} from "../game/enemyAggro.js?v=0.5.8-pre-alpha";
 import {
   ensureRunFxState,
   OBJECT_DISSOLVE_DURATION_MS,
-} from "./runFxState.js?v=0.5.7-pre-alpha";
+} from "./runFxState.js?v=0.5.8-pre-alpha";
 
 const VALID_AI = new Set([AI_IDLE, AI_PURSUIT, AI_SEARCH]);
 

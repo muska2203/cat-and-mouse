@@ -1,4 +1,4 @@
-import { createInitialState, createPlayerSheet } from "./state.js?v=0.5.7-pre-alpha";
+import { createInitialState, createPlayerSheet } from "./state.js?v=0.5.8-pre-alpha";
 import {
   STARTER_LOADOUT_MAX,
   applyLoadoutToSheet,
@@ -12,39 +12,40 @@ import {
   swapItemFromBag,
   spendLevelUpPoint,
   recalculateSheetFromInventory,
-} from "./loadout.js?v=0.5.7-pre-alpha";
-import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.5.7-pre-alpha";
-import { drawRunToCanvas } from "./render.js?v=0.5.7-pre-alpha";
-import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.5.7-pre-alpha";
-import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.5.7-pre-alpha";
-import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.5.7-pre-alpha";
-import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.5.7-pre-alpha";
-import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.5.7-pre-alpha";
-import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.5.7-pre-alpha";
-import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.5.7-pre-alpha";
+} from "./loadout.js?v=0.5.8-pre-alpha";
+import { createRunState, createNextLevelRun, tryStep, beginEnvironmentTurn, stepEnvironmentTurn, buildPathToDiscoveredCell } from "./game.js?v=0.5.8-pre-alpha";
+import { drawRunToCanvas } from "./render.js?v=0.5.8-pre-alpha";
+import { resolveMoveDirectionFromEvent } from "./input/moveKeys.js?v=0.5.8-pre-alpha";
+import { resolveDirectionByDelta } from "./input/directionMap.js?v=0.5.8-pre-alpha";
+import { resolveQuickbarSlotIndexFromKeyboardEvent } from "./input/gameControls.js?v=0.5.8-pre-alpha";
+import { screenPointToGrid, isValidPathTargetCell } from "./runtime/canvasGrid.js?v=0.5.8-pre-alpha";
+import { normalizeCanvasZoom } from "./runtime/canvasCamera.js?v=0.5.8-pre-alpha";
+import { createCanvasRunHandlers } from "./runtime/canvasRunHandlers.js?v=0.5.8-pre-alpha";
+import { startAnimationLoop } from "./runtime/gameLoop.js?v=0.5.8-pre-alpha";
 import {
   advanceRunAnimationState,
   isBlockingMotionActive,
   normalizeFinishedAnimationsForRun,
-} from "./runtime/motionTiming.js?v=0.5.7-pre-alpha";
-import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.5.7-pre-alpha";
-import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.5.7-pre-alpha";
-import { installMousefallConsoleHelpers } from "./runtime/consoleDevHelpers.js?v=0.5.7-pre-alpha";
-import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.7-pre-alpha";
+} from "./runtime/motionTiming.js?v=0.5.8-pre-alpha";
+import { canAcceptPlayerAction, canStartEnvironmentTurn } from "./runtime/playerActionGuards.js?v=0.5.8-pre-alpha";
+import { buildCanvasOverlayViewModel } from "./runtime/canvasOverlayViewModel.js?v=0.5.8-pre-alpha";
+import { installMousefallConsoleHelpers } from "./runtime/consoleDevHelpers.js?v=0.5.8-pre-alpha";
+import { ensureRunFxState } from "./runtime/runFxState.js?v=0.5.8-pre-alpha";
 import {
   isEnvironmentTurnStepReady,
   isLevelTransitionReady,
   isPlayerInputBlockedByMotion,
-} from "./runtime/runFlow.js?v=0.5.7-pre-alpha";
-import { getEnemyById } from "./game/enemies.js?v=0.5.7-pre-alpha";
-import { randomInt } from "./game/rng.js?v=0.5.7-pre-alpha";
-import { useConsumable } from "./game/consumables.js?v=0.5.7-pre-alpha";
-import { placeTrap } from "./game/consumables.js?v=0.5.7-pre-alpha";
-import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.5.7-pre-alpha";
-import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.5.7-pre-alpha";
-import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.5.7-pre-alpha";
-import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.5.7-pre-alpha";
-import { applyXpGain } from "./game/xp.js?v=0.5.7-pre-alpha";
+} from "./runtime/runFlow.js?v=0.5.8-pre-alpha";
+import { getEnemyById } from "./game/enemies.js?v=0.5.8-pre-alpha";
+import { randomInt } from "./game/rng.js?v=0.5.8-pre-alpha";
+import { useConsumable } from "./game/consumables.js?v=0.5.8-pre-alpha";
+import { placeTrap } from "./game/consumables.js?v=0.5.8-pre-alpha";
+import { getConsumableApplyConsistencyReport } from "./items/consumableApply.js?v=0.5.8-pre-alpha";
+import { getTrapPlacementCells } from "./game/trapPlacement.js?v=0.5.8-pre-alpha";
+import { buildSkillTargetingPreviews } from "./game/skillTargetingPreviews.js?v=0.5.8-pre-alpha";
+import { buildSkillMotionPreviewArrows } from "./game/skillMotionPreviewArrows.js?v=0.5.8-pre-alpha";
+import { getSkillTargetsByKind } from "./game/skillTargetsByKind.js?v=0.5.8-pre-alpha";
+import { applyXpGain } from "./game/xp.js?v=0.5.8-pre-alpha";
 import {
   getSkillsForEquippedItem,
   getSkillById,
@@ -55,26 +56,26 @@ import {
   getSkillTargetingProfile,
   getSkillAffectedCellsForRoot,
   getSkillPreviewForPreparedSelections,
-} from "./skillsRuntime.js?v=0.5.7-pre-alpha";
-import { STRINGS_RU } from "./strings/ru.js?v=0.5.7-pre-alpha";
-import { DEVLOG_ENTRIES } from "./devlog.js?v=0.5.7-pre-alpha";
-import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.5.7-pre-alpha";
+} from "./skillsRuntime.js?v=0.5.8-pre-alpha";
+import { STRINGS_RU } from "./strings/ru.js?v=0.5.8-pre-alpha";
+import { DEVLOG_ENTRIES } from "./devlog.js?v=0.5.8-pre-alpha";
+import { createInventoryItemPopoverController } from "./ui/inventoryPopover.js?v=0.5.8-pre-alpha";
 import {
   createSkillHoverPopoverController,
   createWorldObjectHoverPopoverController,
-} from "./ui/gameHoverPopovers.js?v=0.5.7-pre-alpha";
-import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.5.7-pre-alpha";
-import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.5.7-pre-alpha";
-import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.5.7-pre-alpha";
-import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.5.7-pre-alpha";
-import { buildItemSpriteStackHtml } from "./ui/spriteIconHtml.js?v=0.5.7-pre-alpha";
-import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.5.7-pre-alpha";
-import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.5.7-pre-alpha";
-import { buildAnvilOverlayHtml } from "./ui/renderers/anvilOverlay.js?v=0.5.7-pre-alpha";
-import { buildFooterMetaHtml } from "./ui/footerMetaHtml.js?v=0.5.7-pre-alpha";
-import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.5.7-pre-alpha";
-import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.5.7-pre-alpha";
-import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.5.7-pre-alpha";
+} from "./ui/gameHoverPopovers.js?v=0.5.8-pre-alpha";
+import { buildQuickbarHtml, buildSkillsListHtml } from "./ui/gameSkillQuickbarHtml.js?v=0.5.8-pre-alpha";
+import { buildActiveEffectsViewModel } from "./ui/gameEffectsViewModel.js?v=0.5.8-pre-alpha";
+import { buildConsumableCellsHtml, buildInventoryCellsHtml } from "./ui/gameInventoryHtml.js?v=0.5.8-pre-alpha";
+import { buildEndingEquipRowsHtml, buildGameEquipRowsHtml } from "./ui/equipmentRowsHtml.js?v=0.5.8-pre-alpha";
+import { buildItemSpriteStackHtml } from "./ui/spriteIconHtml.js?v=0.5.8-pre-alpha";
+import { buildEndingScreenHtml } from "./ui/renderers/endingScreen.js?v=0.5.8-pre-alpha";
+import { buildGameScreenHtml } from "./ui/renderers/gameScreen.js?v=0.5.8-pre-alpha";
+import { buildAnvilOverlayHtml } from "./ui/renderers/anvilOverlay.js?v=0.5.8-pre-alpha";
+import { buildFooterMetaHtml } from "./ui/footerMetaHtml.js?v=0.5.8-pre-alpha";
+import { initAnalytics, trackEvent, createRunAnalyticsId } from "./analytics.js?v=0.5.8-pre-alpha";
+import { APP_VERSION, GA4_MEASUREMENT_ID } from "./app-config.js?v=0.5.8-pre-alpha";
+import { buildDerivedStats, calculateWeaponDamage, getWeaponDamageFormulaText } from "./rules.js?v=0.5.8-pre-alpha";
 import {
   buildImproveResult,
   buildRecycleResult,
@@ -88,13 +89,13 @@ import {
   getRecyclePreview,
   getReforgeCandidates,
   isEquipableItem,
-} from "./game/anvilCrafting.js?v=0.5.7-pre-alpha";
-import { ACTOR_KIND, removeObject } from "./game/cellObjects.js?v=0.5.7-pre-alpha";
-import { applyObjectActivationOnCell } from "./game/cellActivation.js?v=0.5.7-pre-alpha";
-import { PLAYER_PORTRAITS } from "./game/playerPortraitsCatalog.js?v=0.5.7-pre-alpha";
+} from "./game/anvilCrafting.js?v=0.5.8-pre-alpha";
+import { ACTOR_KIND, removeObject } from "./game/cellObjects.js?v=0.5.8-pre-alpha";
+import { applyObjectActivationOnCell } from "./game/cellActivation.js?v=0.5.8-pre-alpha";
+import { PLAYER_PORTRAITS } from "./game/playerPortraitsCatalog.js?v=0.5.8-pre-alpha";
 
-import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.5.7-pre-alpha";
-import { buildHoverCardHtml } from "./ui/hoverCardHtml.js?v=0.5.7-pre-alpha";
+import { buildSkillDetailHtml } from "./ui/skillPresentation.js?v=0.5.8-pre-alpha";
+import { buildHoverCardHtml } from "./ui/hoverCardHtml.js?v=0.5.8-pre-alpha";
 
 const root = document.getElementById("app");
 
@@ -259,7 +260,7 @@ function formatSkillsDetailSection(item, instanceEntry) {
   return `<div class="item-detail-section"><h4 class="item-detail-section-title">Скиллы предмета</h4><ul class="item-detail-list item-detail-list-plain">${rows}</ul>${note}</div>`;
 }
 
-import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.5.7-pre-alpha";
+import { getConsumableDescription, getConsumableRecoveryPreview } from "./items/itemPresentation.js?v=0.5.8-pre-alpha";
 
 function formatItemDetailWorkPrincipleSection(item) {
   if (!item?.isConsumable) {
@@ -390,6 +391,7 @@ function clearSkillTargeting() {
   state.uiHud.skillTargetingCursorCell = null;
   state.uiHud.skillTargetingChargeBadge = null;
   state.uiHud.skillTargetingAffectedCells = [];
+  state.uiHud.skillMotionPreviewArrows = [];
   state.uiHud.targetingLines = [];
 }
 
@@ -921,6 +923,20 @@ const DIRECTION_DELTA_BY_ID = {
   down_right: { x: 1, y: 1 },
 };
 
+/** Корни для предпросмотра сдвигов: выбранные + hover (если ещё есть заряды), для ударной волны — центр на герое. */
+function computeSkillTargetingMotionRoots(targeting, run, hoverCell, isValidHoverTarget) {
+  if (!targeting?.skillId || !run?.player) return [];
+  if (targeting.skillId === "shock_wave") {
+    return [{ x: run.player.x, y: run.player.y }];
+  }
+  const chargesTotal = Number(targeting?.chargesTotal ?? targeting?.profile?.charges ?? 1);
+  const roots = [...(targeting.selectedRoots || [])];
+  if (isValidHoverTarget && hoverCell && roots.length < chargesTotal) {
+    roots.push({ x: hoverCell.x, y: hoverCell.y });
+  }
+  return roots;
+}
+
 function refreshSkillTargetingPreviewFromPointer() {
   if (
     state.screen !== "game"
@@ -995,7 +1011,21 @@ function refreshSkillTargetingPreviewFromPointer() {
     });
   }
   state.uiHud.targetingLines = lines;
-  if (prevJson === nextJson) {
+  const motionRoots = computeSkillTargetingMotionRoots(targeting, state.run, cell, isValidHoverTarget);
+  const nextMotionArrows = context
+    ? buildSkillMotionPreviewArrows(
+      state.run,
+      state.playerSheet,
+      context.item,
+      context.instanceEntry.skill || null,
+      targeting.skillId,
+      motionRoots,
+    )
+    : [];
+  const prevArrowsJson = JSON.stringify(state.uiHud.skillMotionPreviewArrows || []);
+  const nextArrowsJson = JSON.stringify(nextMotionArrows);
+  state.uiHud.skillMotionPreviewArrows = nextMotionArrows;
+  if (prevJson === nextJson && prevArrowsJson === nextArrowsJson) {
     return false;
   }
   state.uiHud.skillTargetingPreviews = nextPreviews;
@@ -2059,6 +2089,17 @@ function syncCanvasHoverFromPointer() {
       y: root.y,
       color: "rgba(244, 63, 94, 0.95)",
     }));
+    const motionRootsLeave = computeSkillTargetingMotionRoots(targeting, state.run, null, false);
+    state.uiHud.skillMotionPreviewArrows = targeting && context
+      ? buildSkillMotionPreviewArrows(
+        state.run,
+        state.playerSheet,
+        context.item,
+        context.instanceEntry.skill || null,
+        targeting.skillId,
+        motionRootsLeave,
+      )
+      : [];
     canvasHandlers.onCanvasMouseLeave();
     return;
   }
@@ -2863,6 +2904,17 @@ root.addEventListener("mouseout", (event) => {
       y: root.y,
       color: "rgba(244, 63, 94, 0.95)",
     }));
+    const motionRootsOut = computeSkillTargetingMotionRoots(targeting, state.run, null, false);
+    state.uiHud.skillMotionPreviewArrows = targeting && context
+      ? buildSkillMotionPreviewArrows(
+        state.run,
+        state.playerSheet,
+        context.item,
+        context.instanceEntry.skill || null,
+        targeting.skillId,
+        motionRootsOut,
+      )
+      : [];
   }
   if (event.target.closest("[data-preview-item-id]") && !event.relatedTarget?.closest?.("[data-preview-item-id]")) {
     updateItemHoverPreviewFromTarget(null);

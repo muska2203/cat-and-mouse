@@ -36,6 +36,18 @@ export function buildActiveEffectsViewModel(run, sheet) {
       turns: toTurnsLabel(burning.turnsLeft),
     });
   }
+  const steel = run?.steelStanceBuff;
+  if (steel && Number(steel.turnsLeft || 0) > 0) {
+    const lvl = Math.max(1, Number(steel.level || 1));
+    const chancePct = lvl >= 3 ? 80 : lvl >= 2 ? 60 : 40;
+    effects.push({
+      icon: "🛡",
+      name: "Стальная стойка",
+      desc: `При ударе кота в ближнем бою шанс ответить тем же уроном, что обычный удар мечом: ${chancePct}%.`,
+      turnsLeft: Number(steel.turnsLeft),
+      turns: toTurnsLabel(steel.turnsLeft),
+    });
+  }
   const stackEffects = sheet?.effectStacks || {};
   if ((stackEffects.hp_max_plus_5 || 0) > 0) {
     effects.push({ icon: "🧀", name: "Твердый сыр", desc: "Постоянный бонус HP.", turnsLeft: Infinity, turns: toTurnsLabel(Infinity) });

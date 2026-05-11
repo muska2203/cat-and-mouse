@@ -1,18 +1,19 @@
-import { computeBasicMeleeDamage } from "../rules.js?v=0.5.7-pre-alpha";
+import { computeBasicMeleeDamage } from "../rules.js?v=0.5.8-pre-alpha";
 import {
   inBounds,
   isWall,
   isDiagonalCutBlocked,
-} from "../nav/pathfinding.js?v=0.5.7-pre-alpha";
+} from "../nav/pathfinding.js?v=0.5.8-pre-alpha";
 import {
   ACTOR_KIND,
   getObjectsAt,
   getBlockingObjectAt,
-} from "./cellObjects.js?v=0.5.7-pre-alpha";
-import { applyDamageToEnemyAndResolveDefeat } from "./enemyCombat.js?v=0.5.7-pre-alpha";
-import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.7-pre-alpha";
-import { revealAroundPlayer } from "./fogReveal.js?v=0.5.7-pre-alpha";
-import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.7-pre-alpha";
+} from "./cellObjects.js?v=0.5.8-pre-alpha";
+import { applyDamageToEnemyAndResolveDefeat } from "./enemyCombat.js?v=0.5.8-pre-alpha";
+import { ensureEnemyStatus } from "./trapsAndClouds.js?v=0.5.8-pre-alpha";
+import { applyObjectActivationOnCell } from "./cellActivation.js?v=0.5.8-pre-alpha";
+import { revealAroundPlayer } from "./fogReveal.js?v=0.5.8-pre-alpha";
+import { ensureRunFxState, enqueueFloatingText } from "../runtime/runFxState.js?v=0.5.8-pre-alpha";
 
 export function tryStep(run, playerSheet, direction, isRouteStepFinal = true) {
   if (!run || run.status !== "running") {
@@ -77,7 +78,10 @@ export function tryStep(run, playerSheet, direction, isRouteStepFinal = true) {
     motion = { kind: "move", from, to: { x: nx, y: ny }, durationMs: 120 };
     actionConsumed = true;
   } else if (blockingObject.type === "enemy") {
-    const hit = computeBasicMeleeDamage(playerSheet, run.nextHitMultiplier || 1, run?.rng || null);
+    const bleedBonusCrit = (ensureEnemyStatus(blockingObject).bleedTurns || 0) > 0 ? 20 : 0;
+    const hit = computeBasicMeleeDamage(playerSheet, run.nextHitMultiplier || 1, run?.rng || null, {
+      bonusCritChancePp: bleedBonusCrit,
+    });
     run.nextHitMultiplier = 1;
     const playerDamage = hit.damage;
     const isCrit = hit.isCrit;

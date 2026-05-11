@@ -160,15 +160,19 @@ export function buildPathTowardTarget(run, start, target, isCellBlocked) {
 /**
  * Путь к ближайшей «ударной» клетке вокруг focus (игрок или последняя известная позиция).
  */
-export function buildPathToNearestAttackCellAroundFocus(run, enemy, focus, isCellBlocked) {
+export function buildPathToNearestAttackCellAroundFocus(run, enemy, focus, isCellBlocked, options = {}) {
   if (!run || !enemy || !focus) {
     return [];
   }
-  const attackCellsAll = DIRS_8
+  const canUseAttackCell = typeof options.canUseAttackCell === "function" ? options.canUseAttackCell : null;
+  let attackCellsAll = DIRS_8
     .map((dir) => ({ x: focus.x + dir.x, y: focus.y + dir.y }))
     .filter((cell) => inBounds(cell.x, cell.y, run))
     .filter((cell) => !isWall(cell.x, cell.y, run))
     .filter((cell) => !(run.goal?.x === cell.x && run.goal?.y === cell.y));
+  if (canUseAttackCell) {
+    attackCellsAll = attackCellsAll.filter((cell) => canUseAttackCell(cell));
+  }
   const attackCellsFree = attackCellsAll.filter((cell) => !isCellBlocked(cell.x, cell.y));
   const attackCells = attackCellsFree.length > 0 ? attackCellsFree : attackCellsAll;
   if (attackCells.length === 0) {
@@ -220,9 +224,9 @@ export function buildPathToNearestAttackCellAroundFocus(run, enemy, focus, isCel
   return pool[0]?.path || [];
 }
 
-export function buildPathToNearestEnemyAttackCell(run, enemy, isCellBlocked) {
+export function buildPathToNearestEnemyAttackCell(run, enemy, isCellBlocked, options = {}) {
   if (!run?.player || !enemy) {
     return [];
   }
-  return buildPathToNearestAttackCellAroundFocus(run, enemy, run.player, isCellBlocked);
+  return buildPathToNearestAttackCellAroundFocus(run, enemy, run.player, isCellBlocked, options);
 }

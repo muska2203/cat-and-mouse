@@ -1,4 +1,4 @@
-import { buildDerivedStats, roundStat } from "./rules.js?v=0.5.7-pre-alpha";
+import { buildDerivedStats, roundStat } from "./rules.js?v=0.5.8-pre-alpha";
 
 export const PROGRESSION_CONFIG = {
   baseXpToNext: 25,
@@ -38,6 +38,7 @@ export function createInitialState() {
       skillTargetingCursorCell: null,
       skillTargetingChargeBadge: null,
       skillTargetingAffectedCells: [],
+      skillMotionPreviewArrows: [],
       targetingLines: [],
       pathHoverCell: null,
       pathHoverEnemy: null,

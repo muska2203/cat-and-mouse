@@ -2,8 +2,8 @@ import {
   resolveEnemySpriteUrl,
   resolveObjectSpriteUrl,
   resolvePoisonCloudSpriteUrl,
-} from "../runtime/spriteAssets.js?v=0.5.7-pre-alpha";
-import { buildHoverCardHtml, escapeHtml } from "./hoverCardHtml.js?v=0.5.7-pre-alpha";
+} from "../runtime/spriteAssets.js?v=0.5.8-pre-alpha";
+import { buildHoverCardHtml, escapeHtml } from "./hoverCardHtml.js?v=0.5.8-pre-alpha";
 
 function getWorldObjectSpriteUrl(object) {
   if (!object) return "";
